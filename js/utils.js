@@ -2,6 +2,7 @@
 import { db, doc, getDoc, addDoc, collection, serverTimestamp } from './firebase.js';
 import { state } from './state.js';
 import { icon } from './icons.js';
+import { cloudinaryImages } from './firebase-config.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -214,7 +215,8 @@ export function confirmBox(message, okLabel = 'Confirm') {
 // ---------- images ----------
 export function resizeImage(file, max = 900, quality = 0.72) {
   return new Promise((resolve, reject) => {
-    if (!file || !file.type.startsWith('image/')) return reject(new Error('Please choose an image file.'));
+    if (!file || !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) return reject(new Error('Choose a JPG, PNG, WebP, or GIF image.'));
+    if (file.size > 10 * 1024 * 1024) return reject(new Error('Choose an image smaller than 10 MB.'));
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -236,6 +238,42 @@ export function resizeImage(file, max = 900, quality = 0.72) {
     };
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read this image.')); };
     img.src = url;
+  });
+}
+
+
+/**
+ * Upload a compressed JPEG data URL to MeetBook's Cloudinary image endpoint.
+ * Only an unsigned upload preset is used in the browser; never place an API secret here.
+ */
+export async function uploadImageToCloudinary(dataUrl) {
+  const { cloudName, uploadPreset } = cloudinaryImages;
+  if (!cloudName || !uploadPreset) {
+    throw new Error('Photo upload is not configured yet. The MeetBook owner must finish the Cloudinary image setup.');
+  }
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/jpeg;base64,')) {
+    throw new Error('The selected photo could not be prepared. Please choose it again.');
+  }
+  const blob = await (await fetch(dataUrl)).blob();
+  if (!blob.size || blob.size > 1024 * 1024) throw new Error('The compressed photo must be 1 MB or smaller.');
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/image/upload`);
+    xhr.onload = () => {
+      try {
+        const res = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && typeof res.secure_url === 'string' && res.secure_url.startsWith('https://res.cloudinary.com/')) {
+          resolve(res.secure_url);
+        } else {
+          reject(new Error((res.error && res.error.message) || 'Photo upload failed.'));
+        }
+      } catch { reject(new Error('Photo upload failed.')); }
+    };
+    xhr.onerror = () => reject(new Error('Network error during photo upload.'));
+    const fd = new FormData();
+    fd.append('file', blob, 'meetbook-photo.jpg');
+    fd.append('upload_preset', uploadPreset);
+    xhr.send(fd);
   });
 }
 
