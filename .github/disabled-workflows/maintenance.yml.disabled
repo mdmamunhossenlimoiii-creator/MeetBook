@@ -1,0 +1,21 @@
+# DISABLED WORKFLOW ARCHIVE — NOT EXECUTABLE BY GITHUB ACTIONS
+# Kept outside .github/workflows and with a .disabled extension for future owner review.
+# Do not restore to .github/workflows without explicit owner authorization.
+
+name: Account deletion queue (disabled pending owner review)
+
+# SAFETY: This automation is intentionally inactive. It has no push, schedule, or PR triggers.
+# The manual trigger exists only so the workflow remains valid in GitHub Actions; the job is
+# unconditionally skipped. Re-enabling requires a separate explicit owner-approved code change.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  disabled:
+    if: ${{ false }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "This workflow is disabled by policy."
