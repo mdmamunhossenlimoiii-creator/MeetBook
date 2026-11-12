@@ -90,6 +90,11 @@ test('settings/global only accepts the known fields with real booleans', () => {
 });
 
 test('AI bots: runner and admin can only act as bots, and only with the owner\'s consent', () => {
+  assert.match(fn('runnerEnabled'), /botsEnabled', false\) == true/);
+  assert.match(fn('runnerEnabled'), /enabled', false\) == true/);
+  assert.match(fn('runnerEnabled'), /botIds/);
+  assert.match(fn('runnerMayActAs'), /botUid in/);
+  assert.match(fn('runnerMayActAs'), /isBotUser\(botUid\)/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   const posts = block('posts');
@@ -100,9 +105,12 @@ test('AI bots: runner and admin can only act as bots, and only with the owner\'s
   const runnerReaction = /isBotRunner\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)/;
   assert.match(posts, runnerReaction, 'bot reactions need consent and a public post');
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
-  assert.match(posts, /hasOnly\(botIds\(\)\)/, 'the runner may only set bot-keyed reactions');
+  assert.match(posts, /hasOnly\(get\(.*botRunners.*botIds/s, 'the runner may only set reactions for its assigned bot IDs');
   // the runner is not allowed to write anything but bot content
-  for (const col of ['botState', 'botInbox']) assert.match(block(col), /isBotRunner\(\)/);
+  assert.match(block('botState'), /runnerEnabled\(\)/);
+  assert.match(block('botInbox'), /resource\.data\.botId in get\(.*botRunners.*botIds/s);
+  assert.match(block('botInbox'), /hasOnly\(\['handled', 'handledAt', 'skipped'\]\)/);
+  assert.match(block('botInbox'), /members\.hasAll\(\[request\.auth\.uid, request\.resource\.data\.botId\]\)/);
 });
 
 test('comments can be switched off by staff and are enforced for everybody', () => {
@@ -129,6 +137,6 @@ test('admin logs: only as yourself, with your real role and server time; reactio
 
 test('bot-runner can read ONLY private chats that include an AI bot (it must read them to answer)', () => {
   const chats = block('chats');
-  assert.match(chats, /isBotRunner\(\) && resource != null && resource\.data\.type == 'private' && resource\.data\.members\.hasAny\(botIds\(\)\)/);
-  assert.match(chats, /isBotRunner\(\)\s*&& get\(.*?chats\/\$\(chatId\)\)\.data\.type == 'private'\s*&& get\(.*?\)\.data\.members\.hasAny\(botIds\(\)\)/s);
+  assert.match(chats, /runnerMayReadChat\(resource\.data\)/);
+  assert.match(chats, /runnerMayReadChat\(get\(.*?chats\/\$\(chatId\).*?\)\.data\)/s);
 });
