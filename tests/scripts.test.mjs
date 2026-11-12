@@ -31,6 +31,7 @@ const SA = JSON.stringify({ client_email: 'svc@test-proj.iam.gserviceaccount.com
 function seedBots(extra = {}) {
   const s = {};
   BOTS.forEach((b) => { s[`users/${b.id}`] = { name: b.name, isBot: true, banned: false, ...extra }; });
+  s['botRunners/runner1'] = { enabled: true, botIds: BOTS.map((bot) => bot.id) };
   return s;
 }
 const post = (uid, text, more = {}) => ({ uid, authorName: uid, text, image: '', videoUrl: '', visibility: 'public', audience: [], groupId: null, reactions: {}, commentCount: 0, shareCount: 0, createdAt: now, ...more });
@@ -79,7 +80,7 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
     assert.equal(m.get('chats/bot_06_u1').lastMessage.uid, 'bot_06');
 
     assert.ok(m.ids('botLogs').length >= 4, 'activity logged');
-    const st = m.get('botState/runner'); assert.ok(JSON.parse(st.daily).counts);
+    const st = m.get('botState/runner1'); assert.ok(JSON.parse(st.daily).counts);
 
     // second run: p1 is never engaged twice
     const r2 = await run('scripts/bot-runner.mjs', { ...env, BOT_POSTS: '0' });
