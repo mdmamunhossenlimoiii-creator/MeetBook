@@ -409,18 +409,40 @@ service cloud.firestore {
             || (request.resource.data.members.size() == 2
                 && chatId == pairId(request.resource.data.members[0], request.resource.data.members[1])
                 && canSendPrivateMessage(request.resource.data)));
-      // Members never change, except by the creator of a group chat.
+      // Members may update only the message preview and their own read receipt.
+      // Group membership can be changed only by the original group creator.
       allow update: if (signedIn()
           && request.auth.uid in resource.data.members
           && request.resource.data.type == resource.data.type
-          && (request.resource.data.members == resource.data.members
-              || (resource.data.type == 'group' && resource.data.createdBy == request.auth.uid)))
-        // bot-runner: only the "last message" preview of a private chat, written as a bot member
+          && request.resource.data.members == resource.data.members
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt', 'lastRead'])
+          && request.resource.data.lastMessage is map
+          && request.resource.data.lastMessage.keys().hasOnly(['text', 'uid'])
+          && request.resource.data.lastMessage.uid == request.auth.uid
+          && textOk(request.resource.data.lastMessage.text, 120)
+          && request.resource.data.lastAt == request.time
+          && request.resource.data.lastRead is map
+          && request.resource.data.lastRead.diff(resource.data.lastRead).affectedKeys().hasOnly([request.auth.uid]))
+        || (signedIn()
+          && resource.data.type == 'group'
+          && resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.type == 'group'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+          && request.resource.data.members is list
+          && request.resource.data.members.size() >= 2
+          && request.resource.data.members.size() <= 50
+          && request.auth.uid in request.resource.data.members)
+        // bot-runner: only the last-message preview of a private chat, written as a bot member.
         || (isBotRunner()
           && resource.data.type == 'private'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt'])
+          && request.resource.data.lastMessage is map
+          && request.resource.data.lastMessage.keys().hasOnly(['text', 'uid'])
           && isBotUser(request.resource.data.lastMessage.uid)
-          && request.resource.data.lastMessage.uid in resource.data.members);
+          && request.resource.data.lastMessage.uid in resource.data.members
+          && textOk(request.resource.data.lastMessage.text, 120)
+          && request.resource.data.lastAt == request.time);
 
       match /messages/{mid} {
         allow read: if (signedIn()
