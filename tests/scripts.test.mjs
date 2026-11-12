@@ -124,7 +124,7 @@ test('account deletion: purges data + auth user, refuses staff and bots', async 
   // more than one query page (500) and more than one list page (300) of data
   for (let i = 0; i < 1100; i++) m.put(`posts/bulk${i}`, post('del1', `bulk ${i}`));
   for (let i = 0; i < 650; i++) m.put(`posts/a/comments/cc${i}`, { uid: 'keep', text: 'x' });
-  const env = { FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token` };
+  const env = { FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token` };
   try {
     const r = await run('scripts/account-deletion.mjs', env);
     assert.equal(r.status, 0, r.stderr + r.stdout);
