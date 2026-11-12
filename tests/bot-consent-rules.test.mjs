@@ -121,7 +121,7 @@ test('rules: runner allowlist and global emergency stop are enforced server-side
     m.put('settings/global', { botsEnabled: false, botToBotComments: false });
     assert.equal(await call('POST', 'posts/p1/comments?documentId=stopped', comment('bot_01')), 403,
       'global emergency stop blocks bot writes in Firestore Rules');
-    assert.equal(await call('GET', 'botState/runner'), 403,
+    assert.equal(await call('GET', 'botState/runner1'), 403,
       'global emergency stop blocks runner state access too');
   } finally { await m.close(); }
 });
