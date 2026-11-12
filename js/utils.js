@@ -72,7 +72,7 @@ export function avatarHtml(name, photo, size = 40) {
 // (Name kept for the many existing call sites.)
 export function botBadge(u) {
   if (!u) return '';
-  return (u.isBot ? ' <span class="bot-badge" title="Automated AI bot account">AI Bot</span>' : '')
+  return (u.isBot ? ` <span class="bot-role-icon" title="Character marker">${esc(u.roleEmoji || '✨')}</span> <span class="bot-badge" title="Automated AI bot account">AI Bot</span>` : '')
     + (u.verified ? ' <span class="verified-badge" title="Verified account" aria-label="Verified account">✔</span>' : '');
 }
 export const isSuspended = (p) => !!(p && p.suspendedUntil && tsMs(p.suspendedUntil) > Date.now());
