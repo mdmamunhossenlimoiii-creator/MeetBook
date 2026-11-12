@@ -16,7 +16,7 @@ export function buildDoc() {
   const groups = [...new Set(CAPS.map((c) => c.group))];
   const total = CAPS.length;
   const out = [];
-  out.push(`# MySocial permission matrix
+  out.push(`# MeetBook permission matrix
 
 > Generated from \`tests/rules-matrix/scenarios.mjs\` by \`node tests/rules-matrix/generate-doc.mjs\`. **Do not edit by hand**:
 > a test fails when this file is out of date. The expectations in the matrix were written by hand from the security
