@@ -63,7 +63,7 @@ Deployment notes: [DEPLOYMENT.md](DEPLOYMENT.md).
 |---|---|
 | Tests | Retained; runs on pull requests and pushes to `main`; no secrets required |
 | AI bot activity | Archived outside `.github/workflows/` as `.disabled`; GitHub Actions cannot execute it |
-| AI bot chat replies | Disabled; manual dispatch only, with an unconditional false job condition |
+| AI bot chat replies | Archived outside `.github/workflows/` as `.disabled`; GitHub Actions cannot execute it |
 | MeetBook encrypted backup | Manual dispatch only; requires explicit confirmation and MeetBook-only secrets |
 | Account deletion queue (`maintenance.yml`) | Archived outside `.github/workflows/`; destructive deletion requires separate owner review |
 
