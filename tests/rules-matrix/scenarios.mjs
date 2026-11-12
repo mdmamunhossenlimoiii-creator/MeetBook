@@ -67,6 +67,7 @@ export const SEED = {
   'reports/r1': { kind: 'post', targetId: 'p1', targetUid: 'u1', reporterUid: 'u2', reason: 'Spam', details: '', status: 'open' },
   'adminLogs/l1': { actorUid: 'adm', actorName: 'Admin Person', role: 'admin', action: 'x', target: '', details: '' },
   'settings/global': { botsEnabled: true },
+  'chats/u1_u2': { type: 'private', members: ['u1', 'u2'] },
   'chats/bot_01_u1': { type: 'private', members: ['bot_01', 'u1'] },
   'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] },
   'announcements/a1': { text: 'Welcome', active: true },
