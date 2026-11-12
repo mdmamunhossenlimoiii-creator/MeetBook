@@ -66,9 +66,9 @@ export const SEED = {
   'announcements/a1': { text: 'Welcome', active: true },
   'deletionRequests/dr1': { status: 'pending', requestedBy: 'sup' },
   'system/backups': { status: 'ok' },
-  'chats/c_bot': { type: 'private', members: ['bot_01', 'u1'], lastMessage: { text: 'hi', uid: 'u1' } },
+  'chats/c_bot': { type: 'private', members: ['bot_01', 'u1'], lastMessage: { text: 'hi', uid: 'u1' }, lastRead: {} },
   'chats/c_bot/messages/m1': { uid: 'u1', text: 'hi' },
-  'chats/c_uu': { type: 'private', members: ['u1', 'u2'], lastMessage: { text: 'yo', uid: 'u1' } },
+  'chats/c_uu': { type: 'private', members: ['u1', 'u2'], lastMessage: { text: 'yo', uid: 'u1' }, lastRead: {} },
   'chats/c_private_blocked': { type: 'private', members: ['u1', 'u3'], lastMessage: { text: 'hello', uid: 'u1' } },
   'chats/c_uu/messages/m1': { uid: 'u1', text: 'yo' },
   'notifications/n1': { to: 'u1', from: 'u2', type: 'comment', read: false },
@@ -238,7 +238,7 @@ cap('Chats', 'Update the last-message preview of the bot chat', 'update', 'chats
 cap('Chats', 'Update the preview of a chat between two people', 'update', 'chats/c_uu', (a) => ({ lastMessage: { text: 'x', uid: a.uid }, lastAt: { $srv: 1 }, lastRead: { [a.uid]: { $srv: 1 } } }), ['user', 'other']);
 cap('Notifications', 'Notify another user', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.uid, fromName: 'Test sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }), N.filter((x) => x !== 'other'));
 cap('Notifications', 'Notify as an AI bot', 'create', 'notifications/new', { to: 'u1', from: 'bot_01', fromName: 'TechTip Nova', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }, ['runner']);
-cap('Notifications', 'Reject a notification forged in somebody else\'s name', 'create', 'notifications/new', { to: 'u2', from: 'u1', fromName: 'Forged sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }, []);
+cap('Notifications', 'Reject a notification forged in somebody else\'s name', 'create', 'notifications/new', { to: 'u1', from: 'u2', fromName: 'Forged sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }, []);
 cap('Notifications', 'Read, mark read and delete own notification', 'get', 'notifications/n1', null, ['user']);
 cap('Notifications', 'Mark own notification as read', 'update', 'notifications/n1', { read: true }, ['user']);
 
