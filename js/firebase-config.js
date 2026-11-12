@@ -16,5 +16,5 @@ export const firebaseConfig = {
 export const appCheckSiteKey = "";
 
 // Secure image upload endpoint. The owner adds the deployed MeetBook Worker URL later.
- // Never place Cloudinary API credentials in this frontend file.
+// Never place Cloudinary API credentials in this frontend file.
 export const imageUploadEndpoint = "";
