@@ -18,6 +18,8 @@ MeetBook is an independent social platform built from the existing application c
 The current codebase includes:
 
 - Email/password and Google sign-in.
+- Image uploads through a separate Cloudinary image-only unsigned preset (owner configuration required); Firebase Storage is not used.
+- Video file uploads are disabled; users may share supported video links.
 - User profiles with photo, cover and bio.
 - Feed posts with photo and video links.
 - Reactions, comments, sharing, saving and reporting.
