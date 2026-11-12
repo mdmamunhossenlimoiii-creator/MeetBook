@@ -268,3 +268,27 @@ test('restore: a failure half way is safe to re-run', async () => {
     assert.equal(dst.ids('posts').length, 30);
   } finally { await dst.close(); }
 });
+
+
+test('server jobs refuse a legacy MySocial service account before making any data request', async () => {
+  const m = await startMock({ seed: { ...base(), 'users/u1': { name: 'Keep' } } });
+  const legacySA = JSON.stringify({ client_email: 'legacy@mysocial-33681.iam.gserviceaccount.com', private_key: privateKey, project_id: 'mysocial-33681' });
+  const dir = out();
+  try {
+    const deletion = await exec(['scripts/account-deletion.mjs'], delEnv(m, {
+      FIREBASE_SERVICE_ACCOUNT: legacySA,
+      MEETBOOK_FIREBASE_PROJECT_ID: 'meetbook-test'
+    }));
+    assert.notEqual(deletion.status, 0);
+    assert.match(deletion.all, /does not match.*MeetBook project/i);
+
+    const backup = await exec(['scripts/backup.mjs'], backupEnv(m, dir, {
+      FIREBASE_SERVICE_ACCOUNT: legacySA,
+      MEETBOOK_FIREBASE_PROJECT_ID: 'meetbook-test'
+    }));
+    assert.notEqual(backup.status, 0);
+    assert.match(backup.all, /does not match.*MeetBook project/i);
+    assert.equal(m.calls.length, 0, 'no Firestore or Auth request may be made to the legacy project');
+    assert.notEqual(m.get('users/u1'), null, 'test data remains unchanged');
+  } finally { await m.close(); }
+});
