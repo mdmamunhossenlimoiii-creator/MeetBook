@@ -108,6 +108,24 @@ test('rules: withdrawing consent stops the bots on the very next run', { skip: !
   } finally { await m.close(); }
 });
 
+
+test('rules: runner allowlist and global emergency stop are enforced server-side', async () => {
+  const m = await startMock({ seed: seed(), rules: true });
+  try {
+    m.put('botRunners/runner1', { enabled: true, botIds: ['bot_01'] });
+    const { call, comment } = await asRunner(m);
+    assert.equal(await call('POST', 'posts/p1/comments?documentId=unassigned', comment('bot_02')), 403,
+      'runner cannot comment as a bot outside its botIds allowlist');
+    assert.equal(await call('GET', 'botInbox/i1'), 403,
+      'runner cannot read inbox entries for a bot outside its allowlist');
+    m.put('settings/global', { botsEnabled: false, botToBotComments: false });
+    assert.equal(await call('POST', 'posts/p1/comments?documentId=stopped', comment('bot_01')), 403,
+      'global emergency stop blocks bot writes in Firestore Rules');
+    assert.equal(await call('GET', 'botState/runner'), 403,
+      'global emergency stop blocks runner state access too');
+  } finally { await m.close(); }
+});
+
 test('negative control: without the rules gate the same hand-made write succeeds (so the 403s above come from the rules)', async () => {
   const m = await startMock({ seed: seed(), rules: false });
   try {
