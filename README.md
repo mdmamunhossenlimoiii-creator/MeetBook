@@ -62,10 +62,10 @@ Deployment notes: [DEPLOYMENT.md](DEPLOYMENT.md).
 | Workflow | Current policy |
 |---|---|
 | Tests | Retained; runs on pull requests and pushes to `main`; no secrets required |
-| AI bot activity | Disabled; manual dispatch only, with an unconditional false job condition |
+| AI bot activity | Archived outside `.github/workflows/` as `.disabled`; GitHub Actions cannot execute it |
 | AI bot chat replies | Disabled; manual dispatch only, with an unconditional false job condition |
 | MeetBook encrypted backup | Manual dispatch only; requires explicit confirmation and MeetBook-only secrets |
-| Account deletion queue (`maintenance.yml`) | Disabled; destructive Auth and Firestore deletion requires separate owner review |
+| Account deletion queue (`maintenance.yml`) | Archived outside `.github/workflows/`; destructive deletion requires separate owner review |
 
 The backup workflow uses an encrypted artifact associated with this repository and a 30-day artifact retention setting. It is not scheduled. A user must explicitly select the confirmation input to authorize each run. The backup script also checks that the service-account project ID matches `MEETBOOK_FIREBASE_PROJECT_ID` and rejects the known MySocial project ID.
 
