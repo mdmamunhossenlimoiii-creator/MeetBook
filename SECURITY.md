@@ -17,13 +17,13 @@
 
 ## Known inherited risks requiring review
 
-- Profile visibility and messaging privacy may not be fully enforced in Firestore rules.
+- Private one-to-one chat creation and every normal private-message write are checked against the recipient's `settings.allowMessages` preference in Firestore rules. A friends-only recipient requires an existing friendship.
 - Some moderation and maintenance behavior is enforced in the client UI.
-- Existing public-facing profile data may be readable to signed-in users.
+- `profileVisibility` only hides posts on the profile page through the app interface. It is not a database-level privacy boundary; profile documents remain readable to signed-in users and public posts remain public. Do not put sensitive information in profile fields.
 - Current messaging is not end-to-end encrypted.
 - Backup excludes Firebase Authentication credentials and may omit large embedded images.
 
-These are explicit limitations, not verified fixes. Do not describe the platform as production-secure until these areas have been reviewed and tested.
+The private-message rules have passed the local matrix and real Firestore Emulator tests. Owner review and publishing to the separate MeetBook Firebase project are still required. Hidden-post and maintenance behavior remain UI-level limitations, and messaging is not end-to-end encrypted.
 
 ## Incident hygiene
 
