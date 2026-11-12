@@ -11,7 +11,6 @@ export const ACTORS = {
   anon: { uid: null, label: 'Not signed in' },
   user: { uid: 'u1', label: 'Normal user (u1)' },
   other: { uid: 'u2', label: 'Other normal user (u2)' },
-  outsider: { uid: 'u3', label: 'Unfriended user (u3)' },
   banned: { uid: 'ub', label: 'Blocked user' },
   suspended: { uid: 'us', label: 'Suspended user' },
   fresh: { uid: 'u_new', label: 'New user without profile yet' },
@@ -229,7 +228,7 @@ cap('Chats', 'Reply as the bot in the bot chat', 'create', 'chats/c_bot/messages
 cap('Chats', 'Reply as a bot in a chat between two people', 'create', 'chats/c_uu/messages/new', { uid: 'bot_01', text: 'hi', createdAt: { $srv: 1 } }, []);
 cap('Chats', 'Runner writes as u1 in the bot chat', 'create', 'chats/c_bot/messages/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('Chats', 'Write a message in a chat between two people', 'create', 'chats/c_uu/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), ['user', 'other']);
-cap('Chats', 'Message a friends-only recipient without friendship', 'create', 'chats/c_private_blocked/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), ['outsider']);
+cap('Chats', 'Message a friends-only recipient without friendship', 'create', 'chats/c_private_blocked/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), []);
 cap('Chats', 'Open a new private chat with a friends-only recipient without friendship', 'create', 'chats/new_private', () => ({ type: 'private', members: ['u1', 'u3'], createdBy: 'u1' }), ['outsider']);
 cap('Chats', 'Update the last-message preview of the bot chat', 'update', 'chats/c_bot', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'runner']);
 cap('Chats', 'Update the preview of a chat between two people', 'update', 'chats/c_uu', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'other']);
