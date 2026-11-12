@@ -123,6 +123,15 @@ service cloud.firestore {
       return textOk(d.name, 60) && d.name.size() >= 2 && textOk(d.bio, 500);
     }
 
+    function validSettings(d) {
+      let s = d.get('settings', {});
+      return s is map
+        && s.get('profileVisibility', 'everyone') in ['everyone', 'friends']
+        && s.get('allowMessages', 'everyone') in ['everyone', 'friends']
+        && s.get('defaultVisibility', 'public') in ['public', 'friends', 'me']
+        && s.get('allowBotEngagement', false) is bool;
+    }
+
     // ---------- staff ----------
     match /admins/{uid} {
       allow read: if isOwner(uid) || isSuper();
@@ -220,6 +229,7 @@ service cloud.firestore {
       allow create: if
         (isOwner(uid)
           && nameOk(request.resource.data)
+          && validSettings(request.resource.data)
           && request.resource.data.name.size() >= 2
           && request.resource.data.banned == false
           && request.resource.data.get('isBot', false) == false
@@ -235,7 +245,8 @@ service cloud.firestore {
         // the user edits their own profile / settings (never roles, blocks, badges)
         (isOwner(uid)
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['banned', 'isBot', 'verified', 'suspendedUntil'])
-          && nameOk(request.resource.data))
+          && nameOk(request.resource.data)
+          && validSettings(request.resource.data))
         // admin: block, verify, suspend, edit basic info
         // (an admin cannot touch another staff member; only a super_admin can)
         || (isAdmin()
