@@ -4,7 +4,7 @@
 |---|---|---|
 | `tests.yml` | Enabled | Pull requests and pushes to `main`; no Firebase production credentials |
 | `bot-runner.yml` | Disabled | Archived outside `.github/workflows/` as `.disabled`; no Actions trigger |
-| `bot-chat.yml` | Disabled | No event triggers; defensive job condition is false |
+| `bot-chat.yml` | Disabled | Archived outside `.github/workflows/` as `.disabled`; no Actions trigger |
 | `backup.yml` | Manual-only | Requires explicit `confirm_backup=true` and MeetBook-only secrets |
 | `maintenance.yml` (account deletion queue) | Disabled | Destructive Auth and Firestore deletion is blocked pending separate owner review |
 
