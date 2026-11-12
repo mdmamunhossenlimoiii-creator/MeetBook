@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// MySocial — Cloud Firestore security rules.
+// MeetBook — Cloud Firestore security rules.
 //
 // Staff roles live ONLY in /admins/{uid} (field `role` MUST be exactly super_admin | admin | moderator).
 // A document with a missing or unknown role gives NO staff power at all (fail closed).
