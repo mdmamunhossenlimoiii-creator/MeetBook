@@ -62,3 +62,16 @@ Use a least-privilege service account. Never commit its JSON key or paste it int
 - [ ] GitHub Secrets contain only MeetBook-specific credentials.
 
 No production Firebase operation is performed by this repository setup guide.
+
+## 8. Image uploads (Cloudinary; no Firebase Storage)
+
+MeetBook image uploads use a separate Cloudinary account. Firebase Storage is not required, and the application does not upload video files.
+
+1. Create a Cloudinary account for MeetBook. Do not reuse another platform's account.
+2. In Cloudinary, create an **unsigned upload preset** specifically for MeetBook.
+3. Restrict the preset to image uploads only; allow only JPG, PNG, and WebP; set the maximum file size to 1 MB; use the `MeetBook/images` folder; and do not enable overwrite.
+4. Copy the Cloudinary cloud name and unsigned preset name into `cloudinaryImages.cloudName` and `cloudinaryImages.uploadPreset` in `js/firebase-config.js`.
+5. Do not put the Cloudinary API secret in frontend code, GitHub, or chat. The cloud name and unsigned preset name are public client-side settings; the preset must enforce the restrictions above.
+6. Test profile photos, cover photos, post photos, stories, and message photos before publishing.
+
+The app resizes selected photos to JPEG before upload. Photo upload remains unavailable until both Cloudinary settings are filled. Video file uploads remain disabled; video links are separate from file uploads.
