@@ -44,12 +44,13 @@ The existing rules and indexes are retained as the starting point for MeetBook. 
 
 The existing rules include ownership checks, role checks, audience checks for posts/stories, and deny-by-default behavior in protected areas. However, the inherited application documentation and implementation identify limitations that must not be hidden:
 
-- Profile visibility and messaging privacy have historically been enforced in parts of the UI rather than comprehensively in database rules.
-- User profile fields may be readable by signed-in users to support rendering author information.
-- Some moderation behavior, such as hidden posts and maintenance mode, has UI-level limitations.
+- Private-chat creation and each normal private-message write now check the recipient's `settings.allowMessages` preference in Firestore rules. A friends-only recipient requires an existing friendship; the rule is checked again for each message.
+- Firestore rules validate the allowed values and types for `profileVisibility`, `allowMessages`, `defaultVisibility`, and `allowBotEngagement`.
+- `profileVisibility` is an app-level profile-page display filter, not a database access boundary. Profile documents remain readable to signed-in users to support author information; public posts remain public in feeds. Do not put sensitive information in profile fields.
+- Some moderation behavior, such as hidden posts and maintenance mode, still has UI-level limitations.
 - The current architecture does not provide end-to-end encrypted messaging.
 
-These limitations require a dedicated security review before production use. Do not claim full privacy enforcement until rule and backend tests prove it.
+These remaining limitations require owner review before production use. The private-message preference is covered by the local rules matrix and real Firestore Emulator tests, but the owner must review and publish the rules to the separate MeetBook project.
 
 ## 5. GitHub Actions boundaries
 
