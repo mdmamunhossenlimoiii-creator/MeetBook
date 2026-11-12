@@ -161,11 +161,6 @@ async function main() {
     return;
   }
 
-  // Chat-only runs (BOT_POSTS=0 BOT_COMMENTS=0) exit right away when nobody wrote to a bot: saves free-tier reads.
-  if (nPosts === 0 && nEngage === 0 && !(await fs.query({ from: [{ collectionId: 'botInbox' }], where: eq('handled', false), limit: 1 })).length) {
-    console.log('No new messages for the bots.'); return;
-  }
-
   const allowedBotIds = new Set(runner.botIds.filter((id) => isBotId(id)));
   const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id));
   if (!bots.length) { console.log('No assigned bot profiles found for this runner. Nothing to do.'); return; }
