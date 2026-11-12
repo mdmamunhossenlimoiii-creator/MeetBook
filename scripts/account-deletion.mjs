@@ -27,6 +27,11 @@ const RAW = process.env.FIREBASE_SERVICE_ACCOUNT;
 if (!RAW) { console.log('FIREBASE_SERVICE_ACCOUNT secret is not set. Nothing to do.'); process.exit(0); }
 const DRY = process.env.DRY_RUN === '1';
 const sa = parseServiceAccount(RAW);
+const EXPECTED_PROJECT = process.env.MEETBOOK_FIREBASE_PROJECT_ID;
+if (!EXPECTED_PROJECT) { console.error('Set MEETBOOK_FIREBASE_PROJECT_ID. Refusing account deletion.'); process.exit(1); }
+if (sa.project_id !== EXPECTED_PROJECT || sa.project_id === 'mysocial-33681') {
+  console.error('Service-account project does not match the configured MeetBook project. Refusing account deletion.'); process.exit(1);
+}
 const getToken = makeTokenGetter(sa);
 const FS_URL = process.env.FS_URL || 'https://firestore.googleapis.com';
 const IDT_URL = process.env.IDT_URL || 'https://identitytoolkit.googleapis.com';
