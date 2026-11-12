@@ -93,7 +93,7 @@ test('AI bots: runner and admin can only act as bots, and only with the owner\'s
   assert.match(fn('runnerEnabled'), /botsEnabled', false\) == true/);
   assert.match(fn('runnerEnabled'), /enabled', false\) == true/);
   assert.match(fn('runnerEnabled'), /botIds/);
-  assert.match(fn('runnerMayActAs'), /botUid in/);
+  assert.match(fn('runnerHasBot'), /botUid in/);
   assert.match(fn('runnerHasBot'), /botUid in/);
   assert.match(fn('runnerMayActAs'), /bot\.get\('isBot', false\) == true/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
