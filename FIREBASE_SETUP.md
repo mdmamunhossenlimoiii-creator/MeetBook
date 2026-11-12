@@ -63,15 +63,16 @@ Use a least-privilege service account. Never commit its JSON key or paste it int
 
 No production Firebase operation is performed by this repository setup guide.
 
-## 8. Image uploads (Cloudinary; no Firebase Storage)
+## 8. Image uploads (Cloudinary through a signed Worker)
 
-MeetBook image uploads use a separate Cloudinary account. Firebase Storage is not required, and the application does not upload video files.
+MeetBook image uploads use Cloudinary through a separate authenticated Cloudflare Worker. Firebase Storage is not required. Video file uploads remain disabled; video links are a separate feature.
 
-1. Create a Cloudinary account for MeetBook. Do not reuse another platform's account.
-2. In Cloudinary, create an **unsigned upload preset** specifically for MeetBook.
-3. Restrict the preset to image uploads only; allow only JPG, PNG, and WebP; set the maximum file size to 1 MB; use the `MeetBook/images` folder; and do not enable overwrite.
-4. Copy the Cloudinary cloud name and unsigned preset name into `cloudinaryImages.cloudName` and `cloudinaryImages.uploadPreset` in `js/firebase-config.js`.
-5. Do not put the Cloudinary API secret in frontend code, GitHub, or chat. The cloud name and unsigned preset name are public client-side settings; the preset must enforce the restrictions above.
-6. Test profile photos, cover photos, post photos, stories, and message photos before publishing.
+1. The repository includes the Worker in `cloudflare/image-upload/`. Review its source before deploying.
+2. Deploy the Worker using the instructions in `cloudflare/image-upload/README.md`.
+3. Configure the Worker variables for the MeetBook Firebase project, Cloudinary cloud name, and the exact GitHub Pages origin.
+4. Add the Cloudinary API key as a Worker variable and the Cloudinary API secret as a Worker secret. Never put the API secret in this repository, frontend config, or chat.
+5. After deployment, add the Worker URL to `imageUploadEndpoint` in `js/firebase-config.js`.
+6. The Worker verifies Firebase ID tokens, accepts JPEG images only up to 1 MB, checks the file signature, and creates a signed Cloudinary upload in the fixed `MeetBook/images` folder.
+7. Test post photos, profile photos, cover photos, stories, and message photos before launch.
 
-The app resizes selected photos to JPEG before upload. Photo upload remains unavailable until both Cloudinary settings are filled. Video file uploads remain disabled; video links are separate from file uploads.
+The Cloudinary upload preset is not used by this signed server-side flow. Keep the preset in Signed mode; do not switch it to Unsigned. The Worker must be deployed and configured before image uploads can work.
