@@ -101,9 +101,11 @@ async function handleUpload(request, env, origin) {
   } catch {
     return json({ error: "invalid_multipart_body" }, 400, origin, allowedOrigin);
   }
+  const boundedHeaders = new Headers(request.headers);
+  boundedHeaders.delete("content-length");
   const boundedRequest = new Request(request.url, {
     method: "POST",
-    headers: request.headers,
+    headers: boundedHeaders,
     body: new Blob(chunks, { type: request.headers.get("content-type") || "application/octet-stream" })
   });
   let form;
