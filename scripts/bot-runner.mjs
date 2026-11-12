@@ -63,7 +63,7 @@ async function signIn() {
 
 // ------------------------------------------------------------ state (kept in one small doc)
 async function loadState() {
-  const d = (await fs.get('botState/runner')) || {};
+  const d = (await fs.get(`botState/${runnerUid}`)) || {};
   const parse = (v, fb) => { try { return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const st = {
     used: parse(d.used, {}), commented: parse(d.commented, []), engaged: parse(d.engaged, []),
@@ -74,7 +74,7 @@ async function loadState() {
   return st;
 }
 async function saveState(st) {
-  await fs.patch('botState/runner', {
+  await fs.patch(`botState/${runnerUid}`, {
     used: JSON.stringify(st.used),
     commented: JSON.stringify(st.commented.slice(-400)),
     engaged: JSON.stringify(st.engaged.slice(-400)),
