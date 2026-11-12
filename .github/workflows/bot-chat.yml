@@ -1,32 +1,15 @@
 name: AI bot chat replies
 
-# Answers messages people sent to AI bots. Replies are template based and are not instant:
-# GitHub runs scheduled jobs on a best-effort basis (often 5-30 minutes late). Needs the same
-# BOT_RUNNER_* secrets as the main bot job. Exits immediately when there is nothing to answer.
-on:
-  schedule:
-    - cron: '*/20 * * * *'
-  workflow_dispatch:
+# SAFETY: MeetBook bot automation is out of scope and must remain inactive.
+# This workflow is intentionally retained for source isolation but has no event triggers.
+on: []
 
 permissions:
   contents: read
 
-concurrency:
-  group: bot-runner
-  cancel-in-progress: false
-
 jobs:
-  chat:
+  disabled:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node scripts/bot-runner.mjs
-        env:
-          BOT_RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
-          BOT_RUNNER_PASSWORD: ${{ secrets.BOT_RUNNER_PASSWORD }}
-          BOT_POSTS: '0'
-          BOT_COMMENTS: '0'
+      - run: echo "MeetBook bot chat automation is intentionally disabled."
