@@ -9,6 +9,11 @@ import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { startMock } from './mock-firestore.mjs';
 import { BOTS } from '../js/bots-data.js';
+import { firebaseConfig } from '../js/firebase-config.js';
+
+// Bot runner integration tests require an owner-configured Firebase Web App. They are skipped
+// while MeetBook intentionally has blank Firebase placeholders; bot automation remains out of scope.
+const botRunnerConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 // async on purpose: the mock server lives in this process, so a blocking spawnSync would deadlock it
 const exec = (args, env) => new Promise((resolve) => {
@@ -30,7 +35,7 @@ function seedBots(extra = {}) {
 }
 const post = (uid, text, more = {}) => ({ uid, authorName: uid, text, image: '', videoUrl: '', visibility: 'public', audience: [], groupId: null, reactions: {}, commentCount: 0, shareCount: 0, createdAt: now, ...more });
 
-test('bot runner: consent, safety, limits, chat, logs', async () => {
+test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfigured }, async () => {
   const m = await startMock({ seed: {
     ...seedBots(),
     'settings/global': { botsEnabled: true, botToBotComments: false },
@@ -83,7 +88,7 @@ test('bot runner: consent, safety, limits, chat, logs', async () => {
   } finally { await m.close(); }
 });
 
-test('bot runner: global OFF, per-bot OFF and daily limit stop everything', async () => {
+test('bot runner: global OFF, per-bot OFF and daily limit stop everything', { skip: !botRunnerConfigured }, async () => {
   for (const [name, seed] of [
     ['global off', { ...seedBots(), 'settings/global': { botsEnabled: false } }],
     ['bots inactive', { ...seedBots({ active: false }) }],
