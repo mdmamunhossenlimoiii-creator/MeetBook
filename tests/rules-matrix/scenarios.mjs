@@ -229,7 +229,7 @@ cap('Chats', 'Reply as a bot in a chat between two people', 'create', 'chats/c_u
 cap('Chats', 'Runner writes as u1 in the bot chat', 'create', 'chats/c_bot/messages/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('Chats', 'Write a message in a chat between two people', 'create', 'chats/c_uu/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), ['user', 'other']);
 cap('Chats', 'Message a friends-only recipient without friendship', 'create', 'chats/c_private_blocked/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), []);
-cap('Chats', 'Open a new private chat with a friends-only recipient without friendship', 'create', 'chats/new_private', () => ({ type: 'private', members: ['u1', 'u3'], createdBy: 'u1' }), ['outsider']);
+cap('Chats', 'Open a new private chat with a friends-only recipient without friendship', 'create', 'chats/new_private', () => ({ type: 'private', members: ['u1', 'u3'], createdBy: 'u1' }), []);
 cap('Chats', 'Update the last-message preview of the bot chat', 'update', 'chats/c_bot', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'runner']);
 cap('Chats', 'Update the preview of a chat between two people', 'update', 'chats/c_uu', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'other']);
 cap('Notifications', 'Notify another user', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.uid, type: 'comment', read: false }), N.filter((x) => x !== 'other'));
