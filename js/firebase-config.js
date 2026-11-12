@@ -15,9 +15,10 @@ export const firebaseConfig = {
 // Configure this only after registering the MeetBook web app in Firebase App Check.
 export const appCheckSiteKey = "";
 
-// Optional: separate Cloudinary account for video uploads.
-// Leave empty to allow video links only. Do not reuse credentials from another platform.
-export const cloudinary = {
+// Optional: separate Cloudinary account for image uploads only.
+// Create an unsigned preset restricted to JPG/PNG/WebP, max 1 MB, and the MeetBook/images folder.
+// Keep both values empty until the owner completes the Cloudinary setup. Never add an API secret here.
+export const cloudinaryImages = {
   cloudName: "",
   uploadPreset: ""
 };
