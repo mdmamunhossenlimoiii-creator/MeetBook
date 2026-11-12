@@ -1,8 +1,10 @@
 name: AI bot chat replies
 
-# SAFETY: MeetBook bot automation is out of scope and must remain inactive.
-# This workflow is intentionally retained for source isolation but has no event triggers.
-on: []
+# SAFETY: This automation is intentionally inactive. It has no push, schedule, or PR triggers.
+# The manual trigger exists only so the workflow remains valid in GitHub Actions; the job is
+# unconditionally skipped. Re-enabling requires a separate explicit owner-approved code change.
+on:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -12,4 +14,4 @@ jobs:
     if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "MeetBook bot chat automation is intentionally disabled."
+      - run: echo "This workflow is disabled by policy."
