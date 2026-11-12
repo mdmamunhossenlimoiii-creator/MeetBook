@@ -45,6 +45,7 @@ const num = (v, d, max = 10) => { const n = parseInt(v, 10); return Number.isFin
 const today = () => new Date().toISOString().slice(0, 10);
 
 let token = '';
+let runnerUid = '';
 const fs = createClient({ projectId: firebaseConfig.projectId, fsUrl: FS_URL, getToken: async () => token });
 
 async function signIn() {
@@ -54,7 +55,9 @@ async function signIn() {
   });
   const j = await res.json().catch(() => ({}));
   if (!res.ok || !j.idToken) throw new Error(`Sign-in failed (${res.status}). Check the BOT_RUNNER_* secrets.`);
+  if (typeof j.localId !== 'string' || !j.localId) throw new Error('Sign-in response did not include the runner UID.');
   token = j.idToken;
+  runnerUid = j.localId;
   console.log('Signed in as the bot runner.');
 }
 
@@ -66,8 +69,8 @@ async function loadState() {
     used: parse(d.used, {}), commented: parse(d.commented, []), engaged: parse(d.engaged, []),
     daily: parse(d.daily, {}), usedComments: parse(d.usedComments, {})
   };
-  if (st.daily.date !== today()) st.daily = { date: today(), counts: {}, chat: {} };
-  st.daily.counts ||= {}; st.daily.chat ||= {};
+  if (st.daily.date !== today()) st.daily = { date: today(), counts: {}, chat: {}, chatAt: {} };
+  st.daily.counts ||= {}; st.daily.chat ||= {}; st.daily.chatAt ||= {};
   return st;
 }
 async function saveState(st) {
@@ -138,7 +141,7 @@ async function loadBots() {
   }
   return out;
 }
-const limitOf = (bot) => (Number.isFinite(bot.dailyLimit) ? bot.dailyLimit : 6);
+const limitOf = (bot) => Math.min(12, Math.max(0, Number.isFinite(bot.dailyLimit) ? bot.dailyLimit : 6));
 const usedToday = (st, bot) => st.daily.counts[bot.id] || 0;
 const canAct = (st, bot) => bot.active !== false && usedToday(st, bot) < limitOf(bot);
 const spend = (st, bot) => { st.daily.counts[bot.id] = usedToday(st, bot) + 1; };
@@ -151,15 +154,21 @@ async function main() {
 
   await signIn();
   const global = (await fs.get('settings/global')) || {};
-  if (global.botsEnabled === false) { console.log('Bots are switched OFF in the Admin panel (settings/global.botsEnabled). Nothing to do.'); return; }
+  if (global.botsEnabled !== true) { console.log('Bots are OFF or not explicitly enabled. Nothing to do.'); return; }
+  const runner = await fs.get(`botRunners/${runnerUid}`);
+  if (!runner || runner.enabled !== true || !Array.isArray(runner.botIds) || runner.botIds.length === 0) {
+    console.log('This runner is disabled or has no explicit botIds allowlist. Nothing to do.');
+    return;
+  }
 
   // Chat-only runs (BOT_POSTS=0 BOT_COMMENTS=0) exit right away when nobody wrote to a bot: saves free-tier reads.
   if (nPosts === 0 && nEngage === 0 && !(await fs.query({ from: [{ collectionId: 'botInbox' }], where: eq('handled', false), limit: 1 })).length) {
     console.log('No new messages for the bots.'); return;
   }
 
-  const bots = await loadBots();
-  if (!bots.length) { console.log('No bot profiles found. Create them in Admin -> AI Bots first.'); return; }
+  const allowedBotIds = new Set(runner.botIds.filter((id) => isBotId(id)));
+  const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id));
+  if (!bots.length) { console.log('No assigned bot profiles found for this runner. Nothing to do.'); return; }
   const botMap = new Map(bots.map((b) => [b.id, b]));
   const st = await loadState();
   const stats = { posts: 0, comments: 0, reactions: 0, chats: 0 };
@@ -228,12 +237,19 @@ async function main() {
   }
 
   // 5. chat replies
-  const inbox = await fs.query({ from: [{ collectionId: 'botInbox' }], where: eq('handled', false), limit: 25 });
+  const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled !== false).map((bot) =>
+    fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
+  ));
+  const inbox = inboxByBot.flat()
+    .sort((a, b) => (a.createdAt?.getTime?.() || 0) - (b.createdAt?.getTime?.() || 0))
+    .slice(0, 25);
   for (const m of inbox) {
     const bot = botMap.get(m.botId);
     const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
     if (!bot || bot.active === false || bot.chatEnabled === false) { await mark('chat-disabled'); continue; }
     if ((st.daily.chat[m.fromUid] || 0) >= 15) { await mark('daily-limit'); continue; }
+    const lastChatAt = Number(st.daily.chatAt[m.fromUid] || 0);
+    if (Date.now() - lastChatAt < 60_000) { await mark('cooldown'); continue; }
     const chat = await fs.get(`chats/${m.chatId}`);
     if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) { await mark('no-chat'); continue; }
     const hist = (await fs.query({
@@ -245,9 +261,11 @@ async function main() {
     else {
       await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: reply.text, image: '', ai: true, createdAt: new Date() });
       await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: reply.text, uid: bot.id }, lastAt: new Date() });
-      await log(bot, 'chat', m.chatId, reply.text);
+      // Never put private conversation text in audit logs.
+      await log(bot, 'chat', m.chatId, reply.intent);
     }
     st.daily.chat[m.fromUid] = (st.daily.chat[m.fromUid] || 0) + 1;
+    st.daily.chatAt[m.fromUid] = Date.now();
     stats.chats++;
     await mark();
     console.log(`Chat reply as ${bot.name} (${reply.intent}/${reply.lang})`);
