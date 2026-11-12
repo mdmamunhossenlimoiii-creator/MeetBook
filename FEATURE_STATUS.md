@@ -9,7 +9,7 @@ This document records source-level presence, not a claim that the app is product
 | Feed and posts | Existing modules present | Not re-verified in this change |
 | Comments and reactions | Existing modules/rules present | Not re-verified in this change |
 | Friends and following | Existing modules present | Not re-verified in this change |
-| Messaging | Existing modules present; private-chat creation and message writes now check recipient `allowMessages` preference in Firestore rules | Emulator verification pending; existing chats are also checked on each message write |
+| Messaging | Existing modules present; private-chat creation and message writes now check recipient `allowMessages` preference in Firestore rules | Real Firestore Emulator: 1,872 cases, 0 mismatches; existing chats are checked on each message write |
 | Groups | Existing modules present | Not re-verified in this change |
 | Stories and reels | Existing modules present; video file uploads disabled, links only | Requires owner-side image Worker setup and app testing |\n| Image uploads | Signed Cloudinary Worker source and client integration added | Worker not deployed; owner must add credentials and endpoint; real uploads not tested |
 | Notifications | Existing modules present | Not re-verified in this change |
