@@ -442,10 +442,7 @@ service cloud.firestore {
           && isBotUser(request.resource.data.lastMessage.uid)
           && request.resource.data.lastMessage.uid in resource.data.members
           && textOk(request.resource.data.lastMessage.text, 120)
-          && (request.resource.data.lastAt == request.time
-            || (request.resource.data.lastAt is timestamp
-              && request.resource.data.lastAt <= request.time + duration.value(1, 'm')
-              && request.resource.data.lastAt >= request.time - duration.value(1, 'm'))));
+          && (request.resource.data.lastAt is timestamp));
 
       match /messages/{mid} {
         allow read: if (signedIn()
@@ -566,9 +563,7 @@ service cloud.firestore {
         && (request.resource.data.extra == null || textOk(request.resource.data.extra, 200))
         && request.resource.data.read == false
         && (request.resource.data.createdAt == request.time
-          || (isBotRunner() && request.resource.data.createdAt is timestamp
-            && request.resource.data.createdAt <= request.time + duration.value(1, 'm')
-            && request.resource.data.createdAt >= request.time - duration.value(1, 'm')))
+          || (isBotRunner() && request.resource.data.createdAt is timestamp))
         && ((notBanned()
             && request.resource.data.from == request.auth.uid)
           // bot-runner telling a user that a bot commented / replied
