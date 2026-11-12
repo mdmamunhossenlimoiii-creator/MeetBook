@@ -240,11 +240,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.members.hasAll([request.auth.uid, request.resource.data.botId]);
       allow read: if isStaff()
         || (runnerEnabled() && resource.data.botId in get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', []));
-      allow update: if runnerEnabled()
-        && resource.data.botId in get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
-        && request.resource.data.handled == true
-        && request.resource.data.handledAt is timestamp;
+      allow update: if isAdmin()
+        || (runnerEnabled()
+          && resource.data.botId in get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
+          && request.resource.data.handled == true
+          && request.resource.data.handledAt is timestamp);
       allow delete: if isAdmin();
     }
     match /botLogs/{id} {
