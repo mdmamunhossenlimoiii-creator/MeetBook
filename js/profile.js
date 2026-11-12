@@ -4,7 +4,7 @@ import {
 } from './firebase.js';
 import { state, subscribe, onCleanup } from './state.js';
 import {
-  $, $$, esc, avatarHtml, botBadge, getUser, invalidateUser, toast, modal, closeModal, resizeImage, errMsg,
+  $, $$, esc, avatarHtml, botBadge, getUser, invalidateUser, toast, modal, closeModal, resizeImage, uploadImageToCloudinary, errMsg,
   emptyState, fullDate, confirmBox, errorBox
 } from './utils.js';
 import { icon } from './icons.js';
@@ -173,7 +173,9 @@ function openEdit(u, done) {
     const btn = $('#ep-save', m);
     btn.disabled = true;
     try {
-      await updateDoc(doc(db, 'users', state.user.uid), { name, nameLower: name.toLowerCase(), bio, photo, cover });
+      const photoUrl = photo.startsWith('data:') ? await uploadImageToCloudinary(photo) : photo;
+      const coverUrl = cover.startsWith('data:') ? await uploadImageToCloudinary(cover) : cover;
+      await updateDoc(doc(db, 'users', state.user.uid), { name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl });
       try { await updateProfile(state.user, { displayName: name }); } catch { /* not critical */ }
       invalidateUser(state.user.uid);
       closeModal();
