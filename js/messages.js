@@ -4,7 +4,7 @@ import {
 } from './firebase.js';
 import { state, subscribe, onCleanup, navigate } from './state.js';
 import {
-  $, $$, esc, linkify, avatarHtml, getUser, prefetchUsers, toast, modal, closeModal, resizeImage, errMsg,
+  $, $$, esc, linkify, avatarHtml, getUser, prefetchUsers, toast, modal, closeModal, resizeImage, uploadImageToCloudinary, errMsg,
   pairId, timeAgo, tsMs, emptyState, errorBox, confirmBox
 } from './utils.js';
 import { icon } from './icons.js';
@@ -164,6 +164,7 @@ export async function render(view, a, b) {
       if (!text && !image) return;
       input.disabled = true;
       try {
+        const imageUrl = image ? await uploadImageToCloudinary(image) : '';
         if (!exists) {
           await setDoc(doc(db, 'chats', id), {
             type: 'private', members: [me, otherUid].sort(), createdBy: me,
@@ -172,7 +173,7 @@ export async function render(view, a, b) {
           exists = true;
           subscribeMessages();
         }
-        await addDoc(collection(db, 'chats', id, 'messages'), { uid: me, text, image, createdAt: serverTimestamp() });
+        await addDoc(collection(db, 'chats', id, 'messages'), { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
         // a bot has no browser: the scheduled bot job answers from this inbox
         if (other?.isBot && text) {
           await addDoc(collection(db, 'botInbox'), { fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500), handled: false, createdAt: serverTimestamp() });
