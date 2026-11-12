@@ -27,7 +27,7 @@ export const ROLE_LABEL = { moderator: 'moderator', admin: 'admin', super: 'supe
 const SIGNED = Object.keys(ACTORS).filter((a) => a !== 'anon');
 const ALL = Object.keys(ACTORS);
 // signed in, has a profile, not blocked, not suspended: the people who may write normal content
-const N = ['user', 'other', 'moderator', 'admin', 'super', 'legacy', 'badrole', 'runnerOff'];
+const N = ['user', 'other', 'moderator', 'admin', 'super', 'legacy', 'badrole'];
 const STAFF = ['moderator', 'admin', 'super'];
 const ADM = ['admin', 'super'];
 const pair = (a, b) => (a < b ? `${a}_${b}` : `${b}_${a}`);
@@ -171,6 +171,7 @@ cap('Posts', 'Read a public post', 'get', 'posts/p1', null, SIGNED);
 cap('Posts', 'Read a friends-only post of u1', 'get', 'posts/pf', null, ['user', ...STAFF]);
 cap('Posts', 'Publish own post', 'create', 'posts/new', (a) => newPost(a.uid), N);
 cap('Posts', 'Publish a post as someone else', 'create', 'posts/new', () => newPost('u1'), ['user']);
+cap('Posts', 'Bot runner cannot publish as its own normal account', 'create', 'posts/new', (a) => newPost(a.uid), []);
 cap('Posts', 'Publish a post as an AI bot', 'create', 'posts/new', () => newPost('bot_01'), [...ADM, 'runner']);
 cap('Posts', 'Runner cannot publish as an unassigned bot', 'create', 'posts/new', () => newPost('bot_02'), [...ADM]);
 cap('Posts', 'Publish an AI-bot post with a video', 'create', 'posts/new', () => newPost('bot_01', { videoUrl: 'https://x/y.mp4' }), []);
@@ -228,7 +229,7 @@ cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'chan
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
 cap('AI bots', 'Read the runner state', 'get', 'botState/runner', null, ['runner']);
 cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runner', null, []);
-cap('AI bots', 'Disabled runner cannot publish as a bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
+cap('AI bots', 'Disabled runner cannot publish as a bot', 'create', 'posts/new', () => newPost('bot_01'), [...ADM]);
 cap('AI bots', 'Write the runner state', 'update', 'botState/runner', { used: '{"bot_01":["en:0"]}' }, ['runner']);
 cap('AI bots', 'Read the runner registration', 'get', 'botRunners/run', null, ['runner']);
 cap('AI bots', 'Register a new bot runner', 'create', 'botRunners/u1', { enabled: true }, []);
