@@ -28,3 +28,11 @@ These are explicit limitations, not verified fixes. Do not describe the platform
 ## Incident hygiene
 
 If a service-account key is exposed, revoke it in Google Cloud IAM, replace the GitHub Secret, and review relevant workflow logs. Never paste secrets into issues or commit history.
+
+## Image upload boundary
+
+- Browser uploads go only to the MeetBook Cloudflare Worker, not directly to Cloudinary.
+- The Worker validates a Firebase ID token, checks JPEG file bytes and a 1 MB maximum, and signs Cloudinary requests server-side.
+- Cloudinary API secrets belong only in Worker Secret settings. Never commit them.
+- CORS is restricted to the configured MeetBook Pages origin. CORS is not an authentication mechanism; Firebase token verification is also required.
+- Review Cloudflare account-level abuse controls and usage limits before production. The Worker is not deployed by this repository change.
