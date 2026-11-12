@@ -18,7 +18,7 @@ MeetBook is an independent social platform built from the existing application c
 The current codebase includes:
 
 - Email/password and Google sign-in.
-- Image uploads through a separate Cloudinary image-only unsigned preset (owner configuration required); Firebase Storage is not used.
+- Image uploads through an authenticated Cloudflare Worker and signed Cloudinary requests (owner deployment/configuration required); Firebase Storage is not used.
 - Video file uploads are disabled; users may share supported video links.
 - User profiles with photo, cover and bio.
 - Feed posts with photo and video links.
@@ -91,13 +91,13 @@ npm run test:browser
 npm run test:emulator
 ```
 
-- `npm test`: local unit, permission-matrix, mutation, script and import checks.
+- `npm test`: local unit, signed image Worker, permission-matrix, mutation, script and import checks.
 - `npm run test:browser`: requires Playwright and Chromium.
 - `npm run test:emulator`: requires Java and network access to install/run the Firebase Emulator.
 
 The emulator uses the reserved `demo-meetbook` project ID and must not connect to a production Firebase project. Tests must be run before claiming that the current branch is verified.
 
-## Documentation
+Image uploads remain unavailable until the owner deploys the Worker, adds its URL to `js/firebase-config.js`, and configures the two Cloudinary Worker credentials. See [Worker setup](cloudflare/image-upload/README.md).\n\n## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Firebase setup](FIREBASE_SETUP.md)
