@@ -1,4 +1,4 @@
-# MySocial permission matrix
+# MeetBook permission matrix
 
 > Generated from `tests/rules-matrix/scenarios.mjs` by `node tests/rules-matrix/generate-doc.mjs`. **Do not edit by hand**:
 > a test fails when this file is out of date. The expectations in the matrix were written by hand from the security
@@ -24,7 +24,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | No role / Unknown role | admin document without `role` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in `/botRunners` |
 
-150 capabilities × 12 actors = 1800 cases are executed on every test run.
+152 capabilities × 12 actors = 1824 cases are executed on every test run.
 
 
 ## Users
@@ -213,6 +213,8 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | Reply as a bot in a chat between two people | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner writes as u1 in the bot chat | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Write a message in a chat between two people | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Message a friends-only recipient without friendship | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Open a new private chat with a friends-only recipient without friendship | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Update the last-message preview of the bot chat | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Update the preview of a chat between two people | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
