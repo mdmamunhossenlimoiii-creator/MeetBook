@@ -102,7 +102,7 @@ test('AI bots: runner and admin can only act as bots, and only with the owner\'s
   assert.match(botComment, /isBotUser\(request\.resource\.data\.uid\)[\s\S]*botMayComment\(postId\)/, 'bot comments go through botMayComment');
   assert.match(fn('botMayComment'), /engagementOk\(p\.uid\)/, 'bot comments need consent');
   assert.match(fn('botMayComment'), /visibility == 'public'/);
-  const runnerReaction = /isBotRunner\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)/;
+  const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)/;
   assert.match(posts, runnerReaction, 'bot reactions need consent and a public post');
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
   assert.match(posts, /hasOnly\(get\(.*botRunners.*botIds/s, 'the runner may only set reactions for its assigned bot IDs');
@@ -111,6 +111,7 @@ test('AI bots: runner and admin can only act as bots, and only with the owner\'s
   assert.match(block('botInbox'), /resource\.data\.botId in get\(.*botRunners.*botIds/s);
   assert.match(block('botInbox'), /hasOnly\(\['handled', 'handledAt', 'skipped'\]\)/);
   assert.match(block('botInbox'), /members\.hasAll\(\[request\.auth\.uid, request\.resource\.data\.botId\]\)/);
+  assert.match(block('botInbox'), /keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'text', 'handled', 'createdAt'\]\)/);
 });
 
 test('comments can be switched off by staff and are enforced for everybody', () => {
