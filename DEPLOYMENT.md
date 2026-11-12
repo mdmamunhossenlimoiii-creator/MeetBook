@@ -20,3 +20,7 @@ Do not publish until the owner explicitly authorizes it. Do not reuse MySocial's
 ## Metadata
 
 The repository includes a canonical URL, Open Graph metadata, a web manifest, `robots.txt`, and `sitemap.xml`. Update these if the owner later configures a custom domain.
+
+## Image upload Worker
+
+Image upload is a separate backend deployment. Deploy and configure `cloudflare/image-upload/worker.js` first, add its URL to the frontend config, and verify uploads while signed in. Do not publish image upload as available until this check passes.
