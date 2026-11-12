@@ -42,7 +42,7 @@ export async function render(view) {
         <option value="off" ${s.allowBotEngagement ? '' : 'selected'}>Off: bots never react or comment on my posts</option>
         <option value="on" ${s.allowBotEngagement ? 'selected' : ''}>On: allow labelled AI bots to react and comment sometimes</option></select>
       <div class="muted small">Bot reactions and comments always show the "AI Bot" label and are counted separately from people.</div></div>
-    <p class="muted small">Post and story audiences are enforced by the database rules. "Profile" and "chat" choices are applied by this app's interface.</p>
+    <p class="muted small">Post, story, and chat access are checked by database rules. The profile choice only hides posts on your profile page in this app; profile details remain visible to signed-in users, and public posts can still appear in feeds.</p>
     <button class="btn btn-primary" id="st-save">Save privacy settings</button>
   </section>
 
