@@ -61,6 +61,20 @@ service cloud.firestore {
     function pairId(a, b) {
       return a < b ? a + '_' + b : b + '_' + a;
     }
+
+    // Enforce the recipient's private-message preference in Firestore, not only in the UI.
+    function canSendPrivateMessage(chat) {
+      let members = chat.members;
+      let otherUid = members[0] == request.auth.uid ? members[1] : members[0];
+      let recipient = get(/databases/$(database)/documents/users/$(otherUid)).data;
+      return chat.type == 'private'
+        && members.size() == 2
+        && request.auth.uid in members
+        && (isBotUser(otherUid)
+          || recipient.get('settings', {}).get('allowMessages', 'everyone') == 'everyone'
+          || (recipient.get('settings', {}).get('allowMessages', 'everyone') == 'friends'
+            && exists(/databases/$(database)/documents/friendships/$(pairId(request.auth.uid, otherUid)))));
+    }
     function textOk(v, max) {
       return v is string && v.size() <= max;
     }
@@ -382,7 +396,8 @@ service cloud.firestore {
         && request.resource.data.type in ['private', 'group']
         && (request.resource.data.type == 'group'
             || (request.resource.data.members.size() == 2
-                && chatId == pairId(request.resource.data.members[0], request.resource.data.members[1])));
+                && chatId == pairId(request.resource.data.members[0], request.resource.data.members[1])
+                && canSendPrivateMessage(request.resource.data)));
       // Members never change, except by the creator of a group chat.
       allow update: if (signedIn()
           && request.auth.uid in resource.data.members
@@ -407,7 +422,9 @@ service cloud.firestore {
           (notBanned()
             && request.resource.data.uid == request.auth.uid
             && textOk(request.resource.data.text, 4000)
-            && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members)
+            && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members
+            && (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group'
+              || canSendPrivateMessage(get(/databases/$(database)/documents/chats/$(chatId)).data)))
           // bot-runner answering a user's message as the bot that is a member of this chat
           || (isBotRunner()
             && isBotUser(request.resource.data.uid)
