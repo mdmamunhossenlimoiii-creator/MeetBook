@@ -148,7 +148,7 @@ test('account deletion: purges data + auth user, refuses staff and bots', async 
 test('backup: refuses without passphrase, writes an encrypted file that decrypts only with the passphrase', async () => {
   const m = await startMock({ seed: { 'users/u1': { name: 'Rina', photo: 'data:image/jpeg;base64,' + 'A'.repeat(5000) }, 'posts/p1': post('u1', 'secret post'), 'posts/p1/comments/c1': { uid: 'u1', text: 'c' } } });
   const out = mkdtempSync(`${tmpdir()}/bk-`);
-  const env = { FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: out };
+  const env = { FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: out };
   try {
     assert.notEqual((await run('scripts/backup.mjs', env)).status, 0, 'needs a passphrase');
     const r = await run('scripts/backup.mjs', { ...env, BACKUP_PASSPHRASE: 'correct horse battery' });
@@ -173,7 +173,7 @@ test('restore: dry run by default, needs project confirmation, keeps existing, s
   const out = mkdtempSync(`${tmpdir()}/rs-`);
   const pass = 'correct horse battery';
   try {
-    const b = await run('scripts/backup.mjs', { FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: src.url, TOKEN_URL: `${src.url}/token`, OUT_DIR: out, BACKUP_PASSPHRASE: pass });
+    const b = await run('scripts/backup.mjs', { FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: src.url, TOKEN_URL: `${src.url}/token`, OUT_DIR: out, BACKUP_PASSPHRASE: pass });
     assert.equal(b.status, 0, b.stderr);
   } finally { await src.close(); }
   const [file] = readdirSync(out);
