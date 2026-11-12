@@ -11,7 +11,7 @@ Browser (MeetBook GitHub Pages project site)
                  ├─ stories.js, reels.js, groups.js, notifications.js
                  ├─ settings.js, admin.js
                  └─ firebase.js ──► MeetBook Firebase Auth + Cloud Firestore
-                                  └► Cloudinary (optional, separately configured)
+                                  └► Cloudflare Worker ──► Cloudinary signed image uploads
 ```
 
 - Single-page app with hash routing (for example, `#/feed`, `#/profile/<uid>`), so GitHub Pages does not need rewrite rules.
@@ -23,7 +23,7 @@ Browser (MeetBook GitHub Pages project site)
 
 ## 2. Media and storage design
 
-The existing application stores compressed images as data URLs inside Firestore documents rather than Firebase Storage. Videos are represented by links; optional Cloudinary upload support is separately configured. This design is inherited from the source application and must be reviewed against MeetBook's expected scale and Firestore document limits before launch.
+Compressed images are sent to the authenticated Cloudflare Worker, which verifies the Firebase ID token, enforces the JPEG/1 MiB boundary, and signs the Cloudinary upload request. Firestore stores the resulting HTTPS image URL rather than the image bytes. Firebase Storage is not used. Videos are represented by links only; video file upload is disabled. The Worker is source-controlled but is not deployed by the GitHub repository workflow.
 
 Do not configure or reuse MySocial storage buckets. If MeetBook later adopts Firebase Storage, create its bucket and rules in the MeetBook Firebase project.
 
