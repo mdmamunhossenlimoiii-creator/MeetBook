@@ -122,6 +122,7 @@ test('comments can be switched off by staff and are enforced for everybody', () 
 });
 
 test('suspension is enforced on every write through notBanned()', () => {
+  assert.match(fn('notBanned'), /!isBotRunner\(\)/);
   assert.match(fn('notBanned'), /suspendedUntil/);
   assert.match(fn('notBanned'), /request\.time/);
 });
