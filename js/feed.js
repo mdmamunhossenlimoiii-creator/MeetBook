@@ -6,7 +6,7 @@ import {
 import { state, onCleanup, navigate } from './state.js';
 import {
   $, $$, esc, linkify, timeAgo, fullDate, avatarHtml, prefetchUsers, getUser, toast, modal, closeModal,
-  confirmBox, resizeImage, parseVideoUrl, videoHtml, notify, tsMs, errMsg, errorBox, emptyState, REACTIONS, botBadge
+  confirmBox, resizeImage, uploadImageToCloudinary, parseVideoUrl, videoHtml, notify, tsMs, errMsg, errorBox, emptyState, REACTIONS, botBadge
 } from './utils.js';
 import { icon } from './icons.js';
 import { renderStories } from './stories.js';
@@ -17,6 +17,7 @@ const PAGE = 20;
 // ------------------------------------------------------------------ data
 export async function createPost({ text = '', image = '', videoUrl = '', visibility = 'public', groupId = null, groupPrivacy = null, sharedFrom = null }) {
   const uid = state.user.uid;
+  if (image && image.startsWith('data:')) image = await uploadImageToCloudinary(image);
   let vis = visibility;
   let audience = [];
   if (groupId) {
