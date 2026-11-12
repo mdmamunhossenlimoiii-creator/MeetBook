@@ -97,7 +97,9 @@ npm run test:emulator
 
 The emulator uses the reserved `demo-meetbook` project ID and must not connect to a production Firebase project. Tests must be run before claiming that the current branch is verified.
 
-Image uploads remain unavailable until the owner deploys the Worker, adds its URL to `js/firebase-config.js`, and configures the two Cloudinary Worker credentials. See [Worker setup](cloudflare/image-upload/README.md).\n\n## Documentation
+Image uploads remain unavailable until the owner deploys the Worker, adds its URL to `js/firebase-config.js`, and configures the two Cloudinary Worker credentials. See [Worker setup](cloudflare/image-upload/README.md).
+
+## Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Firebase setup](FIREBASE_SETUP.md)
