@@ -11,6 +11,7 @@ export const ACTORS = {
   anon: { uid: null, label: 'Not signed in' },
   user: { uid: 'u1', label: 'Normal user (u1)' },
   other: { uid: 'u2', label: 'Other normal user (u2)' },
+  outsider: { uid: 'u3', label: 'Unfriended user (u3)' },
   banned: { uid: 'ub', label: 'Blocked user' },
   suspended: { uid: 'us', label: 'Suspended user' },
   fresh: { uid: 'u_new', label: 'New user without profile yet' },
@@ -38,7 +39,9 @@ const newPost = (uid, extra = {}) => ({ ...post(uid), createdAt: { $srv: 1 }, ..
 
 export const SEED = {
   'users/u1': user({ name: 'User One', settings: { allowBotEngagement: false } }),
-  'users/u2': user({ name: 'User Two', settings: { allowBotEngagement: true } }),
+  'users/u2': user({ name: 'User Two', settings: { allowBotEngagement: true, allowMessages: 'friends' } }),
+  'users/u3': user({ name: 'User Three', settings: { allowMessages: 'friends' } }),
+  'friendships/u1_u2': { members: ['u1', 'u2'] },
   'users/ub': user({ name: 'Blocked User', banned: true }),
   'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3) }),
   'users/mod': user({ name: 'Mod Person' }), 'users/adm': user({ name: 'Admin Person' }), 'users/adm2': user({ name: 'Second Admin' }),
@@ -67,6 +70,7 @@ export const SEED = {
   'chats/c_bot': { type: 'private', members: ['bot_01', 'u1'], lastMessage: { text: 'hi', uid: 'u1' } },
   'chats/c_bot/messages/m1': { uid: 'u1', text: 'hi' },
   'chats/c_uu': { type: 'private', members: ['u1', 'u2'], lastMessage: { text: 'yo', uid: 'u1' } },
+  'chats/c_private_blocked': { type: 'private', members: ['u1', 'u3'], lastMessage: { text: 'hello', uid: 'u1' } },
   'chats/c_uu/messages/m1': { uid: 'u1', text: 'yo' },
   'notifications/n1': { to: 'u1', from: 'u2', type: 'comment', read: false },
   'groups/g1': { name: 'Photo Lovers', privacy: 'public', ownerUid: 'u1', members: ['u1'] },
@@ -225,6 +229,8 @@ cap('Chats', 'Reply as the bot in the bot chat', 'create', 'chats/c_bot/messages
 cap('Chats', 'Reply as a bot in a chat between two people', 'create', 'chats/c_uu/messages/new', { uid: 'bot_01', text: 'hi', createdAt: { $srv: 1 } }, []);
 cap('Chats', 'Runner writes as u1 in the bot chat', 'create', 'chats/c_bot/messages/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('Chats', 'Write a message in a chat between two people', 'create', 'chats/c_uu/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), ['user', 'other']);
+cap('Chats', 'Message a friends-only recipient without friendship', 'create', 'chats/c_private_blocked/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), ['outsider']);
+cap('Chats', 'Open a new private chat with a friends-only recipient without friendship', 'create', 'chats/new_private', () => ({ type: 'private', members: ['u1', 'u3'], createdBy: 'u1' }), ['outsider']);
 cap('Chats', 'Update the last-message preview of the bot chat', 'update', 'chats/c_bot', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'runner']);
 cap('Chats', 'Update the preview of a chat between two people', 'update', 'chats/c_uu', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'other']);
 cap('Notifications', 'Notify another user', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.uid, type: 'comment', read: false }), N.filter((x) => x !== 'other'));
