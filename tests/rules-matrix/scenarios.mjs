@@ -19,14 +19,15 @@ export const ACTORS = {
   super: { uid: 'sup', label: 'Super Admin' },
   legacy: { uid: 'leg', label: 'Old admin doc without role' },
   badrole: { uid: 'bad', label: 'Admin doc with unknown role' },
-  runner: { uid: 'run', label: 'Bot runner (GitHub Action)' }
+  runner: { uid: 'run', label: 'Bot runner (GitHub Action)' },
+  runnerOff: { uid: 'runoff', label: 'Disabled bot runner' }
 };
 export const ROLE_LABEL = { moderator: 'moderator', admin: 'admin', super: 'super_admin' };
 
 const SIGNED = Object.keys(ACTORS).filter((a) => a !== 'anon');
 const ALL = Object.keys(ACTORS);
 // signed in, has a profile, not blocked, not suspended: the people who may write normal content
-const N = ['user', 'other', 'moderator', 'admin', 'super', 'legacy', 'badrole'];
+const N = ['user', 'other', 'moderator', 'admin', 'super', 'legacy', 'badrole', 'runnerOff'];
 const STAFF = ['moderator', 'admin', 'super'];
 const ADM = ['admin', 'super'];
 const pair = (a, b) => (a < b ? `${a}_${b}` : `${b}_${a}`);
@@ -47,9 +48,11 @@ export const SEED = {
   'users/sup': user({ name: 'Super Person' }), 'users/leg': user({ name: 'Legacy Admin' }), 'users/bad': user({ name: 'Badrole Admin' }),
   'users/bot_01': user({ name: 'TechTip Nova', isBot: true, bio: 'I am an AI bot.' }),
   'users/bot_02': user({ name: 'Pixel Pal', isBot: true, bio: 'I am an AI bot.' }),
+  'users/runoff': user({ name: 'Disabled Runner' }),
   'admins/mod': { role: 'moderator' }, 'admins/adm': { role: 'admin' }, 'admins/adm2': { role: 'admin' }, 'admins/sup': { role: 'super_admin' },
   'admins/leg': { enabled: true }, 'admins/bad': { role: 'owner' },
   'botRunners/run': { enabled: true, botIds: ['bot_01'] },
+  'botRunners/runoff': { enabled: false, botIds: ['bot_01'] },
   'botState/runner': { used: '{}' },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
@@ -223,6 +226,8 @@ cap('AI bots', 'Read bot activity logs', 'get', 'botLogs/bl1', null, STAFF);
 cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'changed' }, []);
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
 cap('AI bots', 'Read the runner state', 'get', 'botState/runner', null, ['runner']);
+cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runner', null, []);
+cap('AI bots', 'Disabled runner cannot publish as a bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
 cap('AI bots', 'Write the runner state', 'update', 'botState/runner', { used: '{"bot_01":["en:0"]}' }, ['runner']);
 cap('AI bots', 'Read the runner registration', 'get', 'botRunners/run', null, ['runner']);
 cap('AI bots', 'Register a new bot runner', 'create', 'botRunners/u1', { enabled: true }, []);
