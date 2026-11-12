@@ -13,7 +13,7 @@ export const MAX_BOTS = 30; // rules allow bot_01 .. bot_30
 const profileFromBuiltIn = (b, i) => ({
   name: b.name, nameLower: b.name.toLowerCase(), username: b.username, bio: b.bio,
   photo: botAvatar(i), cover: botCover(i),
-  personality: b.personality, interests: b.interests, lang: b.lang,
+  personality: b.personality, interests: b.interests, lang: b.lang, roleEmoji: b.roleEmoji,
   active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: BOT_DEFAULTS.dailyLimit,
   ideas: [], ideasBn: [],
   banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
@@ -29,7 +29,12 @@ export async function seedBots() {
   const snaps = await Promise.all(BOTS.map((b) => getDoc(doc(db, 'users', b.id))));
   let created = 0;
   for (let i = 0; i < BOTS.length; i++) {
-    if (snaps[i].exists()) continue;
+    if (snaps[i].exists()) {
+      if (!snaps[i].data().roleEmoji && BOTS[i].roleEmoji) {
+        await updateDoc(doc(db, 'users', BOTS[i].id), { roleEmoji: BOTS[i].roleEmoji });
+      }
+      continue;
+    }
     await setDoc(doc(db, 'users', BOTS[i].id), profileFromBuiltIn(BOTS[i], i));
     created++;
   }
@@ -47,7 +52,7 @@ export async function createBot(existing, data) {
   if (!id) throw new Error(`The limit is ${MAX_BOTS} bots.`);
   const n = Number(id.slice(4));
   await setDoc(doc(db, 'users', id), {
-    ...BOT_DEFAULTS, ideas: [], ideasBn: [], interests: [], username: id, bio: 'AI bot.',
+    ...BOT_DEFAULTS, ideas: [], ideasBn: [], interests: [], username: id, bio: 'AI bot.', roleEmoji: data.roleEmoji || '✨',
     photo: botAvatar(n), cover: botCover(n), ...data,
     nameLower: String(data.name).toLowerCase(), banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
   });
