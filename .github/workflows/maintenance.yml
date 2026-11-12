@@ -1,28 +1,16 @@
-name: Account deletion queue
+name: Account deletion queue (disabled pending owner review)
 
-# Processes "permanent account deletion" requests queued by a Super Admin in the Admin panel.
-# Needs the FIREBASE_SERVICE_ACCOUNT repository secret (see README). Without it the job does nothing.
-on:
-  schedule:
-    - cron: '*/30 * * * *'
-  workflow_dispatch:
+# SAFETY: This workflow can permanently delete Firebase Authentication users and Firestore data.
+# It is intentionally disabled until the owner completes MeetBook Firebase setup and explicitly
+# authorizes a separately reviewed deletion workflow.
+on: []
 
 permissions:
   contents: read
 
-concurrency:
-  group: account-deletion
-  cancel-in-progress: false
-
 jobs:
-  run:
+  disabled:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: node scripts/account-deletion.mjs
-        env:
-          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - run: echo "Account deletion automation is disabled pending explicit owner authorization."
