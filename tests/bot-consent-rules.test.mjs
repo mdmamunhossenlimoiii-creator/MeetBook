@@ -27,7 +27,7 @@ const seed = () => {
   BOTS.forEach((b) => { s[`users/${b.id}`] = { name: b.name, isBot: true, banned: false }; });
   return {
     ...s,
-    'botRunners/runner1': { enabled: true },
+    'botRunners/runner1': { enabled: true, botIds: BOTS.map((bot) => bot.id) },
     'settings/global': { botsEnabled: true, botToBotComments: false },
     'users/runner1': { name: 'Runner account', banned: false },
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
