@@ -36,7 +36,7 @@ const MUTATIONS = [
   ['suspension is ignored', "(u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time)", "true"],
   ['blocked users can write', "u.banned != true", "true"],
   ['bot posts may contain video', "&& request.resource.data.videoUrl == ''", ""],
-  ['bot-runner may read every chat', "|| (isBotRunner() && resource != null && resource.data.type == 'private' && resource.data.members.hasAny(botIds()));", "|| isBotRunner();"],
+  ['bot-runner may read every chat', "&& chat.members.hasAny(runner.get('botIds', []));", "&& true;"],
   ['comments stay possible when switched off', "return p.get('commentsDisabled', false) == false && canSeePost(p);", "return canSeePost(p);"],
   ['any reaction value is accepted', "|| request.resource.data.reactions[request.auth.uid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']", "|| true"],
   ['a report can be edited freely by staff', "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt'])\n        && request.resource.data.status in ['open', 'resolved']", "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt', 'targetUid'])\n        && request.resource.data.status in ['open', 'resolved']"],
