@@ -1,8 +1,8 @@
 {
-  "name": "mysocial-rules-emulator-tests",
+  "name": "meetbook-rules-emulator-tests",
   "private": true,
   "type": "module",
-  "description": "Runs the permission matrix against the REAL Firebase Firestore Emulator. Used by CI only (needs Java and network to install).",
+  "description": "Runs MeetBook Firestore security rules against the local Firebase Emulator. Used by CI only.",
   "dependencies": {
     "@firebase/rules-unit-testing": "3.0.4",
     "firebase": "10.14.1"
