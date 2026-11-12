@@ -82,8 +82,32 @@ async function handleUpload(request, env, origin) {
 
   const length = Number(request.headers.get("content-length") || 0);
   if (length > 1_100_000) return json({ error: "image_too_large" }, 413, origin, allowedOrigin);
+  // Enforce a hard streaming cap even if Content-Length is absent or untrusted.
+  if (!request.body) return json({ error: "invalid_multipart_body" }, 400, origin, allowedOrigin);
+  const reader = request.body.getReader();
+  const chunks = [];
+  let total = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > 1_100_000) {
+        await reader.cancel();
+        return json({ error: "image_too_large" }, 413, origin, allowedOrigin);
+      }
+      chunks.push(value);
+    }
+  } catch {
+    return json({ error: "invalid_multipart_body" }, 400, origin, allowedOrigin);
+  }
+  const boundedRequest = new Request(request.url, {
+    method: "POST",
+    headers: request.headers,
+    body: new Blob(chunks, { type: request.headers.get("content-type") || "application/octet-stream" })
+  });
   let form;
-  try { form = await request.formData(); }
+  try { form = await boundedRequest.formData(); }
   catch { return json({ error: "invalid_multipart_body" }, 400, origin, allowedOrigin); }
   const file = form.get("file");
   if (!(file instanceof File) || file.type !== "image/jpeg" || file.size < 4 || file.size > 1_048_576) {
