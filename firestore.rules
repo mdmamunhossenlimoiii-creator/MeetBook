@@ -258,7 +258,7 @@ service cloud.firestore {
           && textOk(request.resource.data.targetId, 160)
           && textOk(request.resource.data.text, 200)
           && request.resource.data.source == 'runner'
-          && request.resource.data.createdAt == request.time);
+          && request.resource.data.createdAt is timestamp);
       allow read: if isStaff();
       allow update: if false;
       allow delete: if isAdmin();
