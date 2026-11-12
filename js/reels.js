@@ -1,12 +1,11 @@
-// Short video feed: vertical snap-scroll, likes, share link, report, delete. Videos are links (or Cloudinary uploads).
+// Short video feed: vertical snap-scroll, likes, share link, report, delete. Video uploads are disabled; links only.
 import {
   db, collection, doc, addDoc, updateDoc, deleteDoc, query, orderBy, limit, onSnapshot, serverTimestamp, deleteField
 } from './firebase.js';
-import { cloudinary } from './firebase-config.js';
 import { state, onCleanup } from './state.js';
 import {
   $, $$, esc, linkify, avatarHtml, prefetchUsers, toast, modal, closeModal, errMsg, emptyState, errorBox, confirmBox,
-  parseVideoUrl, videoHtml, uploadVideoToCloudinary, notify
+  parseVideoUrl, videoHtml, notify
 } from './utils.js';
 import { icon } from './icons.js';
 import { openReport } from './feed.js';
@@ -119,27 +118,18 @@ export async function render(view) {
 }
 
 function openCreator() {
-  const canUpload = Boolean(cloudinary.cloudName && cloudinary.uploadPreset);
   const m = modal(`<h3>New reel</h3>
-    <div class="field"><label for="rl-url">Video link</label>
+    <div class="field"><label for="rl-url">Video link (uploads are disabled)</label>
       <input id="rl-url" type="url" placeholder="YouTube / Shorts link or direct https .mp4 link"></div>
-    ${canUpload ? `<div class="field"><label>or upload a video (max 50 MB)</label>
-      <input type="file" id="rl-file" accept="video/*"><progress id="rl-prog" max="100" value="0" hidden></progress></div>`
-      : '<p class="muted small">Direct video upload is off. To enable it, add a free Cloudinary account in <code>js/firebase-config.js</code>.</p>'}
+    <p class="muted small">MeetBook currently accepts video links only. Uploading video files is disabled.</p>
     <div class="field"><label for="rl-cap">Caption</label><textarea id="rl-cap" rows="2" maxlength="500"></textarea></div>
     <div class="row end gap"><button class="btn" data-close>Cancel</button><button class="btn btn-primary" id="rl-go">Share reel</button></div>`);
   $('#rl-go', m).addEventListener('click', async () => {
     const btn = $('#rl-go', m);
-    let url = $('#rl-url', m).value.trim();
-    const file = canUpload ? $('#rl-file', m).files[0] : null;
+    const url = $('#rl-url', m).value.trim();
     btn.disabled = true;
     try {
-      if (file) {
-        const prog = $('#rl-prog', m);
-        prog.hidden = false;
-        url = await uploadVideoToCloudinary(file, cloudinary, (p) => { prog.value = p; });
-      }
-      if (!url) throw new Error('Add a video link or choose a video file.');
+      if (!url) throw new Error('Add a supported video link.');
       if (!parseVideoUrl(url)) throw new Error('Unsupported link. Use a YouTube link or a direct https .mp4/.webm link.');
       await addDoc(collection(db, 'reels'), {
         uid: state.user.uid, authorName: state.profile.name, videoUrl: url,
