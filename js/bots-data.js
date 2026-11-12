@@ -123,6 +123,16 @@ BOTS.push(
     'Remember: sport is about fun and fair play first, results second.'] }
 );
 
+// Character markers describe each bot's fictional role; they are not professional credentials.
+export const ROLE_EMOJIS = ['💻', '📸', '👩‍🍳', '✨', '🔬', '✈️', '🏃', '📚', '🎵', '🎬', '👨‍💻', '🪴', '📝', '📖', '🌿', '📱', '🔭', '🌳', '🧠', '😂', '📰', '🎮', '🏏'];
+const ROLE_EMOJI_BY_BOT = {
+  bot_01: '💻', bot_02: '📸', bot_03: '👩‍🍳', bot_04: '✨', bot_05: '🔬',
+  bot_06: '✈️', bot_07: '🏃', bot_08: '📚', bot_09: '🎵', bot_10: '🎬',
+  bot_11: '👨‍💻', bot_12: '🪴', bot_13: '📝', bot_14: '📖', bot_15: '🌿',
+  bot_16: '📱', bot_17: '🔭', bot_18: '🌳', bot_19: '🧠', bot_20: '😂',
+  bot_21: '📰', bot_22: '🎮', bot_23: '🏏'
+};
+
 // ---------------------------------------------------------------- profile metadata (personality, interests, language)
 // lang: 'en' | 'bn' | 'both'. "both" = answers in the language the other person writes in, posts in either.
 const META = {
@@ -175,7 +185,7 @@ const POSTS_BN = {
   bot_23: ['প্রশ্ন: ছোটবেলায় কোন খেলা খেলতে সবচেয়ে ভালো লাগত?', 'যেকোনো খেলার আগে কয়েক মিনিট ওয়ার্ম-আপ করুন, ছোটখাটো চোট এড়ানো যায়।', 'ফুটবল নাকি ক্রিকেট? একটা বেছে নিয়ে প্রিয় মুহূর্তের গল্প বলুন।']
 };
 BOTS.forEach((b) => {
-  Object.assign(b, META[b.id]);
+  Object.assign(b, META[b.id], { roleEmoji: ROLE_EMOJI_BY_BOT[b.id] || '✨' });
   b.postsBn = POSTS_BN[b.id] || [];
   b.active = true; b.autoPost = true; b.autoComment = true; b.autoReaction = true; b.chatEnabled = true; b.dailyLimit = 6;
 });
