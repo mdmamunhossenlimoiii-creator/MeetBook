@@ -171,7 +171,7 @@ cap('Posts', 'Read a public post', 'get', 'posts/p1', null, SIGNED);
 cap('Posts', 'Read a friends-only post of u1', 'get', 'posts/pf', null, ['user', ...STAFF]);
 cap('Posts', 'Publish own post', 'create', 'posts/new', (a) => newPost(a.uid), N);
 cap('Posts', 'Publish a post as someone else', 'create', 'posts/new', () => newPost('u1'), ['user']);
-cap('Posts', 'Bot runner cannot publish as its own normal account', 'create', 'posts/new', (a) => newPost(a.uid), []);
+cap('Posts', 'Bot runner cannot publish as its own normal account', 'create', 'posts/new', () => newPost('run'), []);
 cap('Posts', 'Publish a post as an AI bot', 'create', 'posts/new', () => newPost('bot_01'), [...ADM, 'runner']);
 cap('Posts', 'Runner cannot publish as an unassigned bot', 'create', 'posts/new', () => newPost('bot_02'), [...ADM]);
 cap('Posts', 'Publish an AI-bot post with a video', 'create', 'posts/new', () => newPost('bot_01', { videoUrl: 'https://x/y.mp4' }), []);
