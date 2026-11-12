@@ -49,6 +49,26 @@ service cloud.firestore {
     function isBotRunner() {
       return signedIn() && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid));
     }
+    // Fail closed: a runner is active only while the global kill switch AND its own
+    // enable flag are true. Each runner is restricted to an explicit list of bot IDs.
+    function runnerEnabled() {
+      return isBotRunner()
+        && exists(/databases/$(database)/documents/settings/global)
+        && get(/databases/$(database)/documents/settings/global).data.get('botsEnabled', false) == true
+        && get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('enabled', false) == true
+        && get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', []) is list
+        && get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', []).size() > 0;
+    }
+    function runnerMayActAs(botUid) {
+      return runnerEnabled()
+        && botUid in get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])
+        && isBotUser(botUid);
+    }
+    function runnerMayReadChat(chat) {
+      return runnerEnabled()
+        && chat.type == 'private'
+        && chat.members.hasAny(get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', []));
+    }
 
     // Not blocked and not under a temporary suspension.
     function notBanned() {
@@ -203,21 +223,39 @@ service cloud.firestore {
       allow write: if false; // create by hand in the Firebase console
     }
     match /botState/{id} {
-      allow read, write: if isBotRunner();
+      allow read, write: if runnerEnabled();
     }
     // A user's message to a bot is mirrored here so the scheduled job can answer it.
     match /botInbox/{id} {
       allow create: if notBanned()
         && request.resource.data.fromUid == request.auth.uid
         && isBotUser(request.resource.data.botId)
+        && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('active', true) == true
+        && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('chatEnabled', true) == true
         && textOk(request.resource.data.text, 500)
         && request.resource.data.handled == false
-        && request.resource.data.chatId == pairId(request.auth.uid, request.resource.data.botId);
-      allow read: if isBotRunner() || isStaff();
-      allow update, delete: if isBotRunner() || isAdmin();
+        && request.resource.data.chatId == pairId(request.auth.uid, request.resource.data.botId)
+        && exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
+        && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.type == 'private'
+        && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.members.hasAll([request.auth.uid, request.resource.data.botId]);
+      allow read: if isStaff()
+        || (runnerEnabled() && resource.data.botId in get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', []));
+      allow update: if runnerEnabled()
+        && resource.data.botId in get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
+        && request.resource.data.handled == true
+        && request.resource.data.handledAt is timestamp;
+      allow delete: if isAdmin();
     }
     match /botLogs/{id} {
-      allow create: if isBotRunner() || isAdmin();
+      allow create: if isAdmin()
+        || (runnerMayActAs(request.resource.data.botId)
+          && request.resource.data.keys().hasOnly(['botId', 'botName', 'kind', 'targetId', 'text', 'source', 'createdAt'])
+          && textOk(request.resource.data.kind, 40)
+          && textOk(request.resource.data.targetId, 160)
+          && textOk(request.resource.data.text, 200)
+          && request.resource.data.source == 'runner'
+          && request.resource.data.createdAt == request.time);
       allow read: if isStaff();
       allow update: if false;
       allow delete: if isAdmin();
@@ -286,8 +324,13 @@ service cloud.firestore {
           && (request.resource.data.groupId == null
               || request.auth.uid in groupDoc(request.resource.data.groupId).members))
         // staff or the bot-runner posting as an AI bot: public, text/photo only, never a video
-        || ((isAdmin() || isBotRunner())
+        || (isAdmin()
           && isBotUser(request.resource.data.uid)
+          && validPost(request.resource.data)
+          && request.resource.data.visibility == 'public'
+          && request.resource.data.groupId == null
+          && request.resource.data.videoUrl == '')
+        || (runnerMayActAs(request.resource.data.uid)
           && validPost(request.resource.data)
           && request.resource.data.visibility == 'public'
           && request.resource.data.groupId == null
@@ -298,16 +341,16 @@ service cloud.firestore {
         if (isStaff()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'commentsDisabled']))
         // bot-runner: bump commentCount by one after commenting as a bot
-        || (isBotRunner()
+        || (runnerEnabled()
           && engagementOk(resource.data.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
           && math.abs(request.resource.data.commentCount - resource.data.commentCount) <= 1)
         // bot-runner: add / change a reaction, only under a bot's own key
-        || (isBotRunner()
+        || (runnerEnabled()
           && resource.data.visibility == 'public'
           && engagementOk(resource.data.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
-          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly(botIds()))
+          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly(get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])))
         // everybody else: their own reaction key, or a counter moved by exactly one step
         || (notBanned() && (
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
@@ -332,9 +375,13 @@ service cloud.firestore {
             && textOk(request.resource.data.text, 2000)
             && userMayComment(postId))
           // staff or the bot-runner commenting as an AI bot (public posts with comments on)
-          || ((isAdmin() || isBotRunner())
+          || (isAdmin()
             && isBotUser(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI
+            && textOk(request.resource.data.text, 2000)
+            && botMayComment(postId))
+          || (runnerMayActAs(request.resource.data.uid)
+            && request.resource.data.get('ai', false) == true
             && textOk(request.resource.data.text, 2000)
             && botMayComment(postId));
         allow delete: if isOwner(resource.data.uid)
@@ -398,7 +445,7 @@ service cloud.firestore {
       allow get: if signedIn()
         && (resource == null || request.auth.uid in resource.data.members)
         // the bot-runner may open a private chat only when one member is an AI bot (it has to answer there)
-        || (isBotRunner() && resource != null && resource.data.type == 'private' && resource.data.members.hasAny(botIds()));
+        || (resource != null && runnerMayReadChat(resource.data));
       allow list: if signedIn() && request.auth.uid in resource.data.members;
       allow create: if notBanned()
         && request.auth.uid in request.resource.data.members
@@ -434,12 +481,12 @@ service cloud.firestore {
           && request.resource.data.members.size() <= 50
           && request.auth.uid in request.resource.data.members)
         // bot-runner: only the last-message preview of a private chat, written as a bot member.
-        || (isBotRunner()
+        || (runnerEnabled()
           && resource.data.type == 'private'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt'])
           && request.resource.data.lastMessage is map
           && request.resource.data.lastMessage.keys().hasOnly(['text', 'uid'])
-          && isBotUser(request.resource.data.lastMessage.uid)
+          && runnerMayActAs(request.resource.data.lastMessage.uid)
           && request.resource.data.lastMessage.uid in resource.data.members
           && textOk(request.resource.data.lastMessage.text, 120)
           && (request.resource.data.lastAt is timestamp));
@@ -448,9 +495,7 @@ service cloud.firestore {
         allow read: if (signedIn()
             && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members)
           // bot-runner: only the recent history of a chat with an AI bot
-          || (isBotRunner()
-            && get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'private'
-            && get(/databases/$(database)/documents/chats/$(chatId)).data.members.hasAny(botIds()));
+          || runnerMayReadChat(get(/databases/$(database)/documents/chats/$(chatId)).data);
         allow create: if
           (notBanned()
             && request.resource.data.uid == request.auth.uid
@@ -459,7 +504,7 @@ service cloud.firestore {
             && (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group'
               || canSendPrivateMessage(get(/databases/$(database)/documents/chats/$(chatId)).data)))
           // bot-runner answering a user's message as the bot that is a member of this chat
-          || (isBotRunner()
+          || (runnerMayActAs(request.resource.data.uid)
             && isBotUser(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI
             && textOk(request.resource.data.text, 4000)
