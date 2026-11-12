@@ -62,8 +62,8 @@ Deployment notes: [DEPLOYMENT.md](DEPLOYMENT.md).
 | Workflow | Current policy |
 |---|---|
 | Tests | Retained; runs on pull requests and pushes to `main`; no secrets required |
-| AI bot activity | Disabled; no event triggers and a defensive false job condition |
-| AI bot chat replies | Disabled; no event triggers and a defensive false job condition |
+| AI bot activity | Disabled; manual dispatch only, with an unconditional false job condition |
+| AI bot chat replies | Disabled; manual dispatch only, with an unconditional false job condition |
 | MeetBook encrypted backup | Manual dispatch only; requires explicit confirmation and MeetBook-only secrets |
 | Account deletion queue (`maintenance.yml`) | Disabled; destructive Auth and Firestore deletion requires separate owner review |
 
