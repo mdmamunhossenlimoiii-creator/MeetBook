@@ -53,7 +53,8 @@ export const SEED = {
   'admins/leg': { enabled: true }, 'admins/bad': { role: 'owner' },
   'botRunners/run': { enabled: true, botIds: ['bot_01'] },
   'botRunners/runoff': { enabled: false, botIds: ['bot_01'] },
-  'botState/runner': { used: '{}' },
+  'botState/run': { used: '{}' },
+  'botState/runoff': { used: '{}' },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
   'posts/p1': post('u1', { reactions: {} }),
@@ -227,10 +228,10 @@ cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bo
 cap('AI bots', 'Read bot activity logs', 'get', 'botLogs/bl1', null, STAFF);
 cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'changed' }, []);
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
-cap('AI bots', 'Read the runner state', 'get', 'botState/runner', null, ['runner']);
-cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runner', null, []);
-cap('AI bots', 'Disabled runner cannot publish as a bot', 'create', 'posts/new', () => newPost('bot_01'), [...ADM]);
-cap('AI bots', 'Write the runner state', 'update', 'botState/runner', { used: '{"bot_01":["en:0"]}' }, ['runner']);
+cap('AI bots', 'Read the runner state', 'get', 'botState/run', null, ['runner']);
+cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runoff', null, []);
+cap('AI bots', 'Only an enabled runner can publish as an assigned bot', 'create', 'posts/new', () => newPost('bot_01'), [...ADM, 'runner']);
+cap('AI bots', 'Write the runner state', 'update', 'botState/run', { used: '{"bot_01":["en:0"]}' }, ['runner']);
 cap('AI bots', 'Read the runner registration', 'get', 'botRunners/run', null, ['runner']);
 cap('AI bots', 'Register a new bot runner', 'create', 'botRunners/u1', { enabled: true }, []);
 
