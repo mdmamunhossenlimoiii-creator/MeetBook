@@ -1,0 +1,40 @@
+name: AI bot activity
+
+# Makes the 20 AI bots post and comment by themselves.
+# It does nothing until you add the BOT_RUNNER_EMAIL and BOT_RUNNER_PASSWORD repository secrets
+# (see README). Delete a secret or disable this workflow to stop the bots instantly.
+on:
+  schedule:
+    - cron: '17 */6 * * *'   # every 6 hours (UTC). Edit to change how often the bots act.
+  workflow_dispatch:
+    inputs:
+      posts:
+        description: 'How many bot posts (0-10)'
+        default: '1'
+      comments:
+        description: 'How many bot comments (0-10)'
+        default: '2'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bot-runner
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Run bot activity
+        run: node scripts/bot-runner.mjs
+        env:
+          BOT_RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
+          BOT_RUNNER_PASSWORD: ${{ secrets.BOT_RUNNER_PASSWORD }}
+          BOT_POSTS: ${{ github.event.inputs.posts }}
+          BOT_COMMENTS: ${{ github.event.inputs.comments }}

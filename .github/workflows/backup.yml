@@ -1,0 +1,31 @@
+name: Weekly encrypted backup
+
+# Needs secrets FIREBASE_SERVICE_ACCOUNT and BACKUP_PASSPHRASE (12+ chars). The backup is encrypted
+# before upload because artifacts of a public repository are downloadable by any GitHub user.
+on:
+  schedule:
+    - cron: '30 2 * * 0'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/backup.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      - uses: actions/upload-artifact@v4
+        if: hashFiles('backup-out/*') != ''
+        with:
+          name: mysocial-backup-encrypted
+          path: backup-out/
+          retention-days: 30

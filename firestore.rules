@@ -1,242 +1,493 @@
 rules_version = '2';
 
+// MySocial — Cloud Firestore security rules.
+//
+// Staff roles live ONLY in /admins/{uid} (field `role` MUST be exactly super_admin | admin | moderator).
+// A document with a missing or unknown role gives NO staff power at all (fail closed).
+// Normal users can never write to /admins. Only a super_admin can add or change staff.
+// AI bots are plain profile docs (users/bot_NN, isBot == true) with no Firebase Auth login.
+// Only staff or the low-privilege "bot runner" account can write as a bot.
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ---------- helpers ----------
     function signedIn() {
       return request.auth != null;
     }
+    function isOwner(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
 
-    function isConversationMember(conversationId) {
-      let conversation = get(/databases/$(database)/documents/conversations/$(conversationId));
+    // --- staff roles ---
+    // Fail closed: no role (or an unknown role) = not staff. Never default to a powerful role.
+    // (call signedIn() first; one exists() + one get() per call)
+    function roleOf() {
+      return exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+        ? get(/databases/$(database)/documents/admins/$(request.auth.uid)).data.get('role', 'none')
+        : 'none';
+    }
+    function isStaff() {
+      return signedIn() && roleOf() in ['super_admin', 'admin', 'moderator'];
+    }
+    function isStaffUid(uid) {
+      return exists(/databases/$(database)/documents/admins/$(uid));
+    }
+    function isSuper() {
+      return signedIn() && roleOf() == 'super_admin';
+    }
+    // "admin" in the rest of this file means admin OR super_admin
+    function isAdmin() {
+      return signedIn() && roleOf() in ['super_admin', 'admin'];
+    }
+    function isMod() {
+      return signedIn() && roleOf() == 'moderator';
+    }
+
+    // The automation account used by the scheduled GitHub Action: a normal Firebase Auth user whose
+    // uid has a document in /botRunners (created by hand). It can only act as AI bots (see below).
+    function isBotRunner() {
+      return signedIn() && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid));
+    }
+
+    // Not blocked and not under a temporary suspension.
+    function notBanned() {
+      let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return signedIn()
-        && conversation.data.members is list
-        && request.auth.uid in conversation.data.members;
+        && u.banned != true
+        && (u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time);
     }
 
-    // Users collection
-    match /users/{userId} {
-      allow read: if signedIn();
-      allow create: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.keys().hasOnly([
-          'uid', 'email', 'displayName', 'photoURL', 'bio', 'createdAt', 'updatedAt'
-        ])
-        && request.resource.data.uid == userId
-        && request.resource.data.email is string
-        && request.resource.data.displayName is string
-        && request.resource.data.displayName.size() >= 1
-        && request.resource.data.displayName.size() <= 80
-        && request.resource.data.photoURL is string
-        && request.resource.data.photoURL.size() <= 2048
-        && request.resource.data.bio is string
-        && request.resource.data.bio.size() <= 500
+    function pairId(a, b) {
+      return a < b ? a + '_' + b : b + '_' + a;
+    }
+    function textOk(v, max) {
+      return v is string && v.size() <= max;
+    }
+    function groupDoc(gid) {
+      return get(/databases/$(database)/documents/groups/$(gid)).data;
+    }
+    function canSeePost(p) {
+      return p.visibility == 'public'
+        || request.auth.uid in p.audience
+        || (p.visibility == 'group' && request.auth.uid in groupDoc(p.groupId).members);
+    }
+    function isBotUser(id) {
+      return exists(/databases/$(database)/documents/users/$(id))
+        && get(/databases/$(database)/documents/users/$(id)).data.get('isBot', false) == true;
+    }
+    // AI bots may only react / comment on posts of other bots or of users who switched on
+    // Settings -> "Allow AI bots to react and comment" (users/{uid}.settings.allowBotEngagement).
+    function engagementOk(ownerUid) {
+      return isBotUser(ownerUid)
+        || get(/databases/$(database)/documents/users/$(ownerUid)).data.get('settings', {}).get('allowBotEngagement', false) == true;
+    }
+    // comment rules read the post once (`let`) instead of once per condition
+    function userMayComment(postId) {
+      let p = get(/databases/$(database)/documents/posts/$(postId)).data;
+      return p.get('commentsDisabled', false) == false && canSeePost(p);
+    }
+    function botMayComment(postId) {
+      let p = get(/databases/$(database)/documents/posts/$(postId)).data;
+      return p.get('commentsDisabled', false) == false && p.visibility == 'public' && engagementOk(p.uid);
+    }
+    function botIds() {
+      return ['bot_01', 'bot_02', 'bot_03', 'bot_04', 'bot_05', 'bot_06', 'bot_07', 'bot_08', 'bot_09', 'bot_10',
+              'bot_11', 'bot_12', 'bot_13', 'bot_14', 'bot_15', 'bot_16', 'bot_17', 'bot_18', 'bot_19', 'bot_20',
+              'bot_21', 'bot_22', 'bot_23', 'bot_24', 'bot_25', 'bot_26', 'bot_27', 'bot_28', 'bot_29', 'bot_30'];
+    }
+    function validPost(d) {
+      return textOk(d.text, 5000)
+        && d.visibility in ['public', 'friends', 'me', 'group']
+        && d.audience is list
+        && d.audience.size() <= 1500
+        && d.reactions == {}
+        && d.commentCount == 0
+        && d.shareCount == 0;
+    }
+    function nameOk(d) {
+      return textOk(d.name, 60) && d.name.size() >= 2 && textOk(d.bio, 500);
+    }
+
+    // ---------- staff ----------
+    match /admins/{uid} {
+      allow read: if isOwner(uid) || isSuper();
+      // only a super_admin manages staff, and never their own entry
+      // Only a super_admin, never for themselves, only for a real (non-bot) existing user,
+      // with a known role and nothing but the expected fields.
+      allow create, update: if isSuper()
+        && uid != request.auth.uid
+        && !uid.matches('bot_.*')
+        && exists(/databases/$(database)/documents/users/$(uid))
+        && request.resource.data.keys().hasOnly(['role', 'addedBy', 'addedAt'])
+        && request.resource.data.role in ['super_admin', 'admin', 'moderator']
+        && request.resource.data.addedBy == request.auth.uid;
+      allow delete: if isSuper() && uid != request.auth.uid;
+    }
+
+    // every staff action is logged by the client; nobody can edit or delete a log entry
+    match /adminLogs/{id} {
+      // a staff member can only log as themselves, with their real role and the real server time
+      allow create: if isStaff()
+        && request.resource.data.keys().hasOnly(['actorUid', 'actorName', 'role', 'action', 'target', 'details', 'createdAt'])
+        && request.resource.data.actorUid == request.auth.uid
+        && request.resource.data.role == roleOf()
         && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
-      allow update: if signedIn()
-        && request.auth.uid == userId
-        && request.resource.data.uid == resource.data.uid
-        && request.resource.data.email == resource.data.email
-        && request.resource.data.createdAt == resource.data.createdAt
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'displayName', 'bio', 'photoURL', 'updatedAt'
-        ])
-        && (!('displayName' in request.resource.data)
-          || (request.resource.data.displayName is string
-            && request.resource.data.displayName.size() >= 1
-            && request.resource.data.displayName.size() <= 80))
-        && (!('bio' in request.resource.data)
-          || (request.resource.data.bio is string
-            && request.resource.data.bio.size() <= 500))
-        && (!('photoURL' in request.resource.data)
-          || (request.resource.data.photoURL is string
-            && request.resource.data.photoURL.size() <= 2048));
-      allow delete: if signedIn() && request.auth.uid == userId;
+        && textOk(request.resource.data.action, 120)
+        && textOk(request.resource.data.details, 500);
+      allow read: if isAdmin();
+      allow update, delete: if false;
     }
 
-    // Posts collection. Counts must always match their backing arrays.
-    match /posts/{postId} {
+    // ---------- site settings & announcements ----------
+    match /settings/{id} {
+      allow read: if true; // maintenance flag / registration flag must be readable before login
+      allow write: if isAdmin() && id == 'global'
+        && request.resource.data.keys().hasOnly(['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'])
+        && request.resource.data.get('maintenance', false) is bool
+        && request.resource.data.get('registrationOpen', true) is bool
+        && request.resource.data.get('botsEnabled', true) is bool
+        && request.resource.data.get('botToBotComments', false) is bool;
+    }
+    match /announcements/{id} {
       allow read: if signedIn();
-
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly([
-          'authorId', 'authorName', 'authorPhotoURL', 'content', 'imageUrl',
-          'createdAt', 'updatedAt', 'likes', 'likesCount', 'comments', 'commentsCount'
-        ])
-        && request.resource.data.authorId == request.auth.uid
-        && request.resource.data.authorName is string
-        && request.resource.data.authorName.size() >= 1
-        && request.resource.data.authorName.size() <= 80
-        && request.resource.data.content is string
-        && request.resource.data.content.size() >= 1
-        && request.resource.data.content.size() <= 5000
-        && request.resource.data.imageUrl is string
-        && request.resource.data.imageUrl.size() <= 2048
-        && request.resource.data.likes is list
-        && request.resource.data.likes.size() == 0
-        && request.resource.data.likesCount == 0
-        && request.resource.data.comments is list
-        && request.resource.data.comments.size() == 0
-        && request.resource.data.commentsCount == 0
-        && request.resource.data.createdAt == request.time
-        && request.resource.data.updatedAt == request.time;
-
-      allow update: if signedIn()
-        && request.resource.data.authorId == resource.data.authorId
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'likes', 'likesCount', 'comments', 'commentsCount', 'updatedAt'
-        ])
-        && request.resource.data.updatedAt == request.time
-        && (
-          (
-            request.resource.data.likes == resource.data.likes
-            && request.resource.data.likesCount == resource.data.likesCount
-          )
-          ||
-          (
-            request.resource.data.likes is list
-            && request.resource.data.likesCount == request.resource.data.likes.size()
-            && request.resource.data.likes.size() <= resource.data.likes.size() + 1
-            && request.resource.data.likes.size() >= resource.data.likes.size() - 1
-            && (
-              (
-                request.resource.data.likes.size() == resource.data.likes.size() + 1
-                && request.resource.data.likes.hasAll(resource.data.likes)
-                && request.auth.uid in request.resource.data.likes
-                && !(request.auth.uid in resource.data.likes)
-              )
-              ||
-              (
-                request.resource.data.likes.size() == resource.data.likes.size() - 1
-                && resource.data.likes.hasAll(request.resource.data.likes)
-                && request.auth.uid in resource.data.likes
-                && !(request.auth.uid in request.resource.data.likes)
-              )
-            )
-          )
-        )
-        && (
-          request.resource.data.comments == resource.data.comments
-          && request.resource.data.commentsCount == resource.data.commentsCount
-          ||
-          (
-            request.resource.data.comments is list
-            && request.resource.data.comments.size() == resource.data.comments.size() + 1
-            && request.resource.data.commentsCount == request.resource.data.comments.size()
-            && request.resource.data.comments.hasAll(resource.data.comments)
-            && request.resource.data.comments[request.resource.data.comments.size() - 1].authorId == request.auth.uid
-            && request.resource.data.comments[request.resource.data.comments.size() - 1].content is string
-            && request.resource.data.comments[request.resource.data.comments.size() - 1].content.size() >= 1
-            && request.resource.data.comments[request.resource.data.comments.size() - 1].content.size() <= 1000
-          )
-          ||
-          (
-            request.auth.uid == resource.data.authorId
-            && request.resource.data.comments is list
-            && resource.data.comments.hasAll(request.resource.data.comments)
-            && request.resource.data.comments.size() == resource.data.comments.size() - 1
-            && request.resource.data.commentsCount == request.resource.data.comments.size()
-          )
-        );
-
-      allow delete: if signedIn()
-        && resource.data.authorId == request.auth.uid;
+      allow create, update: if isAdmin() && textOk(request.resource.data.text, 500);
+      allow delete: if isAdmin();
     }
 
-    // Conversations are readable only by their listed participants.
-    match /conversations/{conversationId} {
-      allow read: if signedIn()
-        && request.auth.uid in resource.data.members;
+    // ---------- server jobs (GitHub Actions with a service account) ----------
+    // Permanent account deletion: a super_admin files a request; the scheduled job does the work.
+    match /deletionRequests/{uid} {
+      allow read: if isSuper();
+      allow create: if isSuper()
+        && uid != request.auth.uid
+        && !uid.matches('bot_.*')
+        && !isStaffUid(uid)
+        && request.resource.data.keys().hasOnly(['status', 'requestedBy', 'name', 'createdAt'])
+        && request.resource.data.status == 'pending'
+        && request.resource.data.requestedBy == request.auth.uid;
+      allow delete: if isSuper();
+      allow update: if false;
+    }
+    match /system/{id} {
+      allow read: if isSuper();
+      allow write: if false;
+    }
 
-      allow create: if signedIn()
-        && request.resource.data.keys().hasOnly([
-          'type', 'groupName', 'members', 'memberNames', 'memberPhotos',
-          'createdBy', 'createdAt', 'updatedAt', 'lastMessage',
-          'lastMessageAt', 'unreadCounts'
-        ])
-        && request.resource.data.type in ['direct', 'group']
-        && request.resource.data.members is list
-        && request.resource.data.members.size() >= 2
-        && request.resource.data.members.size() <= 20
-        && request.resource.data.members.hasAll([request.auth.uid])
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.memberNames is map
-        && request.resource.data.memberPhotos is map
-        && request.resource.data.unreadCounts is map
-        && request.resource.data.memberNames.keys().hasAll(request.resource.data.members)
-        && request.resource.data.memberPhotos.keys().hasAll(request.resource.data.members)
-        && request.resource.data.unreadCounts.keys().hasAll(request.resource.data.members)
-        && request.resource.data.memberNames.keys().hasOnly(request.resource.data.members)
-        && request.resource.data.memberPhotos.keys().hasOnly(request.resource.data.members)
-        && request.resource.data.unreadCounts.keys().hasOnly(request.resource.data.members)
-        && request.resource.data.lastMessage is string
-        && request.resource.data.lastMessage.size() <= 5000
-        && (
-          (request.resource.data.type == 'direct'
-            && request.resource.data.members.size() == 2)
-          ||
-          (request.resource.data.type == 'group'
-            && request.resource.data.groupName is string
-            && request.resource.data.groupName.size() >= 2
-            && request.resource.data.groupName.size() <= 60)
-        );
+    // ---------- bot automation ----------
+    match /botRunners/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false; // create by hand in the Firebase console
+    }
+    match /botState/{id} {
+      allow read, write: if isBotRunner();
+    }
+    // A user's message to a bot is mirrored here so the scheduled job can answer it.
+    match /botInbox/{id} {
+      allow create: if notBanned()
+        && request.resource.data.fromUid == request.auth.uid
+        && isBotUser(request.resource.data.botId)
+        && textOk(request.resource.data.text, 500)
+        && request.resource.data.handled == false
+        && request.resource.data.chatId == pairId(request.auth.uid, request.resource.data.botId);
+      allow read: if isBotRunner() || isStaff();
+      allow update, delete: if isBotRunner() || isAdmin();
+    }
+    match /botLogs/{id} {
+      allow create: if isBotRunner() || isAdmin();
+      allow read: if isStaff();
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
 
-      // Participants may update the conversation preview and unread counters,
-      // but cannot change its membership, type, or creator.
-      allow update: if signedIn()
-        && request.auth.uid in resource.data.members
-        && request.resource.data.members == resource.data.members
-        && request.resource.data.type == resource.data.type
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'lastMessage', 'lastMessageAt', 'updatedAt', 'unreadCounts'
-        ])
-        && request.resource.data.lastMessage is string
-        && request.resource.data.lastMessage.size() <= 5000
-        && request.resource.data.unreadCounts is map
-        && request.resource.data.unreadCounts.keys().hasAll(resource.data.members)
-        && request.resource.data.unreadCounts.keys().hasOnly(resource.data.members)
-        && request.resource.data.unreadCounts.diff(resource.data.unreadCounts)
-          .affectedKeys().hasOnly([request.auth.uid]);
+    // ---------- users ----------
+    match /users/{uid} {
+      allow read: if signedIn();
+      allow create: if
+        (isOwner(uid)
+          && nameOk(request.resource.data)
+          && request.resource.data.name.size() >= 2
+          && request.resource.data.banned == false
+          && request.resource.data.get('isBot', false) == false
+          && request.resource.data.get('verified', false) == false
+          && request.resource.data.get('suspendedUntil', null) == null)
+        // staff-only: seed an AI bot profile
+        || (isAdmin()
+          && uid.matches('bot_[0-9][0-9]')
+          && request.resource.data.isBot == true
+          && request.resource.data.banned == false
+          && nameOk(request.resource.data));
+      allow update: if
+        // the user edits their own profile / settings (never roles, blocks, badges)
+        (isOwner(uid)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['banned', 'isBot', 'verified', 'suspendedUntil'])
+          && nameOk(request.resource.data))
+        // admin: block, verify, suspend, edit basic info
+        // (an admin cannot touch another staff member; only a super_admin can)
+        || (isAdmin()
+          && (isSuper() || !isStaffUid(uid))
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['banned', 'verified', 'suspendedUntil', 'name', 'nameLower', 'bio', 'photo', 'cover'])
+          && nameOk(request.resource.data))
+        // moderator: temporary suspension of non-staff users only
+        || (isMod()
+          && !isStaffUid(uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['suspendedUntil']))
+        // admin: full control of a bot profile (it can never be turned into a normal user)
+        || (isAdmin()
+          && resource.data.get('isBot', false) == true
+          && request.resource.data.isBot == true
+          && nameOk(request.resource.data));
+      allow delete: if isAdmin() && resource.data.get('isBot', false) == true;
 
-      allow delete: if signedIn()
-        && resource.data.createdBy == request.auth.uid;
-
-      match /messages/{messageId} {
-        allow read: if isConversationMember(conversationId);
-
-        // Phase 1 initially supports authenticated text messages.
-        allow create: if isConversationMember(conversationId)
-          && request.resource.data.keys().hasOnly([
-            'senderId', 'senderName', 'type', 'text', 'createdAt', 'readBy'
-          ])
-          && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.senderName is string
-          && request.resource.data.senderName.size() <= 80
-          && request.resource.data.type == 'text'
-          && request.resource.data.text is string
-          && request.resource.data.text.size() >= 1
-          && request.resource.data.text.size() <= 5000
-          && request.resource.data.createdAt == request.time
-          && request.resource.data.readBy is list
-          && request.resource.data.readBy.size() == 1
-          && request.resource.data.readBy.hasOnly([request.auth.uid]);
-
-        // A participant may add only their own read receipt.
-        allow update: if isConversationMember(conversationId)
-          && request.auth.uid != resource.data.senderId
-          && !(request.auth.uid in resource.data.readBy)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy'])
-          && request.resource.data.readBy is list
-          && request.resource.data.readBy.hasAll(resource.data.readBy)
-          && request.resource.data.readBy.size() == resource.data.readBy.size() + 1
-          && request.resource.data.readBy.hasOnly(
-            get(/databases/$(database)/documents/conversations/$(conversationId)).data.members
-          )
-          && request.auth.uid in request.resource.data.readBy;
-
-        allow delete: if isConversationMember(conversationId)
-          && resource.data.senderId == request.auth.uid;
+      match /saved/{postId} {
+        allow read, write: if isOwner(uid);
       }
+    }
+
+    // ---------- posts ----------
+    match /posts/{postId} {
+      allow read: if signedIn() && (
+        resource.data.visibility == 'public'
+        || request.auth.uid in resource.data.audience
+        || (resource.data.visibility == 'group'
+            && request.auth.uid in groupDoc(resource.data.groupId).members)
+        || isStaff()
+      );
+
+      allow create: if
+        (notBanned()
+          && request.resource.data.uid == request.auth.uid
+          && validPost(request.resource.data)
+          && (request.resource.data.groupId == null
+              || request.auth.uid in groupDoc(request.resource.data.groupId).members))
+        // staff or the bot-runner posting as an AI bot: public, text/photo only, never a video
+        || ((isAdmin() || isBotRunner())
+          && isBotUser(request.resource.data.uid)
+          && validPost(request.resource.data)
+          && request.resource.data.visibility == 'public'
+          && request.resource.data.groupId == null
+          && request.resource.data.videoUrl == '');
+
+      allow update:
+        // staff moderation: hide / restore, switch comments on or off
+        if (isStaff()
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'commentsDisabled']))
+        // bot-runner: bump commentCount by one after commenting as a bot
+        || (isBotRunner()
+          && engagementOk(resource.data.uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+          && math.abs(request.resource.data.commentCount - resource.data.commentCount) <= 1)
+        // bot-runner: add / change a reaction, only under a bot's own key
+        || (isBotRunner()
+          && resource.data.visibility == 'public'
+          && engagementOk(resource.data.uid)
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly(botIds()))
+        // everybody else: their own reaction key, or a counter moved by exactly one step
+        || (notBanned() && (
+          (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+            && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([request.auth.uid])
+            // my own reaction is removed, or is one of the six known types
+            && (!(request.auth.uid in request.resource.data.reactions)
+                || request.resource.data.reactions[request.auth.uid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']))
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
+            && math.abs(request.resource.data.commentCount - resource.data.commentCount) <= 1)
+          || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['shareCount'])
+            && math.abs(request.resource.data.shareCount - resource.data.shareCount) <= 1)
+        ));
+
+      allow delete: if isOwner(resource.data.uid) || isStaff();
+
+      match /comments/{cid} {
+        allow read: if signedIn()
+          && (isStaff() || canSeePost(get(/databases/$(database)/documents/posts/$(postId)).data));
+        allow create: if
+          (notBanned()
+            && request.resource.data.uid == request.auth.uid
+            && textOk(request.resource.data.text, 2000)
+            && userMayComment(postId))
+          // staff or the bot-runner commenting as an AI bot (public posts with comments on)
+          || ((isAdmin() || isBotRunner())
+            && isBotUser(request.resource.data.uid)
+            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI
+            && textOk(request.resource.data.text, 2000)
+            && botMayComment(postId));
+        allow delete: if isOwner(resource.data.uid)
+          || isOwner(get(/databases/$(database)/documents/posts/$(postId)).data.uid)
+          || isStaff();
+      }
+    }
+
+    // ---------- reports (staff only) ----------
+    match /reports/{id} {
+      allow create: if notBanned()
+        && request.resource.data.reporterUid == request.auth.uid
+        && request.resource.data.status == 'open'
+        && textOk(request.resource.data.details, 1000);
+      allow read: if isStaff();
+      allow update: if isStaff()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt'])
+        && request.resource.data.status in ['open', 'resolved']
+        && request.resource.data.get('resolvedBy', request.auth.uid) == request.auth.uid;
+      allow delete: if isAdmin();
+    }
+
+    // ---------- friends ----------
+    match /friendRequests/{id} {
+      allow read: if signedIn()
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+      allow create: if notBanned()
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.to != request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.to
+        && !exists(/databases/$(database)/documents/friendships/$(pairId(request.auth.uid, request.resource.data.to)));
+      allow delete: if signedIn()
+        && (resource.data.from == request.auth.uid || resource.data.to == request.auth.uid);
+    }
+
+    match /friendships/{pair} {
+      allow read: if signedIn() && request.auth.uid in resource.data.members;
+      // Only the receiver of a pending request can create the friendship.
+      allow create: if notBanned()
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members.size() == 2
+        && pair == pairId(request.resource.data.members[0], request.resource.data.members[1])
+        && exists(/databases/$(database)/documents/friendRequests/$(
+              (request.resource.data.members[0] == request.auth.uid
+                ? request.resource.data.members[1]
+                : request.resource.data.members[0]) + '_' + request.auth.uid));
+      allow delete: if signedIn() && request.auth.uid in resource.data.members;
+    }
+
+    match /follows/{id} {
+      allow read: if signedIn();
+      allow create: if notBanned()
+        && request.resource.data.follower == request.auth.uid
+        && request.resource.data.followed != request.auth.uid
+        && id == request.auth.uid + '_' + request.resource.data.followed;
+      allow delete: if signedIn() && resource.data.follower == request.auth.uid;
+    }
+
+    // ---------- messaging ----------
+    match /chats/{chatId} {
+      allow get: if signedIn()
+        && (resource == null || request.auth.uid in resource.data.members)
+        // the bot-runner may open a private chat only when one member is an AI bot (it has to answer there)
+        || (isBotRunner() && resource != null && resource.data.type == 'private' && resource.data.members.hasAny(botIds()));
+      allow list: if signedIn() && request.auth.uid in resource.data.members;
+      allow create: if notBanned()
+        && request.auth.uid in request.resource.data.members
+        && request.resource.data.members.size() >= 2
+        && request.resource.data.members.size() <= 50
+        && request.resource.data.type in ['private', 'group']
+        && (request.resource.data.type == 'group'
+            || (request.resource.data.members.size() == 2
+                && chatId == pairId(request.resource.data.members[0], request.resource.data.members[1])));
+      // Members never change, except by the creator of a group chat.
+      allow update: if (signedIn()
+          && request.auth.uid in resource.data.members
+          && request.resource.data.type == resource.data.type
+          && (request.resource.data.members == resource.data.members
+              || (resource.data.type == 'group' && resource.data.createdBy == request.auth.uid)))
+        // bot-runner: only the "last message" preview of a private chat, written as a bot member
+        || (isBotRunner()
+          && resource.data.type == 'private'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt'])
+          && isBotUser(request.resource.data.lastMessage.uid)
+          && request.resource.data.lastMessage.uid in resource.data.members);
+
+      match /messages/{mid} {
+        allow read: if (signedIn()
+            && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members)
+          // bot-runner: only the recent history of a chat with an AI bot
+          || (isBotRunner()
+            && get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'private'
+            && get(/databases/$(database)/documents/chats/$(chatId)).data.members.hasAny(botIds()));
+        allow create: if
+          (notBanned()
+            && request.resource.data.uid == request.auth.uid
+            && textOk(request.resource.data.text, 4000)
+            && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members)
+          // bot-runner answering a user's message as the bot that is a member of this chat
+          || (isBotRunner()
+            && isBotUser(request.resource.data.uid)
+            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI
+            && textOk(request.resource.data.text, 4000)
+            && request.resource.data.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members);
+        allow delete: if isOwner(resource.data.uid);
+      }
+    }
+
+    // ---------- stories (visible to the author's audience for 24h) ----------
+    match /stories/{id} {
+      allow read: if signedIn() && request.auth.uid in resource.data.audience;
+      allow create: if notBanned()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.audience is list
+        && request.resource.data.audience.size() <= 1500
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.expiresAt <= request.time + duration.value(25, 'h');
+      allow delete: if isOwner(resource.data.uid) || isStaff();
+    }
+
+    // ---------- short videos ----------
+    match /reels/{id} {
+      allow read: if signedIn();
+      allow create: if notBanned()
+        && request.resource.data.uid == request.auth.uid
+        && textOk(request.resource.data.caption, 500)
+        && request.resource.data.likes == {};
+      allow update: if notBanned()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes'])
+        && request.resource.data.likes.diff(resource.data.likes).affectedKeys().hasOnly([request.auth.uid]);
+      allow delete: if isOwner(resource.data.uid) || isStaff();
+    }
+
+    // ---------- groups ----------
+    match /groups/{gid} {
+      allow read: if signedIn();
+      allow create: if notBanned()
+        && request.resource.data.ownerUid == request.auth.uid
+        && request.resource.data.members == [request.auth.uid]
+        && request.resource.data.privacy in ['public', 'private']
+        && textOk(request.resource.data.name, 80)
+        && request.resource.data.name.size() >= 2;
+      allow update: if signedIn() && (
+        (resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerUid == resource.data.ownerUid)
+        // join a public group
+        || (resource.data.privacy == 'public'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+          && request.resource.data.members.toSet().difference(resource.data.members.toSet()).hasOnly([request.auth.uid])
+          && resource.data.members.toSet().difference(request.resource.data.members.toSet()).size() == 0)
+        // leave a group
+        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+          && request.resource.data.members.toSet().difference(resource.data.members.toSet()).size() == 0
+          && resource.data.members.toSet().difference(request.resource.data.members.toSet()).hasOnly([request.auth.uid]))
+      );
+      allow delete: if isOwner(resource.data.ownerUid) || isStaff();
+
+      match /requests/{uid} {
+        allow create: if isOwner(uid) && notBanned();
+        allow read, delete: if isOwner(uid)
+          || (signedIn() && get(/databases/$(database)/documents/groups/$(gid)).data.ownerUid == request.auth.uid);
+      }
+    }
+
+    // ---------- notifications ----------
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.to == request.auth.uid;
+      allow create: if (notBanned()
+          && request.resource.data.from == request.auth.uid
+          && request.resource.data.to is string
+          && request.resource.data.to != request.auth.uid)
+        // bot-runner telling a user that a bot commented / replied
+        || (isBotRunner()
+          && isBotUser(request.resource.data.from)
+          && request.resource.data.to is string);
+      allow update: if signedIn() && resource.data.to == request.auth.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+      allow delete: if signedIn() && resource.data.to == request.auth.uid;
     }
   }
 }

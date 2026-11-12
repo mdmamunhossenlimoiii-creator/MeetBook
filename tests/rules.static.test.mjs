@@ -1,0 +1,134 @@
+// STATIC checks of firestore.rules: they read the rules text and guard the security-critical lines against
+// regressions. They do NOT execute the rules (that needs the Firebase Emulator or the console Rules Playground),
+// so passing here is necessary, not sufficient.
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+
+const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+
+// text of `match /<name>/{...} { ... }` (brace matched)
+function block(name) {
+  const m = new RegExp(`match /${name}/\\{[^}]*\\}\\s*\\{`).exec(rules);
+  assert.ok(m, `no match block for ${name}`);
+  let depth = 1, i = m.index + m[0].length;
+  while (depth && i < rules.length) { const c = rules[i++]; if (c === '{') depth++; else if (c === '}') depth--; }
+  return rules.slice(m.index, i);
+}
+const fn = (name) => { const m = new RegExp(`function ${name}\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\n    \\}`).exec(rules); assert.ok(m, `function ${name}`); return m[1]; };
+const allows = (b) => [...b.matchAll(/allow ([a-z, ]+):\s*if ([^;]*);/g)].map((m) => ({ ops: m[1].split(',').map((x) => x.trim()), cond: m[2] }));
+
+test('braces and parentheses are balanced', () => {
+  assert.equal(rules.split('{').length, rules.split('}').length);
+  assert.equal(rules.split('(').length, rules.split(')').length);
+});
+
+test('roles fail closed: no default to a powerful role, only 3 known roles count as staff', () => {
+  assert.doesNotMatch(rules, /\.get\('role',\s*'(super_admin|admin|moderator)'\)/, 'a missing role must never default to a staff role');
+  assert.match(fn('roleOf'), /\.get\('role', 'none'\)/);
+  assert.match(fn('isStaff'), /roleOf\(\) in \['super_admin', 'admin', 'moderator'\]/);
+  assert.match(fn('isSuper'), /roleOf\(\) == 'super_admin'/);
+  assert.match(fn('isAdmin'), /\['super_admin', 'admin'\]/);
+  assert.match(fn('isMod'), /roleOf\(\) == 'moderator'/);
+});
+
+test('/admins can only be written by a super admin, never for oneself, never for bots, only known fields', () => {
+  const a = allows(block('admins'));
+  const writes = a.filter((x) => x.ops.some((o) => ['create', 'update', 'delete', 'write'].includes(o)));
+  assert.ok(writes.length >= 2);
+  for (const w of writes) { assert.match(w.cond, /isSuper\(\)/); assert.match(w.cond, /uid != request\.auth\.uid/); }
+  const create = writes.find((w) => w.ops.includes('create'));
+  assert.match(create.cond, /!uid\.matches\('bot_\.\*'\)/);
+  assert.match(create.cond, /hasOnly\(\['role', 'addedBy', 'addedAt'\]\)/);
+  assert.match(create.cond, /role in \['super_admin', 'admin', 'moderator'\]/);
+  assert.match(create.cond, /exists\(.*users\/\$\(uid\)\)/);
+});
+
+test('staff-only collections have no open writes', () => {
+  for (const name of ['admins', 'adminLogs', 'settings', 'announcements', 'deletionRequests', 'system', 'botRunners', 'botState']) {
+    for (const a of allows(block(name))) {
+      if (!a.ops.some((o) => ['create', 'update', 'delete', 'write'].includes(o))) continue;
+      assert.notEqual(a.cond.trim(), 'true', `${name}: open write`);
+      assert.doesNotMatch(a.cond, /^signedIn\(\)$/, `${name}: any signed-in user can write`);
+    }
+  }
+  assert.match(block('adminLogs'), /allow update, delete: if false;/, 'logs are immutable');
+  assert.match(block('system'), /allow write: if false;/);
+  assert.match(block('botRunners'), /allow write: if false;/);
+});
+
+test('permanent deletion requests: super admin only, never staff or bots', () => {
+  const c = allows(block('deletionRequests')).find((x) => x.ops.includes('create')).cond;
+  assert.match(c, /isSuper\(\)/); assert.match(c, /!isStaffUid\(uid\)/); assert.match(c, /!uid\.matches\('bot_\.\*'\)/);
+  assert.match(block('deletionRequests'), /allow update: if false;/);
+});
+
+test('users: owners cannot grant themselves bans, badges, bot flag or suspension; admins cannot touch other staff', () => {
+  const u = block('users');
+  assert.match(u, /hasAny\(\['banned', 'isBot', 'verified', 'suspendedUntil'\]\)/);
+  assert.match(u, /request\.resource\.data\.get\('isBot', false\) == false/);
+  assert.match(u, /isAdmin\(\)\s*&& \(isSuper\(\) \|\| !isStaffUid\(uid\)\)/, 'an admin must not edit/ban another staff member');
+  assert.match(u, /isMod\(\)\s*&& !isStaffUid\(uid\)/, 'a moderator must not suspend staff');
+  assert.match(u, /allow delete: if isAdmin\(\) && resource\.data\.get\('isBot', false\) == true;/, 'only bot profiles can be deleted from the client');
+});
+
+test('moderators get only moderation powers: no settings, staff, logs, bot logs or announcements writes', () => {
+  assert.match(block('settings'), /isAdmin\(\)/); assert.doesNotMatch(block('settings'), /isMod\(\)|isStaff\(\)/);
+  assert.match(block('announcements'), /isAdmin\(\)/);
+  const logs = allows(block('adminLogs'));
+  assert.ok(logs.find((x) => x.ops.includes('read')).cond.includes('isAdmin()'), 'moderators cannot read logs');
+  assert.doesNotMatch(block('botLogs').match(/allow create:[^;]*;/)[0], /isStaff\(\)|isMod\(\)/);
+  const rep = block('reports');
+  assert.match(rep, /allow delete: if isAdmin\(\)/);
+  assert.match(rep, /hasOnly\(\['status', 'action', 'resolvedBy', 'resolvedAt'\]\)/);
+});
+
+test('settings/global only accepts the known fields with real booleans', () => {
+  const s = block('settings');
+  assert.match(s, /keys\(\)\.hasOnly\(\['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'\]\)/);
+  assert.match(s, /'botsEnabled', true\) is bool/);
+});
+
+test('AI bots: runner and admin can only act as bots, and only with the owner\'s consent', () => {
+  assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
+  assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
+  const posts = block('posts');
+  const botComment = posts.slice(posts.indexOf('match /comments'));
+  assert.match(botComment, /isBotUser\(request\.resource\.data\.uid\)[\s\S]*botMayComment\(postId\)/, 'bot comments go through botMayComment');
+  assert.match(fn('botMayComment'), /engagementOk\(p\.uid\)/, 'bot comments need consent');
+  assert.match(fn('botMayComment'), /visibility == 'public'/);
+  const runnerReaction = /isBotRunner\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)/;
+  assert.match(posts, runnerReaction, 'bot reactions need consent and a public post');
+  assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
+  assert.match(posts, /hasOnly\(botIds\(\)\)/, 'the runner may only set bot-keyed reactions');
+  // the runner is not allowed to write anything but bot content
+  for (const col of ['botState', 'botInbox']) assert.match(block(col), /isBotRunner\(\)/);
+});
+
+test('comments can be switched off by staff and are enforced for everybody', () => {
+  const posts = block('posts');
+  assert.match(fn('userMayComment'), /commentsDisabled', false\) == false/);
+  assert.match(fn('botMayComment'), /commentsDisabled', false\) == false/);
+  assert.match(posts, /hasOnly\(\['hidden', 'commentsDisabled'\]\)/);
+});
+
+test('suspension is enforced on every write through notBanned()', () => {
+  assert.match(fn('notBanned'), /suspendedUntil/);
+  assert.match(fn('notBanned'), /request\.time/);
+});
+
+test('no approve / reject post system exists in rules', () => {
+  assert.doesNotMatch(rules, /approv|reject/i);
+});
+
+test('admin logs: only as yourself, with your real role and server time; reactions only use known types', () => {
+  const c = allows(block('adminLogs')).find((x) => x.ops.includes('create')).cond;
+  assert.match(c, /actorUid == request\.auth\.uid/); assert.match(c, /role == roleOf\(\)/); assert.match(c, /createdAt == request\.time/); assert.match(c, /hasOnly\(\[/);
+  assert.match(block('posts'), /\['like', 'love', 'haha', 'wow', 'sad', 'angry'\]/);
+});
+
+test('bot-runner can read ONLY private chats that include an AI bot (it must read them to answer)', () => {
+  const chats = block('chats');
+  assert.match(chats, /isBotRunner\(\) && resource != null && resource\.data\.type == 'private' && resource\.data\.members\.hasAny\(botIds\(\)\)/);
+  assert.match(chats, /isBotRunner\(\)\s*&& get\(.*?chats\/\$\(chatId\)\)\.data\.type == 'private'\s*&& get\(.*?\)\.data\.members\.hasAny\(botIds\(\)\)/s);
+});

@@ -1,0 +1,61 @@
+name: Tests
+
+# Runs on pull requests and on pushes to main. Uses NO secrets and cannot touch your Firebase project:
+#  * unit      - rules interpreter + permission matrix + mutation tests, script tests against an in-memory Firestore
+#  * browser   - headless Chromium smoke test of the Admin panel (role handling, fail-closed)
+#  * rules-emulator - the SAME permission matrix executed against the REAL Firebase Firestore Emulator
+#                     (local process on the runner, demo project, no network to your real project)
+# Recommended: Settings -> Branches -> branch protection for main -> "Require status checks" -> select all three jobs.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Node tests (rules matrix, mutation, simulator, scripts, edge cases)
+        run: node --test "tests/*.test.mjs" "tests/rules-sim/*.test.mjs" "tests/rules-matrix/*.test.mjs" "tests/emulator/harness.test.mjs"
+      - name: Import check
+        run: python3 tests/check-imports.py .
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Playwright + Chromium
+        run: |
+          python -m pip install playwright
+          python -m playwright install --with-deps chromium
+      - name: Admin panel smoke test
+        run: python3 tests/admin-smoke.py .
+
+  rules-emulator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Firebase tools + rules-unit-testing (pinned in tests/emulator/package.json)
+        run: cd tests/emulator && npm install --no-audit --no-fund
+      - name: Run the permission matrix on the real Firestore emulator
+        run: ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-mysocial "node tests/emulator/run.mjs"

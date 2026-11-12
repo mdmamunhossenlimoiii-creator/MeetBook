@@ -1,0 +1,28 @@
+name: Account deletion queue
+
+# Processes "permanent account deletion" requests queued by a Super Admin in the Admin panel.
+# Needs the FIREBASE_SERVICE_ACCOUNT repository secret (see README). Without it the job does nothing.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: account-deletion
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/account-deletion.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

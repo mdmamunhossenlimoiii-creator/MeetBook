@@ -1,0 +1,13 @@
+{
+  "name": "mysocial-rules-emulator-tests",
+  "private": true,
+  "type": "module",
+  "description": "Runs the permission matrix against the REAL Firebase Firestore Emulator. Used by CI only (needs Java and network to install).",
+  "dependencies": {
+    "@firebase/rules-unit-testing": "3.0.4",
+    "firebase": "10.14.1"
+  },
+  "devDependencies": {
+    "firebase-tools": "13.35.1"
+  }
+}
