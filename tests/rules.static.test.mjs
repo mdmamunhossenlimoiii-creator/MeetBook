@@ -94,7 +94,8 @@ test('AI bots: runner and admin can only act as bots, and only with the owner\'s
   assert.match(fn('runnerEnabled'), /enabled', false\) == true/);
   assert.match(fn('runnerEnabled'), /botIds/);
   assert.match(fn('runnerMayActAs'), /botUid in/);
-  assert.match(fn('runnerMayActAs'), /isBotUser\(botUid\)/);
+  assert.match(fn('runnerHasBot'), /botUid in/);
+  assert.match(fn('runnerMayActAs'), /bot\.get\('isBot', false\) == true/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   const posts = block('posts');
@@ -104,11 +105,12 @@ test('AI bots: runner and admin can only act as bots, and only with the owner\'s
   assert.match(fn('botMayComment'), /visibility == 'public'/);
   const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)/;
   assert.match(posts, runnerReaction, 'bot reactions need consent and a public post');
+  assert.match(posts, /canPublishBot\(request\.resource\.data\.uid\)/, 'only admins or assigned active runners can publish as a bot');
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
   assert.match(posts, /hasOnly\(get\(.*botRunners.*botIds/s, 'the runner may only set reactions for its assigned bot IDs');
   // the runner is not allowed to write anything but bot content
   assert.match(block('botState'), /runnerEnabled\(\)/);
-  assert.match(block('botInbox'), /resource\.data\.botId in get\(.*botRunners.*botIds/s);
+  assert.match(block('botInbox'), /runnerHasBot\(resource\.data\.botId\)/);
   assert.match(block('botInbox'), /hasOnly\(\['handled', 'handledAt', 'skipped'\]\)/);
   assert.match(block('botInbox'), /members\.hasAll\(\[request\.auth\.uid, request\.resource\.data\.botId\]\)/);
   assert.match(block('botInbox'), /keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'text', 'handled', 'createdAt'\]\)/);
