@@ -58,4 +58,4 @@ jobs:
       - name: Install Firebase tools + rules-unit-testing (pinned in tests/emulator/package.json)
         run: cd tests/emulator && npm install --no-audit --no-fund
       - name: Run the permission matrix on the real Firestore emulator
-        run: ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-mysocial "node tests/emulator/run.mjs"
+        run: ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-meetbook "node tests/emulator/run.mjs"
