@@ -28,7 +28,7 @@ function assertNoSecrets(label, texts, m, extra = []) {
   const hay = [...texts, JSON.stringify([...m.docs.entries()]), m.calls.join('\n')].join('\n');
   for (const s of bad) assert.ok(!hay.includes(s), `${label}: a secret leaked (${s.slice(0, 12)}…)`);
 }
-const delEnv = (m, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token`, ...more });
+const delEnv = (m, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token`, ...more });
 const req = (uid, by = 'boss') => ({ status: 'pending', requestedBy: by, requestedAt: now });
 const base = () => ({ 'admins/boss': { role: 'super_admin' }, 'users/boss': { name: 'Boss' } });
 
@@ -130,7 +130,7 @@ test('deletion: a bad service-account secret fails without echoing it', async ()
 
 // ============================================================ backup
 const out = () => mkdtempSync(`${tmpdir()}/edge-`);
-const backupEnv = (m, dir, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: dir, BACKUP_PASSPHRASE: PASS, ...more });
+const backupEnv = (m, dir, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: dir, BACKUP_PASSPHRASE: PASS, ...more });
 const fileIn = (dir) => `${dir}/${readdirSync(dir).find((f) => f.endsWith('.enc'))}`;
 
 test('backup: short passphrase refused, DRY_RUN writes nothing, secrets never printed', async () => {
