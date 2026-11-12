@@ -126,7 +126,7 @@ function applySite() {
   if (blocked && !maintenanceOn) {
     maintenanceOn = true;
     root.innerHTML = `<div class="auth-page maintenance"><div class="card auth-card"><h2>We'll be right back</h2>
-      <p>${esc(state.site.maintenanceMessage || 'MySocial is down for maintenance. Please try again soon.')}</p>
+      <p>${esc(state.site.maintenanceMessage || 'MeetBook is down for maintenance. Please try again soon.')}</p>
       <button class="btn btn-block" id="mt-out">Sign out</button></div></div>`;
     $('#mt-out').addEventListener('click', () => signOut(auth));
   } else if (!blocked && maintenanceOn) {
@@ -134,7 +134,7 @@ function applySite() {
   }
 }
 
-const dismissedKey = 'mysocial-dismissed-announcements';
+const dismissedKey = 'meetbook-dismissed-announcements';
 const getDismissed = () => { try { return JSON.parse(sessionStorage.getItem(dismissedKey) || '[]'); } catch { return []; } };
 function drawAnnouncements() {
   const bar = $('#announce-bar');
@@ -158,7 +158,7 @@ const NAV = [
 function renderShell() {
   root.innerHTML = `
   <header class="topbar">
-    <a class="logo" href="#/feed" aria-label="MySocial home">MySocial</a>
+    <a class="logo" href="#/feed" aria-label="MeetBook home">MeetBook</a>
     <div class="search">
       <span class="search-icon">${icon('search', 18)}</span>
       <input id="search-input" type="search" placeholder="Search people and groups" autocomplete="off" aria-label="Search">
@@ -347,7 +347,7 @@ function boot() {
       renderAuth(root);
       return;
     }
-    root.innerHTML = '<div class="splash">MySocial</div>';
+    root.innerHTML = '<div class="splash">MeetBook</div>';
     try {
       const data = await ensureProfile(user);
       if (data.banned || isSuspended(data)) {
