@@ -34,7 +34,7 @@ if (process.env.CONFIRM_PROJECT_ID !== sa.project_id) {
 }
 
 const b = readFileSync(file);
-if (b.subarray(0, 5).toString() !== 'MSBK1') { console.error('Not a MySocial backup file.'); process.exit(1); }
+if (b.subarray(0, 5).toString() !== 'MBK01') { console.error('Not a MeetBook backup file.'); process.exit(1); }
 let backup;
 try {
   const d = createDecipheriv('aes-256-gcm', scryptSync(process.env.BACKUP_PASSPHRASE, b.subarray(5, 21), 32), b.subarray(21, 33));

@@ -1,21 +1,20 @@
-// Fill in the values from: Firebase console -> Project settings -> Your apps -> Web app.
-// These values are public by design (security comes from firestore.rules + App Check).
+// MeetBook Firebase web configuration.
+// This is the public client configuration for the separate MeetBook Firebase project.
+// Never place a service-account private key or other server secret in this file.
 export const firebaseConfig = {
-  apiKey: "AIzaSyBxFFuEAYDKX78opbJFjgbprHGORhKTg6U",
-  authDomain: "mysocial-33681.firebaseapp.com",
-  projectId: "mysocial-33681",
-  storageBucket: "mysocial-33681.firebasestorage.app",
-  messagingSenderId: "619243901911",
-  appId: "1:619243901911:web:02fcc5316fcd6d5d4ab192"
+  apiKey: "AIzaSyBuEplTfDJ8jUiBnsiXUGgQgeCk6fQ5HV8",
+  authDomain: "meetbook-65d30.firebaseapp.com",
+  projectId: "meetbook-65d30",
+  storageBucket: "meetbook-65d30.firebasestorage.app",
+  messagingSenderId: "259106008948",
+  appId: "1:259106008948:web:da7fc03fc2d2212aea4621",
+  measurementId: "G-1R8JPESEZ1"
 };
 
-// Optional: reCAPTCHA v3 site key for Firebase App Check. Leave "" to disable.
+// Optional: reCAPTCHA v3 site key for Firebase App Check.
+// Configure this only after registering the MeetBook web app in Firebase App Check.
 export const appCheckSiteKey = "";
 
-// Optional: free Cloudinary account for uploading short videos from the browser.
-// Create an *unsigned* upload preset in Cloudinary, then fill both values.
-// Leave empty to allow video links only.
-export const cloudinary = {
-  cloudName: "",
-  uploadPreset: ""
-};
+// Secure image upload endpoint. The owner adds the deployed MeetBook Worker URL later.
+// Never place Cloudinary API credentials in this frontend file.
+export const imageUploadEndpoint = "";

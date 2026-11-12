@@ -1,7 +1,8 @@
 // Shared helpers: DOM, formatting, images, modal/toast, user cache, notifications.
-import { db, doc, getDoc, addDoc, collection, serverTimestamp } from './firebase.js';
+import { auth, db, doc, getDoc, addDoc, collection, serverTimestamp } from './firebase.js';
 import { state } from './state.js';
 import { icon } from './icons.js';
+import { imageUploadEndpoint } from './firebase-config.js';
 
 export const $ = (s, r = document) => r.querySelector(s);
 export const $$ = (s, r = document) => [...r.querySelectorAll(s)];
@@ -214,7 +215,8 @@ export function confirmBox(message, okLabel = 'Confirm') {
 // ---------- images ----------
 export function resizeImage(file, max = 900, quality = 0.72) {
   return new Promise((resolve, reject) => {
-    if (!file || !file.type.startsWith('image/')) return reject(new Error('Please choose an image file.'));
+    if (!file || !['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.type)) return reject(new Error('Choose a JPG, PNG, WebP, or GIF image.'));
+    if (file.size > 10 * 1024 * 1024) return reject(new Error('Choose an image smaller than 10 MB.'));
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload = () => {
@@ -237,6 +239,46 @@ export function resizeImage(file, max = 900, quality = 0.72) {
     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Could not read this image.')); };
     img.src = url;
   });
+}
+
+
+/**
+ * Upload a compressed JPEG through the authenticated MeetBook Worker.
+ * The Worker verifies the Firebase ID token and signs the Cloudinary request.
+ */
+export async function uploadImageToCloudinary(dataUrl) {
+  if (!imageUploadEndpoint) {
+    throw new Error('Photo upload is not configured yet. The MeetBook owner must finish the secure image upload setup.');
+  }
+  if (typeof dataUrl !== 'string' || !dataUrl.startsWith('data:image/jpeg;base64,')) {
+    throw new Error('The selected photo could not be prepared. Please choose it again.');
+  }
+  if (!auth?.currentUser) throw new Error('Sign in before uploading a photo.');
+  const blob = await (await fetch(dataUrl)).blob();
+  if (!blob.size || blob.size > 1024 * 1024) throw new Error('The compressed photo must be 1 MB or smaller.');
+  const token = await auth.currentUser.getIdToken();
+  const body = new FormData();
+  body.append('file', blob, 'meetbook-photo.jpg');
+  const response = await fetch(imageUploadEndpoint, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || typeof result.secure_url !== 'string') {
+    const messages = {
+      401: 'Your sign-in has expired. Sign in again and retry.',
+      413: 'The compressed photo is too large.',
+      415: 'Only supported JPEG photos can be uploaded.',
+      429: 'Too many photo uploads. Please wait and try again.'
+    };
+    throw new Error(messages[response.status] || 'Photo upload failed. Please try again later.');
+  }
+  const url = new URL(result.secure_url);
+  if (url.protocol !== 'https:' || url.hostname !== 'res.cloudinary.com') {
+    throw new Error('The image service returned an invalid photo URL.');
+  }
+  return url.href;
 }
 
 // ---------- video links ----------
@@ -269,29 +311,6 @@ export function videoHtml(url, { lazy = false, autoplay = false } = {}) {
     return `<iframe class="video-frame" ${attr} title="Video" loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>`;
   }
   return `<video class="video-el" src="${esc(v.src)}" controls playsinline preload="metadata" ${autoplay ? 'autoplay muted' : ''} loop></video>`;
-}
-
-export async function uploadVideoToCloudinary(file, { cloudName, uploadPreset }, onProgress) {
-  if (!cloudName || !uploadPreset) throw new Error('Video upload is not configured.');
-  if (!file.type.startsWith('video/')) throw new Error('Please choose a video file.');
-  if (file.size > 50 * 1024 * 1024) throw new Error('Video must be 50 MB or smaller.');
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/video/upload`);
-    xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100)); };
-    xhr.onload = () => {
-      try {
-        const res = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300 && res.secure_url) resolve(res.secure_url);
-        else reject(new Error((res.error && res.error.message) || 'Upload failed.'));
-      } catch { reject(new Error('Upload failed.')); }
-    };
-    xhr.onerror = () => reject(new Error('Network error during upload.'));
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('upload_preset', uploadPreset);
-    xhr.send(fd);
-  });
 }
 
 // ---------- reactions ----------

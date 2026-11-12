@@ -3,13 +3,13 @@
 // Only talks to the local emulator (demo-* project id), never to a real Firebase project.
 //
 //   cd tests/emulator && npm install && cd ../..
-//   ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-mysocial "node tests/emulator/run.mjs"
+//   ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-meetbook "node tests/emulator/run.mjs"
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
-const PROJECT = 'demo-mysocial';
+const PROJECT = 'demo-meetbook';
 if (!process.env.FIRESTORE_EMULATOR_HOST) { console.error('Run this through `firebase emulators:exec` so FIRESTORE_EMULATOR_HOST is set.'); process.exit(2); }
 
 const conv = (v) => {

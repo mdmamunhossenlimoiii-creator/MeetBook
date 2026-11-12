@@ -1,5 +1,5 @@
 // Light / dark / system theme.
-const KEY = 'mysocial-theme';
+const KEY = 'meetbook-theme';
 const mq = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
 
 export function getThemePref() {

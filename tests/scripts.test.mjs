@@ -9,6 +9,11 @@ import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { startMock } from './mock-firestore.mjs';
 import { BOTS } from '../js/bots-data.js';
+import { firebaseConfig } from '../js/firebase-config.js';
+
+// Bot runner integration tests require an owner-configured Firebase Web App. They are skipped
+// while MeetBook intentionally has blank Firebase placeholders; bot automation remains out of scope.
+const botRunnerConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 // async on purpose: the mock server lives in this process, so a blocking spawnSync would deadlock it
 const exec = (args, env) => new Promise((resolve) => {
@@ -30,7 +35,7 @@ function seedBots(extra = {}) {
 }
 const post = (uid, text, more = {}) => ({ uid, authorName: uid, text, image: '', videoUrl: '', visibility: 'public', audience: [], groupId: null, reactions: {}, commentCount: 0, shareCount: 0, createdAt: now, ...more });
 
-test('bot runner: consent, safety, limits, chat, logs', async () => {
+test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfigured }, async () => {
   const m = await startMock({ seed: {
     ...seedBots(),
     'settings/global': { botsEnabled: true, botToBotComments: false },
@@ -83,7 +88,7 @@ test('bot runner: consent, safety, limits, chat, logs', async () => {
   } finally { await m.close(); }
 });
 
-test('bot runner: global OFF, per-bot OFF and daily limit stop everything', async () => {
+test('bot runner: global OFF, per-bot OFF and daily limit stop everything', { skip: !botRunnerConfigured }, async () => {
   for (const [name, seed] of [
     ['global off', { ...seedBots(), 'settings/global': { botsEnabled: false } }],
     ['bots inactive', { ...seedBots({ active: false }) }],
@@ -124,7 +129,7 @@ test('account deletion: purges data + auth user, refuses staff and bots', async 
   // more than one query page (500) and more than one list page (300) of data
   for (let i = 0; i < 1100; i++) m.put(`posts/bulk${i}`, post('del1', `bulk ${i}`));
   for (let i = 0; i < 650; i++) m.put(`posts/a/comments/cc${i}`, { uid: 'keep', text: 'x' });
-  const env = { FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token` };
+  const env = { FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token` };
   try {
     const r = await run('scripts/account-deletion.mjs', env);
     assert.equal(r.status, 0, r.stderr + r.stdout);
@@ -148,7 +153,7 @@ test('account deletion: purges data + auth user, refuses staff and bots', async 
 test('backup: refuses without passphrase, writes an encrypted file that decrypts only with the passphrase', async () => {
   const m = await startMock({ seed: { 'users/u1': { name: 'Rina', photo: 'data:image/jpeg;base64,' + 'A'.repeat(5000) }, 'posts/p1': post('u1', 'secret post'), 'posts/p1/comments/c1': { uid: 'u1', text: 'c' } } });
   const out = mkdtempSync(`${tmpdir()}/bk-`);
-  const env = { FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: out };
+  const env = { FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: out };
   try {
     assert.notEqual((await run('scripts/backup.mjs', env)).status, 0, 'needs a passphrase');
     const r = await run('scripts/backup.mjs', { ...env, BACKUP_PASSPHRASE: 'correct horse battery' });
@@ -173,7 +178,7 @@ test('restore: dry run by default, needs project confirmation, keeps existing, s
   const out = mkdtempSync(`${tmpdir()}/rs-`);
   const pass = 'correct horse battery';
   try {
-    const b = await run('scripts/backup.mjs', { FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: src.url, TOKEN_URL: `${src.url}/token`, OUT_DIR: out, BACKUP_PASSPHRASE: pass });
+    const b = await run('scripts/backup.mjs', { FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: src.url, TOKEN_URL: `${src.url}/token`, OUT_DIR: out, BACKUP_PASSPHRASE: pass });
     assert.equal(b.status, 0, b.stderr);
   } finally { await src.close(); }
   const [file] = readdirSync(out);

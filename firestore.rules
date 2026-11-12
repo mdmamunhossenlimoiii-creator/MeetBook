@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// MySocial — Cloud Firestore security rules.
+// MeetBook — Cloud Firestore security rules.
 //
 // Staff roles live ONLY in /admins/{uid} (field `role` MUST be exactly super_admin | admin | moderator).
 // A document with a missing or unknown role gives NO staff power at all (fail closed).
@@ -61,6 +61,20 @@ service cloud.firestore {
     function pairId(a, b) {
       return a < b ? a + '_' + b : b + '_' + a;
     }
+
+    // Enforce the recipient's private-message preference in Firestore, not only in the UI.
+    function canSendPrivateMessage(chat) {
+      let members = chat.members;
+      let otherUid = members[0] == request.auth.uid ? members[1] : members[0];
+      let recipient = get(/databases/$(database)/documents/users/$(otherUid)).data;
+      return chat.type == 'private'
+        && members.size() == 2
+        && request.auth.uid in members
+        && (isBotUser(otherUid)
+          || recipient.get('settings', {}).get('allowMessages', 'everyone') == 'everyone'
+          || (recipient.get('settings', {}).get('allowMessages', 'everyone') == 'friends'
+            && exists(/databases/$(database)/documents/friendships/$(pairId(request.auth.uid, otherUid)))));
+    }
     function textOk(v, max) {
       return v is string && v.size() <= max;
     }
@@ -107,6 +121,15 @@ service cloud.firestore {
     }
     function nameOk(d) {
       return textOk(d.name, 60) && d.name.size() >= 2 && textOk(d.bio, 500);
+    }
+
+    function validSettings(d) {
+      let s = d.get('settings', {});
+      return s is map
+        && s.get('profileVisibility', 'everyone') in ['everyone', 'friends']
+        && s.get('allowMessages', 'everyone') in ['everyone', 'friends']
+        && s.get('defaultVisibility', 'public') in ['public', 'friends', 'me']
+        && s.get('allowBotEngagement', false) is bool;
     }
 
     // ---------- staff ----------
@@ -206,6 +229,7 @@ service cloud.firestore {
       allow create: if
         (isOwner(uid)
           && nameOk(request.resource.data)
+          && validSettings(request.resource.data)
           && request.resource.data.name.size() >= 2
           && request.resource.data.banned == false
           && request.resource.data.get('isBot', false) == false
@@ -221,7 +245,8 @@ service cloud.firestore {
         // the user edits their own profile / settings (never roles, blocks, badges)
         (isOwner(uid)
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['banned', 'isBot', 'verified', 'suspendedUntil'])
-          && nameOk(request.resource.data))
+          && nameOk(request.resource.data)
+          && validSettings(request.resource.data))
         // admin: block, verify, suspend, edit basic info
         // (an admin cannot touch another staff member; only a super_admin can)
         || (isAdmin()
@@ -382,19 +407,42 @@ service cloud.firestore {
         && request.resource.data.type in ['private', 'group']
         && (request.resource.data.type == 'group'
             || (request.resource.data.members.size() == 2
-                && chatId == pairId(request.resource.data.members[0], request.resource.data.members[1])));
-      // Members never change, except by the creator of a group chat.
+                && chatId == pairId(request.resource.data.members[0], request.resource.data.members[1])
+                && canSendPrivateMessage(request.resource.data)));
+      // Members may update only the message preview and their own read receipt.
+      // Group membership can be changed only by the original group creator.
       allow update: if (signedIn()
           && request.auth.uid in resource.data.members
           && request.resource.data.type == resource.data.type
-          && (request.resource.data.members == resource.data.members
-              || (resource.data.type == 'group' && resource.data.createdBy == request.auth.uid)))
-        // bot-runner: only the "last message" preview of a private chat, written as a bot member
+          && request.resource.data.members == resource.data.members
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt', 'lastRead'])
+          && request.resource.data.lastMessage is map
+          && request.resource.data.lastMessage.keys().hasOnly(['text', 'uid'])
+          && request.resource.data.lastMessage.uid == request.auth.uid
+          && textOk(request.resource.data.lastMessage.text, 120)
+          && request.resource.data.lastAt == request.time
+          && request.resource.data.lastRead is map
+          && request.resource.data.lastRead.diff(resource.data.lastRead).affectedKeys().hasOnly([request.auth.uid]))
+        || (signedIn()
+          && resource.data.type == 'group'
+          && resource.data.createdBy == request.auth.uid
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.type == 'group'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+          && request.resource.data.members is list
+          && request.resource.data.members.size() >= 2
+          && request.resource.data.members.size() <= 50
+          && request.auth.uid in request.resource.data.members)
+        // bot-runner: only the last-message preview of a private chat, written as a bot member.
         || (isBotRunner()
           && resource.data.type == 'private'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt'])
+          && request.resource.data.lastMessage is map
+          && request.resource.data.lastMessage.keys().hasOnly(['text', 'uid'])
           && isBotUser(request.resource.data.lastMessage.uid)
-          && request.resource.data.lastMessage.uid in resource.data.members);
+          && request.resource.data.lastMessage.uid in resource.data.members
+          && textOk(request.resource.data.lastMessage.text, 120)
+          && (request.resource.data.lastAt is timestamp));
 
       match /messages/{mid} {
         allow read: if (signedIn()
@@ -407,7 +455,9 @@ service cloud.firestore {
           (notBanned()
             && request.resource.data.uid == request.auth.uid
             && textOk(request.resource.data.text, 4000)
-            && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members)
+            && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.members
+            && (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group'
+              || canSendPrivateMessage(get(/databases/$(database)/documents/chats/$(chatId)).data)))
           // bot-runner answering a user's message as the bot that is a member of this chat
           || (isBotRunner()
             && isBotUser(request.resource.data.uid)
@@ -445,30 +495,52 @@ service cloud.firestore {
 
     // ---------- groups ----------
     match /groups/{gid} {
-      allow read: if signedIn();
+      // Public groups are discoverable; private group documents are visible only to members.
+      allow read: if signedIn()
+        && (resource.data.privacy == 'public' || request.auth.uid in resource.data.members);
       allow create: if notBanned()
+        && request.resource.data.keys().hasOnly(['name', 'nameLower', 'description', 'privacy', 'ownerUid', 'members', 'createdAt'])
         && request.resource.data.ownerUid == request.auth.uid
         && request.resource.data.members == [request.auth.uid]
         && request.resource.data.privacy in ['public', 'private']
         && textOk(request.resource.data.name, 80)
-        && request.resource.data.name.size() >= 2;
+        && request.resource.data.name.size() >= 2
+        && textOk(request.resource.data.nameLower, 80)
+        && textOk(request.resource.data.description, 500)
+        && request.resource.data.createdAt == request.time;
       allow update: if signedIn() && (
+        // Owner may edit group details and manage membership, but cannot transfer ownership
+        // or alter creation metadata.
         (resource.data.ownerUid == request.auth.uid
-          && request.resource.data.ownerUid == resource.data.ownerUid)
-        // join a public group
+          && request.resource.data.ownerUid == resource.data.ownerUid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name', 'nameLower', 'description', 'privacy', 'members'])
+          && request.resource.data.privacy in ['public', 'private']
+          && textOk(request.resource.data.name, 80)
+          && request.resource.data.name.size() >= 2
+          && textOk(request.resource.data.nameLower, 80)
+          && textOk(request.resource.data.description, 500)
+          && request.resource.data.members is list
+          && request.resource.data.members.size() <= 5000
+          && request.auth.uid in request.resource.data.members)
+        // Join a public group: add only yourself, exactly one member.
         || (resource.data.privacy == 'public'
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+          && request.resource.data.members.size() == resource.data.members.size() + 1
           && request.resource.data.members.toSet().difference(resource.data.members.toSet()).hasOnly([request.auth.uid])
           && resource.data.members.toSet().difference(request.resource.data.members.toSet()).size() == 0)
-        // leave a group
-        || (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        // Leave a group: remove only yourself, exactly one member; owner cannot leave.
+        || (resource.data.ownerUid != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+          && request.resource.data.members.size() + 1 == resource.data.members.size()
           && request.resource.data.members.toSet().difference(resource.data.members.toSet()).size() == 0
           && resource.data.members.toSet().difference(request.resource.data.members.toSet()).hasOnly([request.auth.uid]))
       );
       allow delete: if isOwner(resource.data.ownerUid) || isStaff();
 
       match /requests/{uid} {
-        allow create: if isOwner(uid) && notBanned();
+        allow create: if isOwner(uid) && notBanned()
+          && request.resource.data.keys().hasOnly(['createdAt'])
+          && request.resource.data.createdAt == request.time;
         allow read, delete: if isOwner(uid)
           || (signedIn() && get(/databases/$(database)/documents/groups/$(gid)).data.ownerUid == request.auth.uid);
       }
@@ -477,16 +549,29 @@ service cloud.firestore {
     // ---------- notifications ----------
     match /notifications/{id} {
       allow read: if signedIn() && resource.data.to == request.auth.uid;
-      allow create: if (notBanned()
-          && request.resource.data.from == request.auth.uid
-          && request.resource.data.to is string
-          && request.resource.data.to != request.auth.uid)
-        // bot-runner telling a user that a bot commented / replied
-        || (isBotRunner()
-          && isBotUser(request.resource.data.from)
-          && request.resource.data.to is string);
+      // Both user and bot notifications must use the same narrow, validated schema.
+      allow create: if request.resource.data.keys().hasOnly([
+          'to', 'type', 'from', 'fromName', 'postId', 'extra', 'read', 'createdAt'
+        ])
+        && request.resource.data.to is string
+        && request.resource.data.to != ''
+        && request.resource.data.to != request.auth.uid
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.to))
+        && textOk(request.resource.data.type, 40)
+        && textOk(request.resource.data.fromName, 60)
+        && (request.resource.data.postId == null || textOk(request.resource.data.postId, 128))
+        && (request.resource.data.extra == null || textOk(request.resource.data.extra, 200))
+        && request.resource.data.read == false
+        && (request.resource.data.createdAt == request.time
+          || (isBotRunner() && request.resource.data.createdAt is timestamp))
+        && ((notBanned()
+            && request.resource.data.from == request.auth.uid)
+          // bot-runner telling a user that a bot commented / replied
+          || (isBotRunner()
+            && isBotUser(request.resource.data.from)));
       allow update: if signedIn() && resource.data.to == request.auth.uid
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read'])
+        && request.resource.data.read is bool;
       allow delete: if signedIn() && resource.data.to == request.auth.uid;
     }
   }

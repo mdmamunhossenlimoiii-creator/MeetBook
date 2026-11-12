@@ -38,7 +38,9 @@ const newPost = (uid, extra = {}) => ({ ...post(uid), createdAt: { $srv: 1 }, ..
 
 export const SEED = {
   'users/u1': user({ name: 'User One', settings: { allowBotEngagement: false } }),
-  'users/u2': user({ name: 'User Two', settings: { allowBotEngagement: true } }),
+  'users/u2': user({ name: 'User Two', settings: { allowBotEngagement: true, allowMessages: 'friends' } }),
+  'users/u3': user({ name: 'User Three', settings: { allowMessages: 'friends' } }),
+  'friendships/u1_u2': { members: ['u1', 'u2'] },
   'users/ub': user({ name: 'Blocked User', banned: true }),
   'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3) }),
   'users/mod': user({ name: 'Mod Person' }), 'users/adm': user({ name: 'Admin Person' }), 'users/adm2': user({ name: 'Second Admin' }),
@@ -64,9 +66,10 @@ export const SEED = {
   'announcements/a1': { text: 'Welcome', active: true },
   'deletionRequests/dr1': { status: 'pending', requestedBy: 'sup' },
   'system/backups': { status: 'ok' },
-  'chats/c_bot': { type: 'private', members: ['bot_01', 'u1'], lastMessage: { text: 'hi', uid: 'u1' } },
+  'chats/c_bot': { type: 'private', members: ['bot_01', 'u1'], lastMessage: { text: 'hi', uid: 'u1' }, lastRead: {} },
   'chats/c_bot/messages/m1': { uid: 'u1', text: 'hi' },
-  'chats/c_uu': { type: 'private', members: ['u1', 'u2'], lastMessage: { text: 'yo', uid: 'u1' } },
+  'chats/c_uu': { type: 'private', members: ['u1', 'u2'], lastMessage: { text: 'yo', uid: 'u1' }, lastRead: {} },
+  'chats/c_private_blocked': { type: 'private', members: ['u1', 'u3'], lastMessage: { text: 'hello', uid: 'u1' } },
   'chats/c_uu/messages/m1': { uid: 'u1', text: 'yo' },
   'notifications/n1': { to: 'u1', from: 'u2', type: 'comment', read: false },
   'groups/g1': { name: 'Photo Lovers', privacy: 'public', ownerUid: 'u1', members: ['u1'] },
@@ -85,6 +88,10 @@ cap('Users', 'Create own profile as blocked', 'create', 'users/u_new', { name: '
 cap('Users', 'Create own profile as a bot', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: false, isBot: true }, []);
 cap('Users', 'Create own profile already verified', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: false, verified: true }, []);
 cap('Users', 'Edit the bio of a normal user (owner: u1)', 'update', 'users/u1', { bio: 'hello world' }, ['user', 'admin', 'super']);
+cap('Users', 'Set valid messaging privacy preference', 'update', 'users/u1', { settings: { allowMessages: 'friends', profileVisibility: 'friends', defaultVisibility: 'friends', allowBotEngagement: false } }, ['user']);
+cap('Users', 'Set invalid messaging privacy preference', 'update', 'users/u1', { settings: { allowMessages: 'anyone' } }, []);
+cap('Users', 'Set invalid profile visibility preference', 'update', 'users/u1', { settings: { profileVisibility: 'private' } }, []);
+cap('Users', 'Set non-boolean bot engagement consent', 'update', 'users/u1', { settings: { allowBotEngagement: 'yes' } }, []);
 cap('Users', 'Moderator edits own bio (a super admin may too)', 'update', 'users/mod', { bio: 'hello' }, ['moderator', 'super']);
 cap('Users', 'Admin edits own bio (a super admin may too)', 'update', 'users/adm', { bio: 'hello' }, ['admin', 'super']);
 cap('Users', 'Super admin edits own bio (nobody else may)', 'update', 'users/sup', { bio: 'hello' }, ['super']);
@@ -225,11 +232,13 @@ cap('Chats', 'Reply as the bot in the bot chat', 'create', 'chats/c_bot/messages
 cap('Chats', 'Reply as a bot in a chat between two people', 'create', 'chats/c_uu/messages/new', { uid: 'bot_01', text: 'hi', createdAt: { $srv: 1 } }, []);
 cap('Chats', 'Runner writes as u1 in the bot chat', 'create', 'chats/c_bot/messages/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('Chats', 'Write a message in a chat between two people', 'create', 'chats/c_uu/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), ['user', 'other']);
-cap('Chats', 'Update the last-message preview of the bot chat', 'update', 'chats/c_bot', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'runner']);
-cap('Chats', 'Update the preview of a chat between two people', 'update', 'chats/c_uu', { lastMessage: { text: 'x', uid: 'bot_01' }, lastAt: { $srv: 1 } }, ['user', 'other']);
-cap('Notifications', 'Notify another user', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.uid, type: 'comment', read: false }), N.filter((x) => x !== 'other'));
-cap('Notifications', 'Notify as an AI bot', 'create', 'notifications/new', { to: 'u1', from: 'bot_01', type: 'comment', read: false }, ['runner']);
-cap('Notifications', 'Notify in somebody else\'s name', 'create', 'notifications/new', { to: 'u2', from: 'u1', type: 'comment', read: false }, ['user']);
+cap('Chats', 'Message a friends-only recipient without friendship', 'create', 'chats/c_private_blocked/messages/new', (a) => ({ uid: a.uid, text: 'hi', createdAt: { $srv: 1 } }), []);
+cap('Chats', 'Open a new private chat with a friends-only recipient without friendship', 'create', 'chats/new_private', () => ({ type: 'private', members: ['u1', 'u3'], createdBy: 'u1' }), []);
+cap('Chats', 'Update the last-message preview of the bot chat', 'update', 'chats/c_bot', (a) => ({ lastMessage: { text: 'x', uid: a.name === 'runner' ? 'bot_01' : a.uid }, lastAt: { $srv: 1 }, ...(a.name === 'runner' ? {} : { lastRead: { [a.uid]: { $srv: 1 } } }) }), ['user', 'runner']);
+cap('Chats', 'Update the preview of a chat between two people', 'update', 'chats/c_uu', (a) => ({ lastMessage: { text: 'x', uid: a.uid }, lastAt: { $srv: 1 }, lastRead: { [a.uid]: { $srv: 1 } } }), ['user', 'other']);
+cap('Notifications', 'Notify another user', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.uid, fromName: 'Test sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }), N.filter((x) => x !== 'other'));
+cap('Notifications', 'Notify as an AI bot', 'create', 'notifications/new', { to: 'u1', from: 'bot_01', fromName: 'TechTip Nova', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }, ['runner']);
+cap('Notifications', 'Notify in somebody else\'s name', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.name === 'user' ? 'u2' : 'u1', fromName: 'Forged sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }), []);
 cap('Notifications', 'Read, mark read and delete own notification', 'get', 'notifications/n1', null, ['user']);
 cap('Notifications', 'Mark own notification as read', 'update', 'notifications/n1', { read: true }, ['user']);
 

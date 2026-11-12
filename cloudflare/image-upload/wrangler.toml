@@ -1,0 +1,8 @@
+name = "meetbook-image-upload"
+main = "worker.js"
+compatibility_date = "2026-11-12"
+
+[vars]
+FIREBASE_PROJECT_ID = "meetbook-65d30"
+CLOUDINARY_CLOUD_NAME = "cvqfl3b9"
+ALLOWED_ORIGIN = "https://mdmamunhossenlimoiii-creator.github.io"

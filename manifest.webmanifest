@@ -1,0 +1,11 @@
+{
+  "name": "MeetBook",
+  "short_name": "MeetBook",
+  "description": "Connect with friends, share moments and discover communities.",
+  "start_url": "/MeetBook/",
+  "scope": "/MeetBook/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#1877f2",
+  "icons": []
+}

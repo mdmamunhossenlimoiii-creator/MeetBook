@@ -27,7 +27,7 @@ const MUTATIONS = [
   ['staff docs may contain any field', "        && request.resource.data.keys().hasOnly(['role', 'addedBy', 'addedAt'])\n", ""],
   ['staff may be made out of a bot or missing user', "        && !uid.matches('bot_.*')\n        && exists(/databases/$(database)/documents/users/$(uid))\n", ""],
   ['moderator can forge the role in a log', "        && request.resource.data.role == roleOf()\n", ""],
-  ['logs can be back-dated', "        && request.resource.data.createdAt == request.time\n", ""],
+  ['logs can be back-dated', "        && request.resource.data.role == roleOf()\n        && request.resource.data.createdAt == request.time\n        && textOk(request.resource.data.action, 120)", "        && request.resource.data.role == roleOf()\n        && textOk(request.resource.data.action, 120)"],
   ['logs can be edited', "allow update, delete: if false;\n    }\n\n    // ---------- site settings", "allow update, delete: if isStaff();\n    }\n\n    // ---------- site settings"],
   ['a moderator can change global settings', "allow write: if isAdmin() && id == 'global'", "allow write: if isStaff() && id == 'global'"],
   ['settings accept any field', "request.resource.data.keys().hasOnly(['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'])", "true"],

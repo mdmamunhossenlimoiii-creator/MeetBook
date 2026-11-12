@@ -28,7 +28,7 @@ export async function renderList(view) {
   try {
     const [mine, all] = await Promise.all([
       getDocs(query(collection(db, 'groups'), where('members', 'array-contains', state.user.uid))),
-      getDocs(query(collection(db, 'groups'), orderBy('createdAt', 'desc'), limit(30)))
+      getDocs(query(collection(db, 'groups'), where('privacy', '==', 'public'), orderBy('createdAt', 'desc'), limit(30)))
     ]);
     const mineList = mine.docs.map((d) => ({ id: d.id, ...d.data() }));
     const mineIds = new Set(mineList.map((g) => g.id));

@@ -67,7 +67,7 @@ export function renderAuth(root, { bannedMessage } = {}) {
   root.innerHTML = `
   <div class="auth-page">
     <div class="auth-hero">
-      <h1 class="logo-big">MySocial</h1>
+      <h1 class="logo-big">MeetBook</h1>
       <p>Connect with friends, share moments and discover what is happening around you.</p>
     </div>
     <div class="card auth-card">
@@ -170,7 +170,7 @@ export function renderSetupNeeded(root) {
   root.innerHTML = `
   <div class="auth-page">
     <div class="card auth-card setup">
-      <h2>MySocial setup needed</h2>
+      <h2>MeetBook setup needed</h2>
       <p>Firebase is not configured yet. Open <code>js/firebase-config.js</code> and fill in your Firebase web app settings
       (Firebase console → Project settings → Your apps → Web app).</p>
       <ol>

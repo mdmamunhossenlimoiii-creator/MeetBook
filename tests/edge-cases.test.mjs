@@ -28,7 +28,7 @@ function assertNoSecrets(label, texts, m, extra = []) {
   const hay = [...texts, JSON.stringify([...m.docs.entries()]), m.calls.join('\n')].join('\n');
   for (const s of bad) assert.ok(!hay.includes(s), `${label}: a secret leaked (${s.slice(0, 12)}…)`);
 }
-const delEnv = (m, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token`, ...more });
+const delEnv = (m, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, IDT_URL: m.url, TOKEN_URL: `${m.url}/token`, ...more });
 const req = (uid, by = 'boss') => ({ status: 'pending', requestedBy: by, requestedAt: now });
 const base = () => ({ 'admins/boss': { role: 'super_admin' }, 'users/boss': { name: 'Boss' } });
 
@@ -130,7 +130,7 @@ test('deletion: a bad service-account secret fails without echoing it', async ()
 
 // ============================================================ backup
 const out = () => mkdtempSync(`${tmpdir()}/edge-`);
-const backupEnv = (m, dir, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: dir, BACKUP_PASSPHRASE: PASS, ...more });
+const backupEnv = (m, dir, more = {}) => ({ FIREBASE_SERVICE_ACCOUNT: SA, MEETBOOK_FIREBASE_PROJECT_ID: 'test-proj', FS_URL: m.url, TOKEN_URL: `${m.url}/token`, OUT_DIR: dir, BACKUP_PASSPHRASE: PASS, ...more });
 const fileIn = (dir) => `${dir}/${readdirSync(dir).find((f) => f.endsWith('.enc'))}`;
 
 test('backup: short passphrase refused, DRY_RUN writes nothing, secrets never printed', async () => {
@@ -211,7 +211,7 @@ test('restore: refuses an old/unknown format even with the right passphrase', as
   const c = createCipheriv('aes-256-gcm', scryptSync(PASS, salt, 32), iv);
   const enc = Buffer.concat([c.update(gzipSync(Buffer.from(JSON.stringify({ format: 1, project: 'test-proj', data: { users: [{ id: 'u1', name: 'A' }] } })))), c.final()]);
   const dir = out(); const f = `${dir}/old.enc`;
-  writeFileSync(f, Buffer.concat([Buffer.from('MSBK1'), salt, iv, c.getAuthTag(), enc]));
+  writeFileSync(f, Buffer.concat([Buffer.from('MBK01'), salt, iv, c.getAuthTag(), enc]));
   const dst = await startMock({ seed: {} });
   try {
     const r = await exec(['scripts/restore.mjs', f, '--apply'], restoreEnv(dst));
@@ -267,4 +267,28 @@ test('restore: a failure half way is safe to re-run', async () => {
     assert.equal(r.status, 0, r.all); assert.match(r.stdout, /20 to create, 0 to overwrite, 10 existing kept/);
     assert.equal(dst.ids('posts').length, 30);
   } finally { await dst.close(); }
+});
+
+
+test('server jobs refuse a legacy MySocial service account before making any data request', async () => {
+  const m = await startMock({ seed: { ...base(), 'users/u1': { name: 'Keep' } } });
+  const legacySA = JSON.stringify({ client_email: 'legacy@mysocial-33681.iam.gserviceaccount.com', private_key: privateKey, project_id: 'mysocial-33681' });
+  const dir = out();
+  try {
+    const deletion = await exec(['scripts/account-deletion.mjs'], delEnv(m, {
+      FIREBASE_SERVICE_ACCOUNT: legacySA,
+      MEETBOOK_FIREBASE_PROJECT_ID: 'meetbook-test'
+    }));
+    assert.notEqual(deletion.status, 0);
+    assert.match(deletion.all, /does not match.*MeetBook project/i);
+
+    const backup = await exec(['scripts/backup.mjs'], backupEnv(m, dir, {
+      FIREBASE_SERVICE_ACCOUNT: legacySA,
+      MEETBOOK_FIREBASE_PROJECT_ID: 'meetbook-test'
+    }));
+    assert.notEqual(backup.status, 0);
+    assert.match(backup.all, /does not match.*MeetBook project/i);
+    assert.equal(m.calls.length, 0, 'no Firestore or Auth request may be made to the legacy project');
+    assert.notEqual(m.get('users/u1'), null, 'test data remains unchanged');
+  } finally { await m.close(); }
 });

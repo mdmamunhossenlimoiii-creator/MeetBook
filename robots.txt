@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://mdmamunhossenlimoiii-creator.github.io/MeetBook/sitemap.xml

@@ -2,7 +2,7 @@
 import { db, collection, addDoc, deleteDoc, doc, getDocs, query, where, serverTimestamp, Timestamp } from './firebase.js';
 import { state } from './state.js';
 import {
-  $, $$, esc, avatarHtml, prefetchUsers, toast, modal, closeModal, resizeImage, tsMs, timeAgo, errMsg,
+  $, $$, esc, avatarHtml, prefetchUsers, toast, modal, closeModal, resizeImage, uploadImageToCloudinary, tsMs, timeAgo, errMsg,
   isIndexError, indexLinkFrom, showIndexNotice
 } from './utils.js';
 import { icon } from './icons.js';
@@ -126,10 +126,11 @@ function openCreator(done) {
     const btn = $('#st-go', m);
     btn.disabled = true;
     try {
+      const imageUrl = mode === 'photo' ? await uploadImageToCloudinary(image) : '';
       await addDoc(collection(db, 'stories'), {
         uid: state.user.uid,
         authorName: state.profile.name,
-        image: mode === 'photo' ? image : '',
+        image: imageUrl,
         text: mode === 'text' ? text : '',
         bg: mode === 'text' ? bg : '',
         caption,

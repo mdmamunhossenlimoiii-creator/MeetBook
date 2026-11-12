@@ -17,6 +17,11 @@ const PASS = process.env.BACKUP_PASSPHRASE;
 if (!RAW) { console.log('FIREBASE_SERVICE_ACCOUNT secret is not set. Nothing to do.'); process.exit(0); }
 if (!PASS || PASS.length < 12) { console.error('Set a BACKUP_PASSPHRASE secret of at least 12 characters. Refusing to create an unencrypted backup.'); process.exit(1); }
 const sa = parseServiceAccount(RAW);
+const EXPECTED_PROJECT = process.env.MEETBOOK_FIREBASE_PROJECT_ID;
+if (!EXPECTED_PROJECT) { console.error('Set MEETBOOK_FIREBASE_PROJECT_ID to the new MeetBook Firebase project ID. Refusing backup.'); process.exit(1); }
+if (sa.project_id !== EXPECTED_PROJECT || sa.project_id === 'mysocial-33681') {
+  console.error('Firebase service account project does not match the configured MeetBook project. Refusing backup.'); process.exit(1);
+}
 const fs = createClient({ projectId: sa.project_id, fsUrl: process.env.FS_URL || 'https://firestore.googleapis.com', getToken: makeTokenGetter(sa) });
 const OUT = process.env.OUT_DIR || 'backup-out';
 const KEEP_IMAGES = process.env.BACKUP_INCLUDE_IMAGES === '1';
@@ -51,9 +56,9 @@ const plain = gzipSync(Buffer.from(JSON.stringify({ format: 2, project: sa.proje
 const salt = randomBytes(16), iv = randomBytes(12);
 const cipher = createCipheriv('aes-256-gcm', scryptSync(PASS, salt, 32), iv);
 const enc = Buffer.concat([cipher.update(plain), cipher.final()]);
-const file = Buffer.concat([Buffer.from('MSBK1'), salt, iv, cipher.getAuthTag(), enc]);
+const file = Buffer.concat([Buffer.from('MBK01'), salt, iv, cipher.getAuthTag(), enc]);
 const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-const name = `mysocial-backup-${stamp}.json.gz.enc`;
+const name = `meetbook-backup-${stamp}.json.gz.enc`;
 const sha = createHash('sha256').update(file).digest('hex');
 
 if (process.env.DRY_RUN === '1') { console.log(`[dry] would write ${name} (${file.length} bytes)`); process.exit(0); }

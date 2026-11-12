@@ -10,7 +10,7 @@ import asyncio, functools, http.server, json, sys, threading, os
 from playwright.async_api import async_playwright
 
 REPO = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else '.')
-FAKE_CFG = "export const firebaseConfig={apiKey:'x',authDomain:'x',projectId:'demo',storageBucket:'',messagingSenderId:'1',appId:'1:1:web:1'};export const appCheckSiteKey='';export const cloudinary={cloudName:'',uploadPreset:''};"
+FAKE_CFG = "export const firebaseConfig={apiKey:'x',authDomain:'x',projectId:'demo',storageBucket:'',messagingSenderId:'1',appId:'1:1:web:1'};export const appCheckSiteKey='';export const imageUploadEndpoint='';"
 
 STUB = r"""
 const DB = window.__DB; const LOG = (window.__log = window.__log || []);
