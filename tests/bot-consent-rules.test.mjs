@@ -8,6 +8,11 @@ import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { startMock } from './mock-firestore.mjs';
 import { BOTS } from '../js/bots-data.js';
+import { firebaseConfig } from '../js/firebase-config.js';
+
+// The runner integration requires the owner's new MeetBook Firebase Web App values.
+// Keep the rules-only cases active while the config is intentionally unconfigured.
+const botRunnerConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 const exec = (args, env) => new Promise((resolve) => {
   const c = spawn('node', args, { env: { ...process.env, ...env } });
@@ -50,7 +55,7 @@ async function asRunner(m) {
   return { call, S, comment };
 }
 
-test('rules + runner: the full run is never denied, and only consenting users are touched', async () => {
+test('rules + runner: the full run is never denied, and only consenting users are touched', { skip: !botRunnerConfigured }, async () => {
   const m = await startMock({ seed: seed(), rules: true });
   try {
     const r = await exec(['scripts/bot-runner.mjs'], env(m));
@@ -86,7 +91,7 @@ test('rules: even a hand-made request cannot make a bot engage with a user who d
   } finally { await m.close(); }
 });
 
-test('rules: withdrawing consent stops the bots on the very next run', async () => {
+test('rules: withdrawing consent stops the bots on the very next run', { skip: !botRunnerConfigured }, async () => {
   const m = await startMock({ seed: seed(), rules: true });
   try {
     const first = await exec(['scripts/bot-runner.mjs'], env(m, { BOT_POSTS: '0' }));
