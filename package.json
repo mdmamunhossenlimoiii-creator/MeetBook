@@ -2,7 +2,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test \"tests/image-upload-worker.test.mjs\" \"tests/*.test.mjs\" \"tests/rules-sim/*.test.mjs\" \"tests/rules-matrix/*.test.mjs\" \"tests/emulator/harness.test.mjs\" && python3 tests/check-imports.py .",
+    "test": "node --test \"tests/*.test.mjs\" \"tests/rules-sim/*.test.mjs\" \"tests/rules-matrix/*.test.mjs\" \"tests/emulator/harness.test.mjs\" && python3 tests/check-imports.py .",
     "test:browser": "python3 tests/admin-smoke.py .",
     "test:emulator": "cd tests/emulator && npm install && cd ../.. && ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-meetbook \"node tests/emulator/run.mjs\"",
     "test:worker": "node --test tests/image-upload-worker.test.mjs"
