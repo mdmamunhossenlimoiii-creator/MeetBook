@@ -49,7 +49,7 @@ export const SEED = {
   'users/bot_02': user({ name: 'Pixel Pal', isBot: true, bio: 'I am an AI bot.' }),
   'admins/mod': { role: 'moderator' }, 'admins/adm': { role: 'admin' }, 'admins/adm2': { role: 'admin' }, 'admins/sup': { role: 'super_admin' },
   'admins/leg': { enabled: true }, 'admins/bad': { role: 'owner' },
-  'botRunners/run': { enabled: true },
+  'botRunners/run': { enabled: true, botIds: ['bot_01'] },
   'botState/runner': { used: '{}' },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
@@ -63,6 +63,8 @@ export const SEED = {
   'reports/r1': { kind: 'post', targetId: 'p1', targetUid: 'u1', reporterUid: 'u2', reason: 'Spam', details: '', status: 'open' },
   'adminLogs/l1': { actorUid: 'adm', actorName: 'Admin Person', role: 'admin', action: 'x', target: '', details: '' },
   'settings/global': { botsEnabled: true },
+  'chats/bot_01_u1': { type: 'private', members: ['bot_01', 'u1'] },
+  'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] },
   'announcements/a1': { text: 'Welcome', active: true },
   'deletionRequests/dr1': { status: 'pending', requestedBy: 'sup' },
   'system/backups': { status: 'ok' },
@@ -212,8 +214,8 @@ cap('AI bots', 'Read the bot inbox', 'get', 'botInbox/i1', null, [...STAFF, 'run
 cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: pair(a.uid, 'bot_01'), createdAt: { $srv: 1 } }), N);
 cap('AI bots', 'Send an inbox message to a non-bot', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'u2', text: 'hello', handled: false, chatId: pair(a.uid, 'u2') }), []);
 cap('AI bots', 'Send an inbox message already marked handled', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: true, chatId: pair(a.uid, 'bot_01') }), []);
-cap('AI bots', 'Mark an inbox message handled', 'update', 'botInbox/i1', { handled: true }, [...ADM, 'runner']);
-cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bot_01', kind: 'post', text: 'x', createdAt: { $srv: 1 } }, [...ADM, 'runner']);
+cap('AI bots', 'Mark an inbox message handled', 'update', 'botInbox/i1', { handled: true, handledAt: { $srv: 1 } }, [...ADM, 'runner']);
+cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bot_01', botName: 'TechTip Nova', kind: 'post', targetId: 'p1', text: 'x', source: 'runner', createdAt: { $srv: 1 } }, [...ADM, 'runner']);
 cap('AI bots', 'Read bot activity logs', 'get', 'botLogs/bl1', null, STAFF);
 cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'changed' }, []);
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
