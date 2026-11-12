@@ -1,9 +1,10 @@
 name: Account deletion queue (disabled pending owner review)
 
-# SAFETY: This workflow can permanently delete Firebase Authentication users and Firestore data.
-# It is intentionally disabled until the owner completes MeetBook Firebase setup and explicitly
-# authorizes a separately reviewed deletion workflow.
-on: []
+# SAFETY: This automation is intentionally inactive. It has no push, schedule, or PR triggers.
+# The manual trigger exists only so the workflow remains valid in GitHub Actions; the job is
+# unconditionally skipped. Re-enabling requires a separate explicit owner-approved code change.
+on:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,4 +14,4 @@ jobs:
     if: ${{ false }}
     runs-on: ubuntu-latest
     steps:
-      - run: echo "Account deletion automation is disabled pending explicit owner authorization."
+      - run: echo "This workflow is disabled by policy."
