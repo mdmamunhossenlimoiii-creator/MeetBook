@@ -238,7 +238,7 @@ cap('Chats', 'Update the last-message preview of the bot chat', 'update', 'chats
 cap('Chats', 'Update the preview of a chat between two people', 'update', 'chats/c_uu', (a) => ({ lastMessage: { text: 'x', uid: a.uid }, lastAt: { $srv: 1 }, lastRead: { [a.uid]: { $srv: 1 } } }), ['user', 'other']);
 cap('Notifications', 'Notify another user', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.uid, fromName: 'Test sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }), N.filter((x) => x !== 'other'));
 cap('Notifications', 'Notify as an AI bot', 'create', 'notifications/new', { to: 'u1', from: 'bot_01', fromName: 'TechTip Nova', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }, ['runner']);
-cap('Notifications', 'Notify in somebody else\'s name', 'create', 'notifications/new', { to: 'u2', from: 'u1', fromName: 'Forged sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }, ['user']);
+cap('Notifications', 'Notify in somebody else\'s name', 'create', 'notifications/new', (a) => ({ to: 'u2', from: a.name === 'user' ? 'u2' : 'u1', fromName: 'Forged sender', type: 'comment', postId: null, extra: null, read: false, createdAt: { $srv: 1 } }), []);
 cap('Notifications', 'Read, mark read and delete own notification', 'get', 'notifications/n1', null, ['user']);
 cap('Notifications', 'Mark own notification as read', 'update', 'notifications/n1', { read: true }, ['user']);
 
