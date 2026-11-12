@@ -29,7 +29,7 @@ test('private chat message bodies are not copied into bot audit logs', () => {
 });
 
 test('runner inbox and private chat access are limited to assigned bots', () => {
-  assert.match(rules, /resource\.data\.botId in get\(.*botRunners.*botIds/s);
+  assert.match(rules, /runnerHasBot\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
   assert.match(rules, /runnerMayActAs\(request\.resource\.data\.uid\)/);
 });
