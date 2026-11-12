@@ -14,7 +14,7 @@ This document records source-level presence, not a claim that the app is product
 | Stories and reels | Existing modules present | Not re-verified in this change |
 | Notifications | Existing modules present | Not re-verified in this change |
 | Admin dashboard and moderation | Existing modules/rules present | Super Admin must be initialized in MeetBook Firebase |
-| Bot-related source | Retained, isolated | Bot workflows disabled; no bot work performed |
+| Bot-related source | Retained, isolated | Bot workflows archived outside `.github/workflows/`; no bot work performed |
 | Backup scripts | MeetBook naming and project guard prepared | No production backup executed |
 | Account deletion job | Script now requires the expected MeetBook project ID; workflow disabled | No production deletion executed |
 | GitHub Pages metadata | MeetBook URL configured | Deployment not verified |
