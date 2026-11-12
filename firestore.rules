@@ -62,7 +62,8 @@ service cloud.firestore {
     function runnerMayActAs(botUid) {
       return runnerEnabled()
         && botUid in get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])
-        && isBotUser(botUid);
+        && isBotUser(botUid)
+        && get(/databases/$(database)/documents/users/$(botUid)).data.get('active', true) == true;
     }
     function runnerMayReadChat(chat) {
       return runnerEnabled()
@@ -74,6 +75,7 @@ service cloud.firestore {
     function notBanned() {
       let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
       return signedIn()
+        && !isBotRunner()
         && u.banned != true
         && (u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time);
     }
