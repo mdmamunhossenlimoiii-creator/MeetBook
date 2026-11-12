@@ -1,14 +1,14 @@
 // MeetBook Firebase web configuration.
-// The repository intentionally contains placeholders only.
-// The owner must create a separate MeetBook Firebase project and paste its Web App config here.
-// Never paste a service-account private key or other server secret into this file.
+// This is the public client configuration for the separate MeetBook Firebase project.
+// Never place a service-account private key or other server secret in this file.
 export const firebaseConfig = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+  apiKey: "AIzaSyBuEplTfDJ8jUiBnsiXUGgQgeCk6fQ5HV8",
+  authDomain: "meetbook-65d30.firebaseapp.com",
+  projectId: "meetbook-65d30",
+  storageBucket: "meetbook-65d30.firebasestorage.app",
+  messagingSenderId: "259106008948",
+  appId: "1:259106008948:web:da7fc03fc2d2212aea4621",
+  measurementId: "G-1R8JPESEZ1"
 };
 
 // Optional: reCAPTCHA v3 site key for Firebase App Check.
