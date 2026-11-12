@@ -211,7 +211,7 @@ test('restore: refuses an old/unknown format even with the right passphrase', as
   const c = createCipheriv('aes-256-gcm', scryptSync(PASS, salt, 32), iv);
   const enc = Buffer.concat([c.update(gzipSync(Buffer.from(JSON.stringify({ format: 1, project: 'test-proj', data: { users: [{ id: 'u1', name: 'A' }] } })))), c.final()]);
   const dir = out(); const f = `${dir}/old.enc`;
-  writeFileSync(f, Buffer.concat([Buffer.from('MSBK1'), salt, iv, c.getAuthTag(), enc]));
+  writeFileSync(f, Buffer.concat([Buffer.from('MBK01'), salt, iv, c.getAuthTag(), enc]));
   const dst = await startMock({ seed: {} });
   try {
     const r = await exec(['scripts/restore.mjs', f, '--apply'], restoreEnv(dst));
