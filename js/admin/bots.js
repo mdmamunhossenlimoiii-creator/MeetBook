@@ -3,7 +3,7 @@ import { db, doc, getDoc, setDoc, collection, query, where, orderBy, limit, getD
 import { state } from '../state.js';
 import { $, $$, esc, avatarHtml, botBadge, errorBox, confirmBox, modal, closeModal, toast, errMsg, resizeImage, emptyState } from '../utils.js';
 import { listBots, seedBots, createBot, saveBot, deleteBot, postAsBot, commentAsBot, MAX_BOTS } from '../bots.js';
-import { BOTS, botAvatar, botCover } from '../bots-data.js';
+import { BOTS, ROLE_EMOJIS, botAvatar, botCover } from '../bots-data.js';
 import { PERSONALITIES, LANGUAGES, TOPICS } from '../bots-brain.js';
 import { act, loading, tagHtml, when, short } from './common.js';
 
@@ -111,11 +111,12 @@ export async function render(body) {
 
   function editBot(bot) {
     const isNew = !bot;
-    const v = bot || { name: '', username: '', bio: '', personality: 'friendly', lang: 'both', interests: [], dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
+    const v = bot || { name: '', username: '', bio: '', roleEmoji: '✨', personality: 'friendly', lang: 'both', interests: [], dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
     const tog = (k, label) => `<label class="row gap small"><input type="checkbox" data-k="${k}" ${v[k] === false ? '' : 'checked'}> ${label}</label>`;
     const m = modal(`<h3>${isNew ? 'New AI bot' : `Edit ${esc(v.name)}`}</h3>
       <div class="field"><label for="b-name">Name</label><input id="b-name" maxlength="60" value="${esc(v.name)}"></div>
       <div class="field"><label for="b-user">Username</label><input id="b-user" maxlength="30" value="${esc(v.username || '')}" placeholder="e.g. travel_buddy"></div>
+      <div class="field"><label for="b-emoji">Character symbol</label><select id="b-emoji">${ROLE_EMOJIS.map((emoji) => `<option value="${emoji}" ${v.roleEmoji === emoji ? 'selected' : ''}>${emoji}</option>`).join('')}</select><small class="muted">Choose a symbol that matches the bot's fictional character.</small></div>
       <div class="field"><label for="b-bio">Bio (mention that it is an AI bot)</label><textarea id="b-bio" rows="2" maxlength="300">${esc(v.bio || '')}</textarea></div>
       <div class="row gap wrap">
         <div class="field grow"><label for="b-pers">Personality</label><select id="b-pers">${Object.entries(PERSONALITIES).map(([k, p]) => `<option value="${k}" ${v.personality === k ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
@@ -150,7 +151,7 @@ export async function render(body) {
       if (name.length < 2) { toast('Name needs at least 2 characters', 'error'); return; }
       const data = {
         name, username: $('#b-user', m).value.trim().replace(/[^\w.]/g, '').slice(0, 30) || (bot ? bot.id : ''), bio: $('#b-bio', m).value.trim().slice(0, 300),
-        personality: $('#b-pers', m).value, lang: $('#b-lang', m).value, dailyLimit: Math.max(0, Math.min(50, Number($('#b-lim', m).value) || 0)),
+        roleEmoji: $('#b-emoji', m).value, personality: $('#b-pers', m).value, lang: $('#b-lang', m).value, dailyLimit: Math.max(0, Math.min(50, Number($('#b-lim', m).value) || 0)),
         interests: $$('[data-int]', m).filter((c) => c.checked).map((c) => c.dataset.int),
         ideas: lines($('#b-ideas', m).value), ideasBn: lines($('#b-ideasbn', m).value), ...imgs
       };
