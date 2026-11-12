@@ -313,29 +313,6 @@ export function videoHtml(url, { lazy = false, autoplay = false } = {}) {
   return `<video class="video-el" src="${esc(v.src)}" controls playsinline preload="metadata" ${autoplay ? 'autoplay muted' : ''} loop></video>`;
 }
 
-export async function uploadVideoToCloudinary(file, { cloudName, uploadPreset }, onProgress) {
-  if (!cloudName || !uploadPreset) throw new Error('Video upload is not configured.');
-  if (!file.type.startsWith('video/')) throw new Error('Please choose a video file.');
-  if (file.size > 50 * 1024 * 1024) throw new Error('Video must be 50 MB or smaller.');
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open('POST', `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/video/upload`);
-    xhr.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(Math.round((e.loaded / e.total) * 100)); };
-    xhr.onload = () => {
-      try {
-        const res = JSON.parse(xhr.responseText);
-        if (xhr.status >= 200 && xhr.status < 300 && res.secure_url) resolve(res.secure_url);
-        else reject(new Error((res.error && res.error.message) || 'Upload failed.'));
-      } catch { reject(new Error('Upload failed.')); }
-    };
-    xhr.onerror = () => reject(new Error('Network error during upload.'));
-    const fd = new FormData();
-    fd.append('file', file);
-    fd.append('upload_preset', uploadPreset);
-    xhr.send(fd);
-  });
-}
-
 // ---------- reactions ----------
 export const REACTIONS = {
   like: { emoji: '👍', label: 'Like' },
