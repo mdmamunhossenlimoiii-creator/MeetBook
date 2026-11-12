@@ -88,6 +88,10 @@ cap('Users', 'Create own profile as blocked', 'create', 'users/u_new', { name: '
 cap('Users', 'Create own profile as a bot', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: false, isBot: true }, []);
 cap('Users', 'Create own profile already verified', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: false, verified: true }, []);
 cap('Users', 'Edit the bio of a normal user (owner: u1)', 'update', 'users/u1', { bio: 'hello world' }, ['user', 'admin', 'super']);
+cap('Users', 'Set valid messaging privacy preference', 'update', 'users/u1', { settings: { allowMessages: 'friends', profileVisibility: 'friends', defaultVisibility: 'friends', allowBotEngagement: false } }, ['user']);
+cap('Users', 'Set invalid messaging privacy preference', 'update', 'users/u1', { settings: { allowMessages: 'anyone' } }, []);
+cap('Users', 'Set invalid profile visibility preference', 'update', 'users/u1', { settings: { profileVisibility: 'private' } }, []);
+cap('Users', 'Set non-boolean bot engagement consent', 'update', 'users/u1', { settings: { allowBotEngagement: 'yes' } }, []);
 cap('Users', 'Moderator edits own bio (a super admin may too)', 'update', 'users/mod', { bio: 'hello' }, ['moderator', 'super']);
 cap('Users', 'Admin edits own bio (a super admin may too)', 'update', 'users/adm', { bio: 'hello' }, ['admin', 'super']);
 cap('Users', 'Super admin edits own bio (nobody else may)', 'update', 'users/sup', { bio: 'hello' }, ['super']);
