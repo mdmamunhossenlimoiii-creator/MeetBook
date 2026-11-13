@@ -276,7 +276,7 @@ async function runSearch() {
   if (q.length < 2) { box.hidden = true; return; }
   try {
     const range = (col) => query(collection(db, col), where('nameLower', '>=', q), where('nameLower', '<=', q + ''), limit(6));
-    const [u, g] = await Promise.all([getDocs(range('users')), getDocs(range('groups'))]);
+    const [u, g] = await Promise.all([getDocs(range('publicProfiles')), getDocs(range('groups'))]);
     const rows = [
       ...u.docs.map((d) => `<a class="search-row" href="#/profile/${d.id}">${avatarHtml(d.data().name, d.data().photo, 32)}<span>${esc(d.data().name)}${botBadge(d.data())}</span></a>`),
       ...g.docs.map((d) => `<a class="search-row" href="#/group/${d.id}"><span class="avatar avatar-initial" style="width:32px;height:32px;background:var(--primary)">${icon('grid', 16)}</span><span>${esc(d.data().name)} <small class="muted">Group</small></span></a>`)

@@ -1,22 +1,31 @@
 # MeetBook Feature Status
 
-This document records source-level presence, not a claim that the app is production-connected or fully verified. The current security review identifies privacy enforcement gaps that must be resolved before public production launch.
+This document records repository source status and CI evidence only. Passing CI does not prove that owner-only Firebase/Cloudflare setup, live staging integration, or production deployment has been completed.
 
-| Area | Source status | Verification status |
+| Area | Source status | Verification / remaining work |
 |---|---|---|
-| Registration and login | Existing modules present | Requires MeetBook Firebase configuration and testing |
-| Profiles | Existing modules present | Profile-page visibility is an app-level display filter; profile documents remain readable to signed-in users. Do not put sensitive details in public profile fields. |
-| Feed and posts | Existing modules present | Not re-verified in this change |
-| Comments and reactions | Existing modules/rules present | Not re-verified in this change |
-| Friends and following | Existing modules present | Not re-verified in this change |
-| Messaging | Existing modules present; private-chat creation and message writes now check recipient `allowMessages` preference in Firestore rules | Real Firestore Emulator: 1,872 cases, 0 mismatches; existing chats are checked on each message write |
-| Groups | Existing modules present | Not re-verified in this change |
-| Stories and reels | Existing modules present; video file uploads disabled, links only | Requires owner-side image Worker setup and app testing |\n| Image uploads | Signed Cloudinary Worker source and client integration added | Worker not deployed; owner must add credentials and endpoint; real uploads not tested |
-| Notifications | Existing modules present | Not re-verified in this change |
-| Admin dashboard and moderation | Existing modules/rules present | Super Admin must be initialized in MeetBook Firebase |
-| Bot-related source | Retained, isolated | Bot workflows archived outside `.github/workflows/`; no bot work performed |
-| Backup scripts | MeetBook naming and project guard prepared | No production backup executed |
-| Account deletion job | Script now requires the expected MeetBook project ID; workflow disabled | No production deletion executed |
-| GitHub Pages metadata | MeetBook URL configured | Deployment not verified |
+| Registration and login | Existing modules present; frontend Firebase config points to the separate `meetbook-65d30` project | No live authentication smoke test or production deployment verified. Owner must confirm Firebase Console settings and authorized domains. |
+| Profiles and privacy | Existing profile modules present | **Release blocker:** `users/{uid}` documents are readable by signed-in users. `profileVisibility` currently controls profile-page post display, not profile metadata access. A separate public/private profile data model and query migration is still required; do not assume private profile metadata is protected. |
+| Feed, posts, comments and reactions | Existing modules and restrictive rules present | General app behavior not fully re-verified in a live staging project. |
+| Messaging | Private-chat creation and message writes enforce recipient `allowMessages` preference in Firestore Rules | Latest real Firestore Emulator permission matrix: 2,119 cases, 0 mismatches. This is emulator evidence, not a live-user test. |
+| Bot identities and behavior | 23 built-in fictional bot profiles have role-specific emoji markers; UI keeps the AI Bot disclosure. The first three bots (`bot_01`–`bot_03`) have a server-side Gemini adapter with template fallback; remaining bots use keyword/template behavior. Real Gemini API execution has not yet been verified. Admins can configure/lifecycle-manage bots but cannot publish or comment as a bot; only the assigned Runner can. | Unit and browser checks pass. The bot Runner remains disabled. |
+| Bot Runner security | Runner is restricted by an explicit bot-ID allowlist and global kill switch; user consent, public-post, private-chat, AI-label and bot-to-bot comment-switch checks are enforced in Rules. Firestore Rules also deny Admin bot publishing/commenting. | Durable Firestore transaction-backed quotas are implemented and covered by CI/emulator tests: 12 actions per bot per rolling 24 hours; 15 replies per user per bot per rolling 24 hours with a 60-second cooldown; and 20 user-to-bot inbox messages per rolling 24 hours with a 10-second cooldown. Isolated live staging verification is still required. |
+| Bot workflows | `bot-runner.yml` and `bot-chat.yml` remain archived outside `.github/workflows/`; Bot Runner credentials are not configured; a Gemini API secret may be present in repository Actions Secrets, but it does not enable the archived workflows. | Keep disabled until a separate release approval. No live bot activity was started. |
+| Image uploads | Signed Cloudinary Worker source and client integration are present; video file uploads remain disabled. | **Owner setup required:** Worker is not deployed and `imageUploadEndpoint` is blank. Owner must configure Cloudflare secrets, deploy the Worker, set the endpoint, configure abuse/rate controls, and test real uploads. |
+| App Check | Optional site-key field is present in frontend config. | `appCheckSiteKey` is blank; owner must decide and configure App Check before production if required by the security review. |
+| Admin dashboard | Existing admin modules and role checks present | First MeetBook Super Admin initialization and live admin workflow still require owner verification. |
+| GitHub Pages | Repository metadata and static app are present | Deployment and actual public URL behavior have not been verified in this review. |
+| MySocial separation | MeetBook uses its own Firebase project ID and MeetBook-specific runner policy. | Do not reuse MySocial credentials, Firebase project, or production data. |
 
-Update this matrix only after running the relevant tests and recording evidence.
+## Latest automated verification
+
+For feature branch `feature/character-bot-identities`, the latest inspected commit has all three GitHub Actions checks (`unit`, `browser`, `rules-emulator`) completed successfully. This confirms CI only, not real Gemini API or live Firebase integration.
+
+- Unit, browser smoke, and Firestore Rules emulator jobs: passed.
+- The current test matrix is 2,327 permission cases; verify the latest run output before treating the exact count as current.
+
+The Runner integration tests in the unit suite use the repository's in-memory Firestore/rules test harness. They are not a substitute for a dedicated isolated MeetBook staging project.
+
+## Release decision
+
+**Not release-ready.** The profile privacy migration, atomic server-side rate limits, isolated staging integration, owner-side Cloudflare Worker setup, Firebase/Pages owner verification, and real end-to-end checks remain outstanding. Do not merge, enable workflows, activate bots, or deploy based on CI alone.

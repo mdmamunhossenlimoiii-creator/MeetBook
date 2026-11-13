@@ -11,15 +11,17 @@ export function startMock({ port = 0, seed = {}, authUsers = ['runner1'], runner
   const authDeleted = [];
   const calls = [];
   let n = 0;
+  let tx = 0;
+  let version = 0;
   // faults (test only): { authDelete: n } -> the next n Auth deletes answer 500; { commitAfter: k } -> after k good commits, ONE commit answers 500
   const fault = { authDelete: faults.authDelete || 0, commitAfter: faults.commitAfter ?? null };
   const gate = rules ? makeRulesGate(docs) : null;
-  const put = (path, obj) => docs.set(path, { fields: toFields(obj) });
+  const put = (path, obj) => docs.set(path, { fields: toFields(obj), updateTime: new Date(Date.now() + (++version)).toISOString() });
   Object.entries(seed).forEach(([p, o]) => put(p, o));
 
   const PRE = '/v1/projects/test-proj/databases/(default)/documents';
   const full = (p) => `projects/test-proj/databases/(default)/documents/${p}`;
-  const out = (p, d) => ({ name: full(p), fields: d.fields });
+  const out = (p, d) => ({ name: full(p), fields: d.fields, updateTime: d.updateTime });
   const parentOf = (p) => p.split('/').slice(0, -1).join('/');
   const send = (res, code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(obj)); };
 
@@ -71,6 +73,10 @@ export function startMock({ port = 0, seed = {}, authUsers = ['runner1'], runner
         if (!pm) return send(res, 404, { error: 'unknown ' + path });
         const rest = decodeURIComponent(pm[1]).replace(/^\//, '');
 
+        if (rest === ':beginTransaction') {
+          return send(res, 200, { transaction: `TX${++tx}` });
+        }
+        if (rest === ':rollback') return send(res, 200, {});
         if (rest.endsWith(':runQuery') || rest === ':runQuery') {
           const parent = rest.replace(/:runQuery$/, '').replace(/\/$/, '');
           const q = body.structuredQuery; const cid = q.from[0].collectionId;
@@ -89,14 +95,25 @@ export function startMock({ port = 0, seed = {}, authUsers = ['runner1'], runner
             if (w.delete) { const p = w.delete.split('/documents/')[1]; if (!ok(req, 'delete', p)) return forbid(res); plan.push(() => docs.delete(p)); continue; }
             const p = w.update.name.split('/documents/')[1];
             const d = docs.get(p);
-            if (w.currentDocument?.exists && !d) return send(res, 404, { error: 'missing ' + p });
-            const nf = clone(d.fields);
-            for (const t of w.updateTransforms || []) {
-              const cur = nf[t.fieldPath]; const nv = Number(cur?.integerValue || 0) + Number(t.increment.integerValue);
-              nf[t.fieldPath] = { integerValue: String(nv) };
+            if (w.currentDocument?.exists === true && !d) return send(res, 404, { error: 'missing ' + p });
+            if (w.currentDocument?.exists === false && d) return send(res, 409, { error: 'ALREADY_EXISTS' });
+            if (w.currentDocument?.updateTime && (!d || d.updateTime !== w.currentDocument.updateTime)) return send(res, 409, { error: 'ABORTED transaction conflict' });
+            const nf = d ? clone(d.fields) : {};
+            if (w.update.fields) {
+              const masks = w.updateMask?.fieldPaths || Object.keys(w.update.fields);
+              masks.forEach((m) => { const v = getPathVal(w.update.fields, m); if (v !== undefined) setPath(nf, m, v); });
             }
-            if (!ok(req, 'update', p, nf)) return forbid(res);
-            plan.push(() => { d.fields = nf; });
+            for (const t of w.updateTransforms || []) {
+              if (t.setToServerValue === 'REQUEST_TIME') {
+                nf[t.fieldPath] = { timestampValue: new Date().toISOString() };
+              } else if (t.increment) {
+                const cur = nf[t.fieldPath]; const nv = Number(cur?.integerValue || 0) + Number(t.increment.integerValue);
+                nf[t.fieldPath] = { integerValue: String(nv) };
+              }
+            }
+            const op = d ? 'update' : 'create';
+            if (!ok(req, op, p, nf)) return forbid(res);
+            plan.push(() => docs.set(p, { fields: nf, updateTime: new Date(Date.now() + (++version)).toISOString() }));
           }
           plan.forEach((f) => f());
           return send(res, 200, { writeResults: [{}] });

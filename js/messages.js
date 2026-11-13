@@ -1,6 +1,6 @@
 // Private and group messaging (Firestore realtime).
 import {
-  db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp
+  db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp, writeBatch
 } from './firebase.js';
 import { state, subscribe, onCleanup, navigate } from './state.js';
 import {
@@ -91,7 +91,7 @@ export async function render(view, a, b) {
         ${isGroup ? `<span class="avatar avatar-initial" style="width:40px;height:40px;background:var(--primary)">${icon('users', 20)}</span>` : `<a href="#/profile/${esc(otherUid)}">${avatarHtml(other?.name, other?.photo, 40)}</a>`}
         <div><b>${esc(title)}</b>${isGroup ? `<small class="muted">${chat.members.length} members</small>` : ''}</div>
       </header>
-      ${other?.isBot ? '<div class="notice small">You are chatting with an <b>AI bot</b>. Its replies are automatic, template-based and can take a few minutes. It is not a person and can make mistakes.</div>' : ''}
+      ${other?.isBot ? '<div class="notice small">You are chatting with an <b>AI bot</b>. For the first three Smart AI bots, your message text is sent to Google Gemini to generate a reply. Free-tier data may be used by Google to improve its products, so do not share passwords, verification codes, financial details or other sensitive information. Replies can take a few minutes and may be wrong.</div>' : ''}
       <div class="chat-messages" data-msgs><div class="loading">Loading…</div></div>
       <form class="chat-form" data-form>
         <label class="icon-btn" title="Send a photo">${icon('image')}<input type="file" accept="image/*" hidden data-photo></label>
@@ -173,16 +173,42 @@ export async function render(view, a, b) {
           exists = true;
           subscribeMessages();
         }
-        await addDoc(collection(db, 'chats', id, 'messages'), { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
-        // a bot has no browser: the scheduled bot job answers from this inbox
+        const chatRef = doc(db, 'chats', id);
+        const messageRef = doc(collection(db, 'chats', id, 'messages'));
+        const lastMessage = { text: (text || '📷 Photo').slice(0, 120), uid: me };
         if (other?.isBot && text) {
-          await addDoc(collection(db, 'botInbox'), { fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500), handled: false, createdAt: serverTimestamp() });
+          // Message, inbox item and quota counter commit together. Rules reject direct inbox writes
+          // without the matching quota increment, so parallel tabs cannot bypass the throttle.
+          const quotaRef = doc(db, 'botInboxRateLimits', me, 'bots', otherUid);
+          const inboxRef = doc(collection(db, 'botInbox'));
+          const quotaSnap = await getDoc(quotaRef);
+          const quota = quotaSnap.exists() ? quotaSnap.data() : null;
+          const now = Date.now();
+          const lastAt = quota?.lastAt?.toMillis?.() || 0;
+          const windowAt = quota?.windowStartedAt?.toMillis?.() || 0;
+          const expired = !quota || now - windowAt >= 86_400_000;
+          const count = expired ? 0 : (quota?.count || 0);
+          if (count >= 20) throw new Error('You have reached the 24-hour message limit for this AI bot.');
+          if (now - lastAt < 10_000) throw new Error('Please wait a few seconds before messaging this AI bot again.');
+          const batch = writeBatch(db);
+          batch.set(quotaRef, {
+            senderUid: me, botId: otherUid, count: count + 1,
+            windowStartedAt: expired ? serverTimestamp() : quota.windowStartedAt,
+            lastAt: serverTimestamp()
+          });
+          batch.set(messageRef, { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
+          batch.set(inboxRef, {
+            fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500),
+            handled: false, createdAt: serverTimestamp()
+          });
+          batch.update(chatRef, { lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp() });
+          await batch.commit();
+        } else {
+          await addDoc(collection(db, 'chats', id, 'messages'), { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
+          await updateDoc(chatRef, {
+            lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp()
+          });
         }
-        await updateDoc(doc(db, 'chats', id), {
-          lastMessage: { text: (text || '📷 Photo').slice(0, 120), uid: me },
-          lastAt: serverTimestamp(),
-          [`lastRead.${me}`]: serverTimestamp()
-        });
         input.value = '';
         image = ''; preview.hidden = true; preview.innerHTML = '';
       } catch (err) { toast(errMsg(err), 'error'); }

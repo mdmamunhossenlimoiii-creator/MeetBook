@@ -26,10 +26,39 @@ export function ensureProfile(user, fallbackName) {
   return inflight.get(user.uid);
 }
 
+function publicProfileData(data) {
+  return {
+    name: data.name || 'Unknown user',
+    nameLower: String(data.name || '').toLowerCase(),
+    bio: String(data.bio || '').slice(0, 500),
+    photo: data.photo || '',
+    cover: data.cover || '',
+    isBot: data.isBot === true,
+    roleEmoji: data.roleEmoji || '',
+    verified: data.verified === true,
+    profileVisibility: data.settings?.profileVisibility === 'friends' ? 'friends' : 'everyone',
+    createdAt: data.createdAt || serverTimestamp()
+  };
+}
+
+async function ensureProfileProjections(uid, data) {
+  await Promise.all([
+    setDoc(doc(db, 'publicProfiles', uid), publicProfileData(data), { merge: true }),
+    setDoc(doc(db, 'botEngagement', uid), {
+      allowBotEngagement: data.settings?.allowBotEngagement === true,
+      updatedAt: serverTimestamp()
+    }, { merge: true })
+  ]);
+}
+
 async function createProfileIfMissing(user, fallbackName) {
   const ref = doc(db, 'users', user.uid);
   const snap = await getDoc(ref);
-  if (snap.exists()) return snap.data();
+  if (snap.exists()) {
+    const existing = snap.data();
+    await ensureProfileProjections(user.uid, existing);
+    return existing;
+  }
   const name = (fallbackName || reg.name || user.displayName || (user.email || 'User').split('@')[0]).trim().slice(0, 60);
   const data = {
     name: name.length >= 2 ? name : `${name} User`,
@@ -43,6 +72,7 @@ async function createProfileIfMissing(user, fallbackName) {
   };
   data.nameLower = data.name.toLowerCase();
   await setDoc(ref, data);
+  await ensureProfileProjections(user.uid, data);
   return data;
 }
 

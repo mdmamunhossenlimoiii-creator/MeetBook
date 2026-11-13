@@ -98,6 +98,51 @@ export function createClient({ projectId, fsUrl = 'https://firestore.googleapis.
       }
       return names.length;
     },
+    // Reserve a quota slot with a Firestore read/write transaction. The transaction's
+    // updateTime precondition serializes concurrent runners; failed/aborted reservations retry.
+    async reserveQuota(path, { max, data, cooldownMs = 0, retries = 5 }) {
+      for (let attempt = 0; attempt < retries; attempt++) {
+        const begun = await call(`${base}:beginTransaction`, { method: 'POST', body: { options: { readWrite: {} } } });
+        const transaction = begun.transaction;
+        if (!transaction) throw new Error('Firestore did not create a quota transaction.');
+        const current = await call(`${base}/${path}?transaction=${encodeURIComponent(transaction)}`, { allow404: true });
+        const old = current && current.fields ? fromFields(current.fields) : null;
+        const now = Date.now();
+        const lastAt = old && old.lastAt instanceof Date ? old.lastAt.getTime() : 0;
+        const windowAt = old && old.windowStartedAt instanceof Date ? old.windowStartedAt.getTime() : 0;
+        const expired = !old || now - windowAt >= 86_400_000;
+        const count = expired ? 0 : (old && Number.isInteger(old.count) ? old.count : 0);
+        if (count >= max || (cooldownMs > 0 && now - lastAt < cooldownMs)) {
+          // Abort the read-only transaction explicitly.
+          await call(`${base}:rollback`, { method: 'POST', body: { transaction } }).catch(() => {});
+          return false;
+        }
+        const next = {
+          ...data,
+          count: count + 1,
+          windowStartedAt: expired ? null : old.windowStartedAt
+        };
+        const writeData = { ...next };
+        delete writeData.lastAt;
+        if (expired) delete writeData.windowStartedAt;
+        const update = { name: `${docs}/${path}`, fields: toFields(writeData) };
+        const write = {
+          update,
+          updateMask: { fieldPaths: Object.keys(writeData) },
+          currentDocument: current ? { updateTime: current.updateTime } : { exists: false },
+          updateTransforms: [{ fieldPath: 'lastAt', setToServerValue: 'REQUEST_TIME' }]
+        };
+        if (expired) write.updateTransforms.push({ fieldPath: 'windowStartedAt', setToServerValue: 'REQUEST_TIME' });
+        try {
+          await call(`${base}:commit`, { method: 'POST', body: { transaction, writes: [write] } });
+          return true;
+        } catch (error) {
+          const message = String(error && error.message || error);
+          if (!/409|ABORTED|FAILED_PRECONDITION|transaction.*(expired|aborted)/i.test(message) || attempt === retries - 1) throw error;
+        }
+      }
+      return false;
+    },
     // atomic server-side increment of one numeric field
     async increment(path, field, by = 1) {
       return call(`${fsUrl}/v1/${docs}:commit`, {

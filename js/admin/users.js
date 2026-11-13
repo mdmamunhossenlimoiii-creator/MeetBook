@@ -1,13 +1,30 @@
 // User management: search (name or UID), details, edit, block / unblock, temporary suspension, verification,
 // activity history and a queued permanent deletion (done server-side by the GitHub Action).
 import {
-  db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, startAfter, Timestamp, serverTimestamp, getCountFromServer
+  db, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, query, where, orderBy, limit, startAfter, Timestamp, serverTimestamp, getCountFromServer
 } from '../firebase.js';
 import { state } from '../state.js';
 import { $, esc, avatarHtml, botBadge, emptyState, errorBox, confirmBox, modal, closeModal, debounce, isSuspended, tsMs, timeAgo, toast, errMsg } from '../utils.js';
 import { act, hasRole, loading, tagHtml, when, short } from './common.js';
 
 const PAGE = 20;
+
+async function updateUserProfile(uid, patch) {
+  const current = await getDoc(doc(db, 'users', uid));
+  if (!current.exists()) throw new Error('User profile no longer exists.');
+  const next = { ...current.data(), ...patch };
+  const publicProfile = {
+    name: next.name, nameLower: String(next.name || '').toLowerCase(),
+    bio: String(next.bio || '').slice(0, 500), photo: next.photo || '', cover: next.cover || '',
+    isBot: next.isBot === true, roleEmoji: next.roleEmoji || '', verified: next.verified === true,
+    profileVisibility: next.settings?.profileVisibility === 'friends' ? 'friends' : 'everyone',
+    createdAt: next.createdAt || serverTimestamp()
+  };
+  const batch = writeBatch(db);
+  batch.update(doc(db, 'users', uid), patch);
+  batch.set(doc(db, 'publicProfiles', uid), publicProfile, { merge: true });
+  await batch.commit();
+}
 
 export async function render(body) {
   body.innerHTML = `<h2 class="page-title">Users</h2>
@@ -114,7 +131,7 @@ async function openUser(uid, refresh) {
       case 'save': {
         const name = $('#u-name', m).value.trim();
         if (name.length < 2) { toast('Name needs at least 2 characters', 'error'); return; }
-        if (await act(b, () => updateDoc(ref, { name, nameLower: name.toLowerCase(), bio: $('#u-bio', m).value.trim().slice(0, 500) }), { ok: 'User updated', log: ['user edited', uid, `name: ${name}`] })) done();
+        if (await act(b, () => updateUserProfile(uid, { name, nameLower: name.toLowerCase(), bio: $('#u-bio', m).value.trim().slice(0, 500) }), { ok: 'User updated', log: ['user edited', uid, `name: ${name}`] })) done();
         break;
       }
       case 'block':
@@ -122,7 +139,7 @@ async function openUser(uid, refresh) {
         if (await act(b, () => updateDoc(ref, { banned: true }), { ok: 'User blocked', log: ['user blocked', uid, u.name] })) done();
         break;
       case 'unblock': if (await act(b, () => updateDoc(ref, { banned: false }), { ok: 'User unblocked', log: ['user unblocked', uid, u.name] })) done(); break;
-      case 'verify': if (await act(b, () => updateDoc(ref, { verified: !u.verified }), { ok: u.verified ? 'Badge removed' : 'Badge given', log: [u.verified ? 'verification removed' : 'user verified', uid, u.name] })) done(); break;
+      case 'verify': if (await act(b, () => updateUserProfile(uid, { verified: !u.verified }), { ok: u.verified ? 'Badge removed' : 'Badge given', log: [u.verified ? 'verification removed' : 'user verified', uid, u.name] })) done(); break;
       case 'suspend': {
         const days = Number($('[data-dur]', m).value);
         if (!(await confirmBox(`Suspend ${u.name} for ${days} day(s)?`, 'Suspend'))) return;

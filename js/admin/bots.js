@@ -2,8 +2,8 @@
 import { db, doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp } from '../firebase.js';
 import { state } from '../state.js';
 import { $, $$, esc, avatarHtml, botBadge, errorBox, confirmBox, modal, closeModal, toast, errMsg, resizeImage, emptyState } from '../utils.js';
-import { listBots, seedBots, createBot, saveBot, deleteBot, postAsBot, commentAsBot, MAX_BOTS } from '../bots.js';
-import { BOTS, botAvatar, botCover } from '../bots-data.js';
+import { listBots, seedBots, createBot, saveBot, deleteBot, MAX_BOTS } from '../bots.js';
+import { BOTS, ROLE_EMOJIS, botAvatar, botCover } from '../bots-data.js';
 import { PERSONALITIES, LANGUAGES, TOPICS } from '../bots-brain.js';
 import { act, loading, tagHtml, when, short } from './common.js';
 
@@ -32,15 +32,6 @@ export async function render(body) {
         <div class="small">${esc(PERSONALITIES[b.personality]?.label || b.personality || '—')} · ${esc(LANGUAGES[b.lang] || 'Both')} · limit ${b.dailyLimit ?? 6}/day</div>
         <div class="small">${b.active === false ? tagHtml('Inactive', 'danger') : tagHtml('Active')} ${[['autoPost', 'Posts'], ['autoComment', 'Comments'], ['autoReaction', 'Reactions'], ['chatEnabled', 'Chat']].map(([k, l]) => tagHtml(`${l} ${b[k] === false ? 'off' : 'on'}`, b[k] === false ? 'danger' : '')).join(' ')}</div></div>
       <div class="row gap wrap"><button class="btn" data-do="logs">Activity</button><button class="btn btn-primary" data-do="edit">Edit</button></div></div></div>`).join('') : emptyState('No bots yet', 'Use "Create missing built-in bots" to start.')}</div>
-    <section class="card pad"><h3>Post as a bot</h3>
-      <div class="field"><select id="bp-bot" aria-label="Bot">${bots.map((b) => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}</select></div>
-      <div class="field"><textarea id="bp-text" rows="3" maxlength="1000" placeholder="Text (no video: bots only post text and photos)"></textarea></div>
-      <div class="row gap wrap"><label class="btn">Add photo<input type="file" id="bp-photo" accept="image/*" hidden></label><span class="muted small" id="bp-photo-name"></span>
-        <button class="btn btn-primary" data-do="post" ${bots.length ? '' : 'disabled'}>Publish</button></div></section>
-    <section class="card pad"><h3>Comment as a bot</h3>
-      <div class="row gap wrap"><select id="bc-bot" aria-label="Bot">${bots.map((b) => `<option value="${esc(b.id)}">${esc(b.name)}</option>`).join('')}</select>
-        <input class="grow" id="bc-post" placeholder="Post link or ID" aria-label="Post link or ID"><input class="grow" id="bc-text" maxlength="300" placeholder="Comment" aria-label="Comment">
-        <button class="btn btn-primary" data-do="comment" ${bots.length ? '' : 'disabled'}>Send</button></div></section>
     <section class="card pad"><h3>Latest bot activity (all bots)</h3><div data-log>${loading()}</div></section>`;
     loadLogs();
   };
@@ -52,14 +43,6 @@ export async function render(body) {
       box.innerHTML = snap.docs.length ? logTable(snap.docs.map((d) => d.data())) : '<div class="muted">Nothing yet. The scheduled job writes here.</div>';
     } catch (e) { box.innerHTML = errorBox(e); }
   }
-
-  let photo = '';
-  body.addEventListener('change', async (e) => {
-    if (e.target.id !== 'bp-photo') return;
-    const f = e.target.files[0]; e.target.value = '';
-    if (!f) return;
-    try { photo = await resizeImage(f, 900, 0.72); $('#bp-photo-name', body).textContent = 'Photo added.'; } catch (err) { toast(err.message, 'error'); }
-  });
 
   body.addEventListener('click', async (e) => {
     const b = e.target.closest('[data-do]');
@@ -76,22 +59,6 @@ export async function render(body) {
       case 'new': editBot(null); break;
       case 'edit': editBot(bot); break;
       case 'logs': showLogs(bot); break;
-      case 'post': {
-        const bt = bots.find((x) => x.id === $('#bp-bot', body).value);
-        if (await act(b, () => postAsBot(bt, $('#bp-text', body).value, photo), { ok: 'Posted as bot', log: ['manual bot post', bt.id, short($('#bp-text', body).value, 80)] })) { $('#bp-text', body).value = ''; photo = ''; $('#bp-photo-name', body).textContent = ''; b.disabled = false; loadLogs(); }
-        break;
-      }
-      case 'comment': {
-        const raw = $('#bc-post', body).value.trim();
-        const id = (raw.match(/#\/post\/([\w-]+)/) || [])[1] || (/^[\w-]{10,}$/.test(raw) ? raw : '');
-        const bt = bots.find((x) => x.id === $('#bc-bot', body).value);
-        if (await act(b, async () => {
-          if (!id) throw new Error('Paste a post link (…#/post/ID) or the post ID.');
-          if (!(await getDoc(doc(db, 'posts', id))).exists()) throw new Error('That post does not exist.');
-          await commentAsBot(bt, id, $('#bc-text', body).value);
-        }, { ok: 'Comment added', log: ['manual bot comment', bt.id, id] })) { $('#bc-text', body).value = ''; b.disabled = false; }
-        break;
-      }
       default: break;
     }
   });
@@ -111,11 +78,12 @@ export async function render(body) {
 
   function editBot(bot) {
     const isNew = !bot;
-    const v = bot || { name: '', username: '', bio: '', personality: 'friendly', lang: 'both', interests: [], dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
+    const v = bot || { name: '', username: '', bio: '', roleEmoji: '✨', personality: 'friendly', lang: 'both', interests: [], dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
     const tog = (k, label) => `<label class="row gap small"><input type="checkbox" data-k="${k}" ${v[k] === false ? '' : 'checked'}> ${label}</label>`;
     const m = modal(`<h3>${isNew ? 'New AI bot' : `Edit ${esc(v.name)}`}</h3>
       <div class="field"><label for="b-name">Name</label><input id="b-name" maxlength="60" value="${esc(v.name)}"></div>
       <div class="field"><label for="b-user">Username</label><input id="b-user" maxlength="30" value="${esc(v.username || '')}" placeholder="e.g. travel_buddy"></div>
+      <div class="field"><label for="b-emoji">Character symbol</label><select id="b-emoji">${ROLE_EMOJIS.map((emoji) => `<option value="${emoji}" ${v.roleEmoji === emoji ? 'selected' : ''}>${emoji}</option>`).join('')}</select><small class="muted">Choose a symbol that matches the bot's fictional character.</small></div>
       <div class="field"><label for="b-bio">Bio (mention that it is an AI bot)</label><textarea id="b-bio" rows="2" maxlength="300">${esc(v.bio || '')}</textarea></div>
       <div class="row gap wrap">
         <div class="field grow"><label for="b-pers">Personality</label><select id="b-pers">${Object.entries(PERSONALITIES).map(([k, p]) => `<option value="${k}" ${v.personality === k ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
@@ -150,7 +118,7 @@ export async function render(body) {
       if (name.length < 2) { toast('Name needs at least 2 characters', 'error'); return; }
       const data = {
         name, username: $('#b-user', m).value.trim().replace(/[^\w.]/g, '').slice(0, 30) || (bot ? bot.id : ''), bio: $('#b-bio', m).value.trim().slice(0, 300),
-        personality: $('#b-pers', m).value, lang: $('#b-lang', m).value, dailyLimit: Math.max(0, Math.min(50, Number($('#b-lim', m).value) || 0)),
+        roleEmoji: $('#b-emoji', m).value, personality: $('#b-pers', m).value, lang: $('#b-lang', m).value, dailyLimit: Math.max(0, Math.min(50, Number($('#b-lim', m).value) || 0)),
         interests: $$('[data-int]', m).filter((c) => c.checked).map((c) => c.dataset.int),
         ideas: lines($('#b-ideas', m).value), ideasBn: lines($('#b-ideasbn', m).value), ...imgs
       };

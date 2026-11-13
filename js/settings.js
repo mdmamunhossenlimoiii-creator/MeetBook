@@ -1,5 +1,5 @@
 // Settings: appearance, privacy, account.
-import { auth, db, doc, updateDoc, sendPasswordResetEmail, signOut } from './firebase.js';
+import { auth, db, doc, writeBatch, serverTimestamp, sendPasswordResetEmail, signOut } from './firebase.js';
 import { state } from './state.js';
 import { $, esc, toast, errMsg } from './utils.js';
 import { getThemePref, setThemePref } from './theme.js';
@@ -63,15 +63,20 @@ export async function render(view) {
     const btn = $('#st-save', view);
     btn.disabled = true;
     try {
-      await updateDoc(doc(db, 'users', state.user.uid), {
-        settings: {
-          ...s,
-          profileVisibility: $('#st-profile', view).value,
-          allowMessages: $('#st-msg', view).value,
-          defaultVisibility: $('#st-vis', view).value,
-          allowBotEngagement: $('#st-bots', view).value === 'on'
-        }
-      });
+      const next = {
+        ...s,
+        profileVisibility: $('#st-profile', view).value,
+        allowMessages: $('#st-msg', view).value,
+        defaultVisibility: $('#st-vis', view).value,
+        allowBotEngagement: $('#st-bots', view).value === 'on'
+      };
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'users', state.user.uid), { settings: next });
+      batch.set(doc(db, 'publicProfiles', state.user.uid), { profileVisibility: next.profileVisibility }, { merge: true });
+      batch.set(doc(db, 'botEngagement', state.user.uid), {
+        allowBotEngagement: next.allowBotEngagement, updatedAt: serverTimestamp()
+      }, { merge: true });
+      await batch.commit();
       toast('Settings saved', 'success');
     } catch (e) { toast(errMsg(e), 'error'); }
     btn.disabled = false;

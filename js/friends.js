@@ -117,7 +117,7 @@ export async function render(view) {
       const q = input.value.trim().toLowerCase();
       results.innerHTML = '<div class="loading">Searching…</div>';
       try {
-        const base = collection(db, 'users');
+        const base = collection(db, 'publicProfiles');
         const snap = q.length >= 2
           ? await getDocs(query(base, where('nameLower', '>=', q), where('nameLower', '<=', q + ''), limit(20)))
           : await getDocs(query(base, orderBy('nameLower'), limit(20)));

@@ -287,6 +287,7 @@ function callFn(n, env) {
 }
 
 function method(o, name, a) {
+  if (o instanceof Ts && name === 'date') return new Date(o.ms).toISOString().slice(0, 10);
   if (o && o.__ns === 'math' && name === 'abs') { need(typeof a[0] === 'number', 'abs'); return Math.abs(a[0]); }
   if (o && o.__ns === 'duration' && name === 'value') { const u = { h: 3600e3, m: 60e3, s: 1e3, d: 86400e3, w: 604800e3 }[a[1]]; need(u, 'duration unit'); return new Dur(a[0] * u); }
   if (typeof o === 'string') {

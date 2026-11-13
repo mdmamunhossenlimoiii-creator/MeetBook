@@ -19,7 +19,8 @@ export const ACTORS = {
   super: { uid: 'sup', label: 'Super Admin' },
   legacy: { uid: 'leg', label: 'Old admin doc without role' },
   badrole: { uid: 'bad', label: 'Admin doc with unknown role' },
-  runner: { uid: 'run', label: 'Bot runner (GitHub Action)' }
+  runner: { uid: 'run', label: 'Bot runner (GitHub Action)' },
+  runnerOff: { uid: 'runoff', label: 'Disabled bot runner' }
 };
 export const ROLE_LABEL = { moderator: 'moderator', admin: 'admin', super: 'super_admin' };
 
@@ -40,6 +41,11 @@ export const SEED = {
   'users/u1': user({ name: 'User One', settings: { allowBotEngagement: false } }),
   'users/u2': user({ name: 'User Two', settings: { allowBotEngagement: true, allowMessages: 'friends' } }),
   'users/u3': user({ name: 'User Three', settings: { allowMessages: 'friends' } }),
+  'publicProfiles/u1': { name: 'User One', nameLower: 'user one', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/u2': { name: 'User Two', nameLower: 'user two', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/bot_01': { name: 'TechTip Nova', nameLower: 'techtip nova', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '🤖', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'botEngagement/u1': { allowBotEngagement: false },
+  'botEngagement/u2': { allowBotEngagement: true },
   'friendships/u1_u2': { members: ['u1', 'u2'] },
   'users/ub': user({ name: 'Blocked User', banned: true }),
   'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3) }),
@@ -47,10 +53,18 @@ export const SEED = {
   'users/sup': user({ name: 'Super Person' }), 'users/leg': user({ name: 'Legacy Admin' }), 'users/bad': user({ name: 'Badrole Admin' }),
   'users/bot_01': user({ name: 'TechTip Nova', isBot: true, bio: 'I am an AI bot.' }),
   'users/bot_02': user({ name: 'Pixel Pal', isBot: true, bio: 'I am an AI bot.' }),
+  'users/runoff': user({ name: 'Disabled Runner' }),
   'admins/mod': { role: 'moderator' }, 'admins/adm': { role: 'admin' }, 'admins/adm2': { role: 'admin' }, 'admins/sup': { role: 'super_admin' },
   'admins/leg': { enabled: true }, 'admins/bad': { role: 'owner' },
-  'botRunners/run': { enabled: true },
-  'botState/runner': { used: '{}' },
+  'botRunners/run': { enabled: true, botIds: ['bot_01', 'bot_03', 'bot_04', 'bot_05'] },
+  'botRunners/runoff': { enabled: false, botIds: ['bot_01'] },
+  'botState/run': { used: '{}' },
+  'botState/runoff': { used: '{}' },
+  'botRateLimits/run/bots/bot_01': { runnerUid: 'run', botId: 'bot_01', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/run/bots/bot_03': { runnerUid: 'run', botId: 'bot_03', kind: 'botDaily', count: 12, windowStartedAt: T(-90000000), lastAt: T(-90000000) },
+  'botRateLimits/run/bots/bot_05': { runnerUid: 'run', botId: 'bot_05', kind: 'botDaily', count: 12, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/run/bots/bot_05/users/u1': { runnerUid: 'run', botId: 'bot_05', actorUid: 'u1', kind: 'chatDaily', count: 15, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/run/bots/bot_01/users/u1': { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
   'posts/p1': post('u1', { reactions: {} }),
@@ -63,6 +77,9 @@ export const SEED = {
   'reports/r1': { kind: 'post', targetId: 'p1', targetUid: 'u1', reporterUid: 'u2', reason: 'Spam', details: '', status: 'open' },
   'adminLogs/l1': { actorUid: 'adm', actorName: 'Admin Person', role: 'admin', action: 'x', target: '', details: '' },
   'settings/global': { botsEnabled: true },
+  'chats/u1_u2': { type: 'private', members: ['u1', 'u2'] },
+  'chats/bot_01_u1': { type: 'private', members: ['bot_01', 'u1'] },
+  'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] },
   'announcements/a1': { text: 'Welcome', active: true },
   'deletionRequests/dr1': { status: 'pending', requestedBy: 'sup' },
   'system/backups': { status: 'ok' },
@@ -82,7 +99,11 @@ const C = [];
 const cap = (group, name, op, path, data, allow) => C.push({ group, name, op, path, data, allow });
 
 // ---------------------------------------------------------------- users
-cap('Users', 'Read any profile', 'get', 'users/u2', null, SIGNED);
+cap('Users', 'Read own private user document', 'get', 'users/u1', null, ['user', 'moderator', 'admin', 'super']);
+cap('Users', 'Read another user private document', 'get', 'users/u2', null, ['other', 'moderator', 'admin', 'super']);
+cap('Users', 'Read a bot user document', 'get', 'users/bot_01', null, SIGNED);
+cap('Users', 'Read safe public profile projection', 'get', 'publicProfiles/u2', null, SIGNED);
+cap('Users', 'Read bot consent projection (owner, staff, active runner only)', 'get', 'botEngagement/u1', null, ['user', 'moderator', 'admin', 'super', 'runner']);
 cap('Users', 'Create own profile', 'create', 'users/u_new', { name: 'New Person', nameLower: 'new person', bio: '', photo: '', cover: '', banned: false, settings: {} }, ['fresh']);
 cap('Users', 'Create own profile as blocked', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: true }, []);
 cap('Users', 'Create own profile as a bot', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: false, isBot: true }, []);
@@ -166,7 +187,9 @@ cap('Posts', 'Read a public post', 'get', 'posts/p1', null, SIGNED);
 cap('Posts', 'Read a friends-only post of u1', 'get', 'posts/pf', null, ['user', ...STAFF]);
 cap('Posts', 'Publish own post', 'create', 'posts/new', (a) => newPost(a.uid), N);
 cap('Posts', 'Publish a post as someone else', 'create', 'posts/new', () => newPost('u1'), ['user']);
-cap('Posts', 'Publish a post as an AI bot', 'create', 'posts/new', () => newPost('bot_01'), [...ADM, 'runner']);
+cap('Posts', 'Bot runner cannot publish as its own normal account', 'create', 'posts/new', () => newPost('run'), []);
+cap('Posts', 'Publish a post as an AI bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
+cap('Posts', 'Runner cannot publish as an unassigned bot', 'create', 'posts/new', () => newPost('bot_02'), []);
 cap('Posts', 'Publish an AI-bot post with a video', 'create', 'posts/new', () => newPost('bot_01', { videoUrl: 'https://x/y.mp4' }), []);
 cap('Posts', 'Publish a friends-only AI-bot post', 'create', 'posts/new', () => newPost('bot_01', { visibility: 'friends', audience: ['bot_01'] }), []);
 cap('Posts', 'Publish a post as a real user via the admin/bot path', 'create', 'posts/new', () => newPost('u2'), ['other']);
@@ -193,14 +216,16 @@ cap('Comments', 'Delete a comment (author u2, post owner u1)', 'delete', 'posts/
 
 // ---------------------------------------------------------------- AI bots and consent
 const botComment = { uid: 'bot_01', authorName: 'TechTip Nova', text: 'Nice one.', ai: true, createdAt: { $srv: 1 } };
-cap('AI bots', 'Bot comment on a post of a user who ALLOWED it (u2)', 'create', 'posts/p2/comments/new', botComment, [...ADM, 'runner']);
+cap('AI bots', 'Bot comment on a post of a user who ALLOWED it (u2)', 'create', 'posts/p2/comments/new', botComment, ['runner']);
+cap('AI bots', 'Runner cannot comment as an unassigned bot', 'create', 'posts/p2/comments/new', { ...botComment, uid: 'bot_02' }, []);
 cap('AI bots', 'Bot comment WITHOUT the AI flag (must be refused for everyone)', 'create', 'posts/p2/comments/new', { ...botComment, ai: false }, []);
 cap('AI bots', 'Bot comment with the AI flag missing entirely', 'create', 'posts/p2/comments/new', { uid: 'bot_01', authorName: 'TechTip Nova', text: 'Nice one.', createdAt: { $srv: 1 } }, []);
 cap('AI bots', 'Bot comment on a post of a user who did NOT allow it (u1)', 'create', 'posts/p1/comments/new', botComment, []);
 cap('AI bots', 'Bot comment on a friends-only post', 'create', 'posts/pf/comments/new', botComment, []);
-cap('AI bots', 'Bot comment on a bot\'s post', 'create', 'posts/pb/comments/new', botComment, [...ADM, 'runner']);
+cap('AI bots', 'Bot comment on a bot\'s post while bot-to-bot comments are OFF', 'create', 'posts/pb/comments/new', botComment, []);
 cap('AI bots', 'Bot comment where comments are off (owner allowed)', 'create', 'posts/pn/comments/new', botComment, []);
 cap('AI bots', 'Bot reaction on a post of a user who allowed it', 'update', 'posts/p2', { 'reactions.bot_01': 'love' }, ['runner']);
+cap('AI bots', 'Runner cannot react as an unassigned bot', 'update', 'posts/p2', { 'reactions.bot_02': 'love' }, []);
 cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update', 'posts/p1', { 'reactions.bot_01': 'love' }, []);
 cap('AI bots', 'Bot reaction on a friends-only post', 'update', 'posts/pf', { 'reactions.bot_01': 'love' }, []);
 cap('AI bots', 'Bot reaction on a bot\'s post', 'update', 'posts/pb', { 'reactions.bot_01': 'love' }, ['runner']);
@@ -209,16 +234,31 @@ cap('AI bots', 'Runner raises commentCount on a consenting user\'s post', 'updat
 cap('AI bots', 'Runner raises commentCount on a non-consenting user\'s post', 'update', 'posts/p1', { commentCount: { $inc: 1 } }, N);
 cap('AI bots', 'Runner pretends to be a human in a comment', 'create', 'posts/p2/comments/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('AI bots', 'Read the bot inbox', 'get', 'botInbox/i1', null, [...STAFF, 'runner']);
-cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: pair(a.uid, 'bot_01'), createdAt: { $srv: 1 } }), N);
-cap('AI bots', 'Send an inbox message to a non-bot', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'u2', text: 'hello', handled: false, chatId: pair(a.uid, 'u2') }), []);
+cap('AI bots', 'Create inbox quota for a non-bot target', 'create', 'botInboxRateLimits/u1/bots/u2', { senderUid: 'u1', botId: 'u2', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
+cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: pair(a.uid, 'bot_01'), createdAt: { $srv: 1 } }), []);
+cap('AI bots', 'Send an inbox message to a non-bot', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'u2', text: 'hello', handled: false, chatId: pair(a.uid, 'u2'), createdAt: { $srv: 1 } }), []);
 cap('AI bots', 'Send an inbox message already marked handled', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: true, chatId: pair(a.uid, 'bot_01') }), []);
-cap('AI bots', 'Mark an inbox message handled', 'update', 'botInbox/i1', { handled: true }, [...ADM, 'runner']);
-cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bot_01', kind: 'post', text: 'x', createdAt: { $srv: 1 } }, [...ADM, 'runner']);
+cap('AI bots', 'Send inbox message without a matching private chat', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: 'missing-chat', createdAt: { $srv: 1 } }), []);
+cap('AI bots', 'Mark an inbox message handled', 'update', 'botInbox/i1', { handled: true, handledAt: { $srv: 1 } }, [...ADM, 'runner']);
+cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bot_01', botName: 'TechTip Nova', kind: 'post', targetId: 'p1', text: 'x', source: 'runner', createdAt: { $srv: 1 } }, [...ADM, 'runner']);
 cap('AI bots', 'Read bot activity logs', 'get', 'botLogs/bl1', null, STAFF);
 cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'changed' }, []);
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
-cap('AI bots', 'Read the runner state', 'get', 'botState/runner', null, ['runner']);
-cap('AI bots', 'Write the runner state', 'update', 'botState/runner', { used: '{"bot_01":["en:0"]}' }, ['runner']);
+cap('AI bots', 'Runner reserves its assigned bot daily quota', 'create', 'botRateLimits/run/bots/bot_04', { runnerUid: 'run', botId: 'bot_04', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
+cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'botRateLimits/run/bots/bot_02', { runnerUid: 'run', botId: 'bot_02', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
+cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/run/bots/bot_01', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/run/bots/bot_01', { count: 12, lastAt: T(0) }, []);
+cap('AI bots', 'Runner resets bot quota after full 24-hour window', 'update', 'botRateLimits/run/bots/bot_03', { count: 1, windowStartedAt: T(0), lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot reset bot quota before 24 hours', 'update', 'botRateLimits/run/bots/bot_03', { count: 1, windowStartedAt: T(-30000000), lastAt: T(0) }, []);
+cap('AI bots', 'Runner cannot exceed 12 actions per rolling 24 hours', 'update', 'botRateLimits/run/bots/bot_05', { count: 13, lastAt: T(0) }, []);
+cap('AI bots', 'Runner cannot exceed 15 replies per user per bot per rolling 24 hours', 'update', 'botRateLimits/run/bots/bot_05/users/u1', { count: 16, lastAt: T(0) }, []);
+cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/run/bots/bot_04/users/u1', { runnerUid: 'run', botId: 'bot_04', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
+cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1', { count: 2, lastAt: T(-90000) }, []);
+cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Read the runner state', 'get', 'botState/run', null, ['runner']);
+cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runoff', null, []);
+cap('AI bots', 'Only an enabled runner can publish as an assigned bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
+cap('AI bots', 'Write the runner state', 'update', 'botState/run', { used: '{"bot_01":["en:0"]}' }, ['runner']);
 cap('AI bots', 'Read the runner registration', 'get', 'botRunners/run', null, ['runner']);
 cap('AI bots', 'Register a new bot runner', 'create', 'botRunners/u1', { enabled: true }, []);
 

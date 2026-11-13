@@ -10,10 +10,20 @@ import { BOTS, BOT_DEFAULTS, botAvatar, botCover } from './bots-data.js';
 
 export const MAX_BOTS = 30; // rules allow bot_01 .. bot_30
 
+function publicProfileData(data) {
+  return {
+    name: data.name, nameLower: String(data.name || '').toLowerCase(),
+    bio: String(data.bio || '').slice(0, 500), photo: data.photo || '', cover: data.cover || '',
+    isBot: true, roleEmoji: data.roleEmoji || '', verified: data.verified === true,
+    profileVisibility: data.settings?.profileVisibility === 'friends' ? 'friends' : 'everyone',
+    createdAt: data.createdAt || serverTimestamp()
+  };
+}
+
 const profileFromBuiltIn = (b, i) => ({
   name: b.name, nameLower: b.name.toLowerCase(), username: b.username, bio: b.bio,
   photo: botAvatar(i), cover: botCover(i),
-  personality: b.personality, interests: b.interests, lang: b.lang,
+  personality: b.personality, interests: b.interests, lang: b.lang, roleEmoji: b.roleEmoji,
   active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: BOT_DEFAULTS.dailyLimit,
   ideas: [], ideasBn: [],
   banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
@@ -29,8 +39,18 @@ export async function seedBots() {
   const snaps = await Promise.all(BOTS.map((b) => getDoc(doc(db, 'users', b.id))));
   let created = 0;
   for (let i = 0; i < BOTS.length; i++) {
-    if (snaps[i].exists()) continue;
-    await setDoc(doc(db, 'users', BOTS[i].id), profileFromBuiltIn(BOTS[i], i));
+    if (snaps[i].exists()) {
+      const existing = snaps[i].data();
+      if (!existing.roleEmoji && BOTS[i].roleEmoji) {
+        await updateDoc(doc(db, 'users', BOTS[i].id), { roleEmoji: BOTS[i].roleEmoji });
+        existing.roleEmoji = BOTS[i].roleEmoji;
+      }
+      await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(existing), { merge: true });
+      continue;
+    }
+    const profile = profileFromBuiltIn(BOTS[i], i);
+    await setDoc(doc(db, 'users', BOTS[i].id), profile);
+    await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(profile), { merge: true });
     created++;
   }
   return { created, existing: BOTS.length - created };
@@ -46,11 +66,13 @@ export async function createBot(existing, data) {
   const id = nextBotId(existing);
   if (!id) throw new Error(`The limit is ${MAX_BOTS} bots.`);
   const n = Number(id.slice(4));
-  await setDoc(doc(db, 'users', id), {
-    ...BOT_DEFAULTS, ideas: [], ideasBn: [], interests: [], username: id, bio: 'AI bot.',
+  const profile = {
+    ...BOT_DEFAULTS, ideas: [], ideasBn: [], interests: [], username: id, bio: 'AI bot.', roleEmoji: data.roleEmoji || '✨',
     photo: botAvatar(n), cover: botCover(n), ...data,
     nameLower: String(data.name).toLowerCase(), banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
-  });
+  };
+  await setDoc(doc(db, 'users', id), profile);
+  await setDoc(doc(db, 'publicProfiles', id), publicProfileData(profile), { merge: true });
   return id;
 }
 
@@ -58,11 +80,13 @@ export async function saveBot(id, patch) {
   const data = { ...patch };
   if (data.name) data.nameLower = data.name.toLowerCase();
   await updateDoc(doc(db, 'users', id), data);
+  const snap = await getDoc(doc(db, 'users', id));
+  if (snap.exists()) await setDoc(doc(db, 'publicProfiles', id), publicProfileData(snap.data()), { merge: true });
   invalidateUser(id);
 }
 
 export async function deleteBot(id) {
-  await deleteDoc(doc(db, 'users', id));
+  await Promise.all([deleteDoc(doc(db, 'users', id)), deleteDoc(doc(db, 'publicProfiles', id))]);
   invalidateUser(id);
 }
 

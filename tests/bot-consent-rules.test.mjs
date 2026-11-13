@@ -27,12 +27,15 @@ const seed = () => {
   BOTS.forEach((b) => { s[`users/${b.id}`] = { name: b.name, isBot: true, banned: false }; });
   return {
     ...s,
-    'botRunners/runner1': { enabled: true },
+    'botRunners/runner1': { enabled: true, botIds: BOTS.map((bot) => bot.id) },
     'settings/global': { botsEnabled: true, botToBotComments: false },
     'users/runner1': { name: 'Runner account', banned: false },
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
     'users/u2': { name: 'Sam', banned: false, settings: { allowBotEngagement: false } },
     'users/u3': { name: 'Tina (never opened settings)', banned: false },
+    'botEngagement/u1': { allowBotEngagement: true },
+    'botEngagement/u2': { allowBotEngagement: false },
+    'botEngagement/u3': { allowBotEngagement: false },
     'posts/p1': post('u1', "Went to Cox's Bazar with friends, the sea was amazing! Best trip ever."),
     'posts/p2': post('u2', 'Lovely travel photo from my trip to the beach'),
     'posts/p3': post('u3', 'Amazing travel trip to the sea with friends'),
@@ -99,12 +102,33 @@ test('rules: withdrawing consent stops the bots on the very next run', { skip: !
     assert.equal(m.ids('posts/p1/comments').length, 1);
     // the user switches the setting off, a fresh post appears
     m.put('users/u1', { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: false } });
+    m.put('botEngagement/u1', { allowBotEngagement: false });
     m.put('posts/p9', post('u1', 'Another amazing trip to the beach with friends'));
     const second = await exec(['scripts/bot-runner.mjs'], env(m, { BOT_POSTS: '0' }));
     assert.equal(second.status, 0, second.stderr);
     assert.deepEqual(m.denied, []);
     assert.equal(m.ids('posts/p9/comments').length, 0, 'no engagement after consent was withdrawn');
     assert.equal(m.ids('posts/p1/comments').length, 1, 'nothing new on the old post either');
+  } finally { await m.close(); }
+});
+
+
+test('rules: runner allowlist and global emergency stop are enforced server-side', async () => {
+  const m = await startMock({ seed: seed(), rules: true });
+  try {
+    m.put('botRunners/runner1', { enabled: true, botIds: ['bot_01'] });
+    const { call, comment } = await asRunner(m);
+    assert.equal(await call('POST', 'posts/p1/comments?documentId=unassigned', comment('bot_02')), 403,
+      'runner cannot comment as a bot outside its botIds allowlist');
+    assert.equal(await call('POST', 'posts/pb/comments?documentId=bot-chat-off', comment('bot_01')), 403,
+      'runner cannot comment on another bot while botToBotComments is OFF');
+    assert.equal(await call('GET', 'botInbox/i1'), 403,
+      'runner cannot read inbox entries for a bot outside its allowlist');
+    m.put('settings/global', { botsEnabled: false, botToBotComments: false });
+    assert.equal(await call('POST', 'posts/p1/comments?documentId=stopped', comment('bot_01')), 403,
+      'global emergency stop blocks bot writes in Firestore Rules');
+    assert.equal(await call('GET', 'botState/runner1'), 403,
+      'global emergency stop blocks runner state access too');
   } finally { await m.close(); }
 });
 

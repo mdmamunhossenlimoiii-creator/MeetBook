@@ -15,9 +15,9 @@ const failures = (text) => {
 const MUTATIONS = [
   ['role-less admin doc becomes super admin again', ".get('role', 'none')", ".get('role', 'super_admin')"],
   ['unknown role counts as staff', "signedIn() && roleOf() in ['super_admin', 'admin', 'moderator']", "signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))"],
-  ['bot comments may skip the AI flag', "            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI\n            && textOk(request.resource.data.text, 2000)", "            && textOk(request.resource.data.text, 2000)"],
+  ['bot comments may skip the AI flag', "            && request.resource.data.get('ai', false) == true\n            && textOk(request.resource.data.text, 2000)", "            && textOk(request.resource.data.text, 2000)"],
   ['bot chat messages may skip the AI flag', "            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI\n            && textOk(request.resource.data.text, 4000)", "            && textOk(request.resource.data.text, 4000)"],
-  ['bot consent not checked for comments', "&& engagementOk(p.uid);", ";"],
+  ['bot consent not checked for comments', ": engagementOk(p.uid));", ": true);"],
   ['bot consent not checked for runner reactions', "&& resource.data.visibility == 'public'\n          && engagementOk(resource.data.uid)\n          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])", "&& resource.data.visibility == 'public'\n          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])"],
   ['admin may block other staff', "&& (isSuper() || !isStaffUid(uid))", ""],
   ['moderator may suspend staff', "isMod()\n          && !isStaffUid(uid)", "isMod()"],
@@ -36,13 +36,13 @@ const MUTATIONS = [
   ['suspension is ignored', "(u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time)", "true"],
   ['blocked users can write', "u.banned != true", "true"],
   ['bot posts may contain video', "&& request.resource.data.videoUrl == ''", ""],
-  ['bot-runner may read every chat', "|| (isBotRunner() && resource != null && resource.data.type == 'private' && resource.data.members.hasAny(botIds()));", "|| isBotRunner();"],
+  ['bot-runner may read every chat', "&& chat.members.hasAny(runner.get('botIds', []));", "&& true;"],
   ['comments stay possible when switched off', "return p.get('commentsDisabled', false) == false && canSeePost(p);", "return canSeePost(p);"],
   ['any reaction value is accepted', "|| request.resource.data.reactions[request.auth.uid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']", "|| true"],
   ['a report can be edited freely by staff', "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt'])\n        && request.resource.data.status in ['open', 'resolved']", "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt', 'targetUid'])\n        && request.resource.data.status in ['open', 'resolved']"],
   ['moderators can delete reports', "allow delete: if isAdmin();\n    }\n\n    // ---------- friends", "allow delete: if isStaff();\n    }\n\n    // ---------- friends"],
   ['anyone can read the activity log', "allow read: if isAdmin();\n      allow update, delete: if false;", "allow read: if signedIn();\n      allow update, delete: if false;"],
-  ['inbox accepts messages to non-bots', "&& isBotUser(request.resource.data.botId)\n", ""],
+  ['inbox quota accepts non-bot targets', "allow create: if isOwner(senderUid) && notBanned()\n        && isBotUser(botId)\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true", "allow create: if isOwner(senderUid) && notBanned()\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 

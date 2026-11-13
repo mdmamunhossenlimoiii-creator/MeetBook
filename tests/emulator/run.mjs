@@ -5,6 +5,7 @@
 //   cd tests/emulator && npm install && cd ../..
 //   ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-meetbook "node tests/emulator/run.mjs"
 import { readFileSync } from 'node:fs';
+import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
@@ -68,6 +69,52 @@ for (const cap of CAPS) {
     if (r.ok !== want || (!r.ok && !r.permission)) wrong.push(`[${cap.group}] ${cap.name} as ${name}: expected ${want ? 'ALLOW' : 'DENY'}, got ${r.ok ? 'ALLOW' : 'DENY'}${r.ok || r.permission ? '' : ` (NOT a permission error: ${r.error.slice(0, 160)})`}`);
     if (r.ok && cap.op !== 'get') await seed(); // a write succeeded: restore the seed so cases stay independent
   }
+}
+// Prove a real user can create a bot inbox item only in the same transaction as its quota increment.
+// The lightweight harness fake does not model atomic multi-document write batches.
+if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
+{
+  const db = env.authenticatedContext('u1').firestore();
+  const quotaRef = doc(db, 'botInboxRateLimits', 'u1', 'bots', 'bot_01');
+  let inboxNumber = 0;
+  const submit = async () => {
+    const inboxRef = doc(db, 'botInbox', `atomic-${++inboxNumber}`);
+    const snap = await getDoc(quotaRef);
+    const count = snap.exists() ? snap.data().count : 0;
+    const windowAt = snap.exists() ? snap.data().windowStartedAt.toMillis() : 0;
+    const expired = !snap.exists() || Date.now() - windowAt >= 86_400_000;
+    const batch = writeBatch(db);
+    batch.set(quotaRef, {
+      senderUid: 'u1', botId: 'bot_01', count: expired ? 1 : count + 1,
+      windowStartedAt: expired ? serverTimestamp() : snap.data().windowStartedAt, lastAt: serverTimestamp()
+    });
+    batch.set(inboxRef, {
+      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
+      handled: false, createdAt: serverTimestamp()
+    });
+    await batch.commit();
+  };
+  await submit();
+  console.log('atomic bot inbox + quota transaction allowed');
+  await assert.rejects(submit());
+  console.log('bot inbox cooldown enforced by real Firestore Rules');
+
+  await env.withSecurityRulesDisabled(async (ctx) => updateDoc(doc(ctx.firestore(), 'botInboxRateLimits/u1/bots/bot_01'), {
+    count: 20, windowStartedAt: Timestamp.fromMillis(Date.now() - 3_600_000),
+    lastAt: Timestamp.fromMillis(Date.now() - 20_000)
+  }));
+  await assert.rejects(submit());
+  console.log('20-message rolling-window cap enforced');
+
+  const expiredAt = Date.now() - 25 * 3_600_000;
+  await env.withSecurityRulesDisabled(async (ctx) => updateDoc(doc(ctx.firestore(), 'botInboxRateLimits/u1/bots/bot_01'), {
+    count: 20, windowStartedAt: Timestamp.fromMillis(expiredAt), lastAt: Timestamp.fromMillis(expiredAt)
+  }));
+  await submit();
+  const reset = await getDoc(quotaRef);
+  if (reset.data().count !== 1) throw new Error('expired quota window did not reset to one');
+  console.log('rolling 24-hour quota resets after expiry');
+}
 }
 await env.cleanup();
 console.log(`${total} cases run against the real emulator, ${wrong.length} mismatches.`);
