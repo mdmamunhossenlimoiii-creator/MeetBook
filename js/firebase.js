@@ -8,7 +8,7 @@ import {
 import {
   getFirestore, collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, onSnapshot, serverTimestamp, increment, deleteField,
-  arrayUnion, arrayRemove, writeBatch, runTransaction, Timestamp, getCountFromServer, getAggregateFromServer, sum, startAfter
+  arrayUnion, arrayRemove, writeBatch, Timestamp, getCountFromServer, getAggregateFromServer, sum, startAfter
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js';
 
 export const configured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId && firebaseConfig.appId);
