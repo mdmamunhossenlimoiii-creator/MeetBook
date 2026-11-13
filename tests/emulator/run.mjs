@@ -74,18 +74,17 @@ for (const cap of CAPS) {
 if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
 {
   const db = env.authenticatedContext('u1').firestore();
-  const day = new Date().toISOString().slice(0, 10);
-  const quotaRef = doc(db, 'botInboxRateLimits', 'u1', 'bots', 'bot_01', 'days', day);
+  const quotaRef = doc(db, 'botInboxRateLimits', 'u1', 'bots', 'bot_01');
   let inboxNumber = 0;
   const submit = async () => {
     const inboxRef = doc(db, 'botInbox', `atomic-${++inboxNumber}`);
     const snap = await getDoc(quotaRef);
     const count = snap.exists() ? snap.data().count : 0;
     const batch = writeBatch(db);
-    batch.set(quotaRef, { senderUid: 'u1', botId: 'bot_01', count: count + 1, lastAt: serverTimestamp() });
+    batch.set(quotaRef, { senderUid: 'u1', botId: 'bot_01', count: count + 1, windowStartedAt: count === 0 ? serverTimestamp() : snap.data().windowStartedAt, lastAt: serverTimestamp() });
     batch.set(inboxRef, {
       fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
-      handled: false, createdAt: serverTimestamp(), quotaDay: day
+      handled: false, createdAt: serverTimestamp()
     });
     await batch.commit();
   };
