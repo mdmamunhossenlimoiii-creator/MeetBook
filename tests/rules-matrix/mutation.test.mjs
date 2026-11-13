@@ -18,7 +18,7 @@ const MUTATIONS = [
   ['bot comments may skip the AI flag', "            && request.resource.data.get('ai', false) == true\n            && textOk(request.resource.data.text, 2000)", "            && textOk(request.resource.data.text, 2000)"],
   ['bot chat messages may skip the AI flag', "            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI\n            && textOk(request.resource.data.text, 4000)", "            && textOk(request.resource.data.text, 4000)"],
   ['bot consent not checked for comments', ": engagementOk(p.uid));", ": true);"],
-  ['bot consent not checked for runner reactions', "&& resource.data.visibility == 'public'\n          && engagementOk(resource.data.uid)\n          && runnerMayReact()", "&& resource.data.visibility == 'public'\n          && true\n          && runnerMayReact()"],
+  ['bot consent not checked for runner reactions', "resource.data.visibility == 'public'\n          && engagementOk(resource.data.uid)\n          && runnerMayReact())", "resource.data.visibility == 'public'\n          && true\n          && runnerMayReact())"],
   ['admin may block other staff', "&& (isSuper() || !isStaffUid(uid))", ""],
   ['moderator may suspend staff', "isMod()\n          && !isStaffUid(uid)", "isMod()"],
   ['an admin may queue permanent deletions', "allow create: if isSuper()\n        && uid != request.auth.uid\n        && !uid.matches('bot_.*')\n        && !isStaffUid(uid)", "allow create: if isAdmin()\n        && uid != request.auth.uid\n        && !uid.matches('bot_.*')\n        && !isStaffUid(uid)"],

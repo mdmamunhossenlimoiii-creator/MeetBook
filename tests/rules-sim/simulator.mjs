@@ -260,7 +260,7 @@ function binop(op, a, b) {
 
 function callFn(n, env) {
   const args = n.args.map((a) => evalNode(a, env));
-  if (n.n === 'get' || n.n === 'exists' || n.n === 'getAfter') {
+  if (n.n === 'get' || n.n === 'exists' || n.n === 'getAfter' || n.n === 'existsAfter') {
     need(args[0] instanceof Path, 'get/exists need a path');
     const key = args[0].p.replace(/^\/databases\/[^/]+\/documents\//, '');
     env.ctx.reads = (env.ctx.reads || 0) + 1;
@@ -268,7 +268,7 @@ function callFn(n, env) {
     const d = n.n === 'getAfter' && key === env.ctx.request.path && env.ctx.request.resource
       ? env.ctx.request.resource.data
       : env.ctx.db.get(key);
-    if (n.n === 'exists') return d !== undefined;
+    if (n.n === 'exists' || n.n === 'existsAfter') return d !== undefined;
     need(d !== undefined, 'document not found: ' + key);
     return { id: key.split('/').pop(), data: d };
   }

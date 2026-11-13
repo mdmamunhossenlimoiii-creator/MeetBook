@@ -72,15 +72,16 @@ export const SEED = {
   'botRunners/runoff': { enabled: false, botIds: ['bot_01'] },
   'botState/run': { used: '{}' },
   'botState/runoff': { used: '{}' },
-  'botRateLimits/bots/bot_01': { botId: 'bot_01', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
-  'botRateLimits/bots/bot_03': { botId: 'bot_03', kind: 'botDaily', count: 12, windowStartedAt: T(-90000000), lastAt: T(-90000000) },
-  'botRateLimits/bots/bot_05': { botId: 'bot_05', kind: 'botDaily', count: 12, windowStartedAt: T(-120000), lastAt: T(-120000) },
-  'botRateLimits/bots/bot_05/users/u1': { botId: 'bot_05', actorUid: 'u1', kind: 'chatDaily', count: 15, windowStartedAt: T(-120000), lastAt: T(-120000) },
-  'botRateLimits/bots/bot_01/users/u1': { botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/bot_01': { botId: 'bot_01', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/bot_03': { botId: 'bot_03', kind: 'botDaily', count: 12, windowStartedAt: T(-90000000), lastAt: T(-90000000) },
+  'botRateLimits/bot_05': { botId: 'bot_05', kind: 'botDaily', count: 12, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/bot_05/users/u1': { botId: 'bot_05', actorUid: 'u1', kind: 'chatDaily', count: 15, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/bot_01/users/u1': { botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
   'posts/p1': post('u1', { reactions: {} }),
   'posts/p2': post('u2', { reactions: { u1: 'like' } }),
+  'posts/p2/comments/bot_01': { uid: 'bot_01', ai: true, text: 'existing bot comment' },
   'posts/pb': post('bot_01'),
   'posts/pf': post('u1', { visibility: 'friends', audience: ['u1'] }),
   'posts/pn': post('u2', { commentsDisabled: true }),
@@ -251,7 +252,7 @@ cap('AI bots', 'Bot comment on a bot\'s post while bot-to-bot comments are OFF',
 cap('AI bots', 'Bot comment where comments are off (owner allowed)', 'create', 'posts/pn/comments/new', botComment, []);
 cap('AI bots', 'Bot reaction on a post of a user who allowed it', 'update', 'posts/p2', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, ['runner']);
 cap('AI bots', 'Runner cannot react as an unassigned bot', 'update', 'posts/p2', { 'reactions.bot_02': 'love' }, []);
-cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update', 'posts/p1', { 'reactions.bot_01': 'love' }, []);
+cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update', 'posts/p1', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
 cap('AI bots', 'Bot reaction on a friends-only post', 'update', 'posts/pf', { 'reactions.bot_01': 'love' }, []);
 cap('AI bots', 'Bot reaction on a bot\'s post', 'update', 'posts/pb', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, ['runner']);
 cap('AI bots', 'Runner writes a reaction under a human\'s key (u2)', 'update', 'posts/p2', { 'reactions.u2': 'wow' }, ['other']);
@@ -269,17 +270,17 @@ cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bo
 cap('AI bots', 'Read bot activity logs', 'get', 'botLogs/bl1', null, STAFF);
 cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'changed' }, []);
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
-cap('AI bots', 'Runner reserves its assigned bot daily quota', 'create', 'botRateLimits/run/bots/bot_04', { runnerUid: 'run', botId: 'bot_04', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
-cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'botRateLimits/run/bots/bot_02', { runnerUid: 'run', botId: 'bot_02', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
-cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/bots/bot_01', { count: 2, lastAt: T(0) }, ['runner']);
-cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/bots/bot_01', { count: 12, lastAt: T(0) }, []);
-cap('AI bots', 'Runner resets bot quota after full 24-hour window', 'update', 'botRateLimits/bots/bot_03', { count: 1, windowStartedAt: T(0), lastAt: T(0) }, ['runner']);
-cap('AI bots', 'Runner cannot reset bot quota before 24 hours', 'update', 'botRateLimits/bots/bot_03', { count: 1, windowStartedAt: T(-30000000), lastAt: T(0) }, []);
-cap('AI bots', 'Runner cannot exceed 12 actions per rolling 24 hours', 'update', 'botRateLimits/bots/bot_05', { count: 13, lastAt: T(0) }, []);
-cap('AI bots', 'Runner cannot exceed 15 replies per user per bot per rolling 24 hours', 'update', 'botRateLimits/bots/bot_05/users/u1', { count: 16, lastAt: T(0) }, []);
-cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/run/bots/bot_04/users/u1', { runnerUid: 'run', botId: 'bot_04', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
-cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/bots/bot_01/users/u1', { count: 2, lastAt: T(-90000) }, []);
-cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/bots/bot_01/users/u1', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner reserves its assigned bot daily quota', 'create', 'botRateLimits/bot_04', { botId: 'bot_04', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
+cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'botRateLimits/bot_02', { runnerUid: 'run', botId: 'bot_02', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
+cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/bot_01', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/bot_01', { count: 12, lastAt: T(0) }, []);
+cap('AI bots', 'Runner resets bot quota after full 24-hour window', 'update', 'botRateLimits/bot_03', { count: 1, windowStartedAt: T(0), lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot reset bot quota before 24 hours', 'update', 'botRateLimits/bot_03', { count: 1, windowStartedAt: T(-30000000), lastAt: T(0) }, []);
+cap('AI bots', 'Runner cannot exceed 12 actions per rolling 24 hours', 'update', 'botRateLimits/bot_05', { count: 13, lastAt: T(0) }, []);
+cap('AI bots', 'Runner cannot exceed 15 replies per user per bot per rolling 24 hours', 'update', 'botRateLimits/bot_05/users/u1', { count: 16, lastAt: T(0) }, []);
+cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/bot_04/users/u1', { botId: 'bot_04', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
+cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/bot_01/users/u1', { count: 2, lastAt: T(-90000) }, []);
+cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/bot_01/users/u1', { count: 2, lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Read the runner state', 'get', 'botState/run', null, ['runner']);
 cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runoff', null, []);
 cap('AI bots', 'Only an enabled runner can publish as an assigned bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
