@@ -1,6 +1,6 @@
 // Private and group messaging (Firestore realtime).
 import {
-  db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp
+  db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp, runTransaction
 } from './firebase.js';
 import { state, subscribe, onCleanup, navigate } from './state.js';
 import {
@@ -173,16 +173,38 @@ export async function render(view, a, b) {
           exists = true;
           subscribeMessages();
         }
-        await addDoc(collection(db, 'chats', id, 'messages'), { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
-        // a bot has no browser: the scheduled bot job answers from this inbox
+        const chatRef = doc(db, 'chats', id);
+        const messageRef = doc(collection(db, 'chats', id, 'messages'));
+        const lastMessage = { text: (text || '📷 Photo').slice(0, 120), uid: me };
         if (other?.isBot && text) {
-          await addDoc(collection(db, 'botInbox'), { fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500), handled: false, createdAt: serverTimestamp() });
+          // Message, inbox item and quota counter commit together. Rules reject direct inbox writes
+          // without the matching quota increment, so parallel tabs cannot bypass the throttle.
+          const quotaDay = new Date().toISOString().slice(0, 10);
+          const quotaRef = doc(db, 'botInboxRateLimits', me, 'bots', otherUid, 'days', quotaDay);
+          const inboxRef = doc(collection(db, 'botInbox'));
+          await runTransaction(db, async (tx) => {
+            const quotaSnap = await tx.get(quotaRef);
+            const quota = quotaSnap.exists() ? quotaSnap.data() : null;
+            const now = Date.now();
+            const lastAt = quota?.lastAt?.toMillis?.() || 0;
+            if ((quota?.count || 0) >= 20) throw new Error('You have reached today’s message limit for this AI bot.');
+            if (now - lastAt < 10_000) throw new Error('Please wait a few seconds before messaging this AI bot again.');
+            tx.set(quotaRef, {
+              senderUid: me, botId: otherUid, count: (quota?.count || 0) + 1, lastAt: serverTimestamp()
+            });
+            tx.set(messageRef, { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
+            tx.set(inboxRef, {
+              fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500),
+              handled: false, createdAt: serverTimestamp(), quotaDay
+            });
+            tx.update(chatRef, { lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp() });
+          });
+        } else {
+          await addDoc(collection(db, 'chats', id, 'messages'), { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
+          await updateDoc(chatRef, {
+            lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp()
+          });
         }
-        await updateDoc(doc(db, 'chats', id), {
-          lastMessage: { text: (text || '📷 Photo').slice(0, 120), uid: me },
-          lastAt: serverTimestamp(),
-          [`lastRead.${me}`]: serverTimestamp()
-        });
         input.value = '';
         image = ''; preview.hidden = true; preview.innerHTML = '';
       } catch (err) { toast(errMsg(err), 'error'); }
