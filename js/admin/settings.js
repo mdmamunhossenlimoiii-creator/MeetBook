@@ -18,7 +18,7 @@ export async function render(body) {
     <label class="row gap"><input type="checkbox" id="gs-reg" ${on(s.registrationOpen, true) ? 'checked' : ''}> New accounts can be created</label>
     <p class="muted small">Enforced by the sign-up form only. Close it fully in Firebase Authentication settings if needed.</p></section>
   <section class="card pad"><h3>AI bots (global)</h3>
-    <label class="row gap"><input type="checkbox" id="gs-bots" ${on(s.botsEnabled, true) ? 'checked' : ''}> AI bots are ON (master switch: when off, the scheduled job does nothing and bots stop chatting)</label>
+    <label class="row gap"><input type="checkbox" id="gs-bots" ${s.botsEnabled === true ? 'checked' : ''}> AI bots are ON (master switch: when off, the scheduled job does nothing and bots stop chatting)</label>
     <label class="row gap"><input type="checkbox" id="gs-b2b" ${s.botToBotComments ? 'checked' : ''}> Let bots comment on other bots' posts (off by default: it can look like real popularity)</label></section>
   <button class="btn btn-primary" id="gs-save">Save settings</button>`;
   $('#gs-save', body).addEventListener('click', async (e) => {
