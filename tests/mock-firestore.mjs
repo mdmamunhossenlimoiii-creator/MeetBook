@@ -104,8 +104,12 @@ export function startMock({ port = 0, seed = {}, authUsers = ['runner1'], runner
               masks.forEach((m) => { const v = getPathVal(w.update.fields, m); if (v !== undefined) setPath(nf, m, v); });
             }
             for (const t of w.updateTransforms || []) {
-              const cur = nf[t.fieldPath]; const nv = Number(cur?.integerValue || 0) + Number(t.increment.integerValue);
-              nf[t.fieldPath] = { integerValue: String(nv) };
+              if (t.setToServerValue === 'REQUEST_TIME') {
+                nf[t.fieldPath] = { timestampValue: new Date().toISOString() };
+              } else if (t.increment) {
+                const cur = nf[t.fieldPath]; const nv = Number(cur?.integerValue || 0) + Number(t.increment.integerValue);
+                nf[t.fieldPath] = { integerValue: String(nv) };
+              }
             }
             const op = d ? 'update' : 'create';
             if (!ok(req, op, p, nf)) return forbid(res);
