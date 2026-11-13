@@ -120,18 +120,19 @@ export function createClient({ projectId, fsUrl = 'https://firestore.googleapis.
         const next = {
           ...data,
           count: count + 1,
-          windowStartedAt: expired ? new Date(now) : old.windowStartedAt,
-          lastAt: new Date(Math.max(now, lastAt + 1))
+          windowStartedAt: expired ? null : old.windowStartedAt
         };
         const writeData = { ...next };
+        delete writeData.lastAt;
         if (expired) delete writeData.windowStartedAt;
         const update = { name: `${docs}/${path}`, fields: toFields(writeData) };
         const write = {
           update,
           updateMask: { fieldPaths: Object.keys(writeData) },
-          currentDocument: current ? { updateTime: current.updateTime } : { exists: false }
+          currentDocument: current ? { updateTime: current.updateTime } : { exists: false },
+          updateTransforms: [{ fieldPath: 'lastAt', setToServerValue: 'REQUEST_TIME' }]
         };
-        if (expired) write.updateTransforms = [{ fieldPath: 'windowStartedAt', setToServerValue: 'REQUEST_TIME' }];
+        if (expired) write.updateTransforms.push({ fieldPath: 'windowStartedAt', setToServerValue: 'REQUEST_TIME' });
         try {
           await call(`${base}:commit`, { method: 'POST', body: { transaction, writes: [write] } });
           return true;
