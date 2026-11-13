@@ -24,7 +24,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | No role / Unknown role | admin document without `role` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in `/botRunners` |
 
-191 capabilities × 13 actors = 2483 cases are executed on every test run.
+191 capabilities × 14 actors = 2674 cases are executed on every test run.
 
 
 ## Users
