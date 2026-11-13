@@ -401,8 +401,36 @@ service cloud.firestore {
     }
 
     // ---------- users ----------
-    match /users/{uid} {
+    // Public profile projection contains only profile-display fields, never private account settings.
+    match /publicProfiles/{uid} {
+      function validPublicProfile(d) {
+        return d.keys().hasOnly(['name', 'nameLower', 'bio', 'photo', 'cover', 'isBot', 'roleEmoji', 'verified', 'profileVisibility', 'createdAt'])
+          && d.name is string && d.name.size() >= 2 && d.name.size() <= 60
+          && d.nameLower is string
+          && d.bio is string && d.bio.size() <= 500
+          && d.photo is string && d.cover is string
+          && d.isBot is bool && d.verified is bool
+          && d.roleEmoji is string
+          && d.profileVisibility in ['everyone', 'friends']
+          && d.createdAt is timestamp;
+      }
       allow read: if signedIn();
+      allow create, update: if (isOwner(uid) || isAdmin()) && validPublicProfile(request.resource.data);
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // Minimal consent projection: the Runner can read only this boolean, not full user documents.
+    match /botEngagement/{uid} {
+      allow read: if isOwner(uid) || isStaff() || runnerEnabled();
+      allow create, update: if isOwner(uid)
+        && request.resource.data.keys().hasOnly(['allowBotEngagement', 'updatedAt'])
+        && request.resource.data.allowBotEngagement is bool
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if false;
+    }
+
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isStaff() || (signedIn() && resource.data.get('isBot', false) == true);
       allow create: if
         (isOwner(uid)
           && nameOk(request.resource.data)
