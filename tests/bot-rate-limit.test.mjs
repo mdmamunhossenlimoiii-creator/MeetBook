@@ -7,7 +7,7 @@ test('transactional quota reservations serialize concurrent runners', async () =
   const mock = await startMock();
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
-    const path = 'botRateLimits/runner1/bots/bot_01/days/2026-11-13';
+    const path = 'botRateLimits/runner1/bots/bot_01';
     const data = { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily' };
     const results = await Promise.all([
       fs.reserveQuota(path, { max: 1, data }),
@@ -24,7 +24,7 @@ test('quota transactions enforce a daily count and a cooldown', async () => {
   const mock = await startMock();
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
-    const path = 'botRateLimits/runner1/bots/bot_01/users/u1/days/2026-11-13';
+    const path = 'botRateLimits/runner1/bots/bot_01/users/u1';
     const data = { runnerUid: 'runner1', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily' };
     assert.equal(await fs.reserveQuota(path, { max: 15, cooldownMs: 60_000, data }), true);
     assert.equal(await fs.reserveQuota(path, { max: 15, cooldownMs: 60_000, data }), false);
