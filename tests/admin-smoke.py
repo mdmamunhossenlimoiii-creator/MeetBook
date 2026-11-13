@@ -245,7 +245,7 @@ async def main():
         await go(pg, '#/profile/bot_01', 700)
         check('bot profile offers a chat button and a report button', 'Chat with AI' in await pg.inner_text('#main') and 'Report' in await pg.inner_text('#main'))
         await go(pg, '#/messages/with/bot_01', 900)
-        check('chat with a bot shows the AI notice', 'AI bot' in await pg.inner_text('#main') and 'automatic' in (await pg.inner_text('#main')).lower())
+        check('chat with a bot shows the AI and Gemini data-use notice', 'AI bot' in await pg.inner_text('#main') and 'Google Gemini' in (await pg.inner_text('#main')) and 'sensitive information' in (await pg.inner_text('#main')))
         await pg.fill('[data-text]', 'Hello bot'); await pg.press('[data-text]', 'Enter'); await pg.wait_for_timeout(500)
         log = await pg.evaluate('window.__log')
         check('sending to a bot also files a botInbox request', any(l[0] == 'setDoc' and l[1].startswith('botInbox/') and l[2]['botId'] == 'bot_01' and l[2]['handled'] is False for l in log), str(log)[-300:])
