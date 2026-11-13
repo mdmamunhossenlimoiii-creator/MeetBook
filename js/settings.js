@@ -1,5 +1,5 @@
 // Settings: appearance, privacy, account.
-import { auth, db, doc, writeBatch, serverTimestamp, sendPasswordResetEmail, signOut } from './firebase.js';
+import { auth, db, doc, collection, query, where, getDocs, writeBatch, serverTimestamp, sendPasswordResetEmail, signOut } from './firebase.js';
 import { state } from './state.js';
 import { $, esc, toast, errMsg } from './utils.js';
 import { getThemePref, setThemePref } from './theme.js';
@@ -42,7 +42,15 @@ export async function render(view) {
         <option value="off" ${s.allowBotEngagement ? '' : 'selected'}>Off: bots never react or comment on my posts</option>
         <option value="on" ${s.allowBotEngagement ? 'selected' : ''}>On: allow labelled AI bots to react and comment sometimes</option></select>
       <div class="muted small">Bot reactions and comments always show the "AI Bot" label and are counted separately from people.</div></div>
-    <p class="muted small">Post, story, and private-chat access are checked by database rules. Group chats use chat membership. The profile choice only hides posts on your profile page in this app; profile details remain visible to signed-in users, and public posts can still appear in feeds.</p>
+    <div class="field"><label for="st-memory">Long-term memory for AI bot chats</label>
+      <select id="st-memory">
+        <option value="off" ${s.allowBotMemory ? '' : 'selected'}>Off: do not save bot memories</option>
+        <option value="on" ${s.allowBotMemory ? 'selected' : ''}>On: allow each of the first three bots to save a private summary for me</option>
+      </select>
+      <div class="muted small">Off by default. If enabled, each of the first three AI bots may save a short summary of non-sensitive preferences you explicitly share. Memories are separated by bot and user, are not raw chat transcripts, and can be cleared here. Avoid sharing sensitive information.</div>
+    </div>
+    <p class="muted small">Profile details (bio and cover information) are restricted by database rules when you choose Friends only. Your display name remains in the limited people directory so friends can find you. Public posts may still appear in feeds according to each post's own audience.</p>
+    <button class="btn" id="st-clear-memory" type="button">Clear all saved bot memories</button>
     <button class="btn btn-primary" id="st-save">Save privacy settings</button>
   </section>
 
@@ -68,16 +76,37 @@ export async function render(view) {
         profileVisibility: $('#st-profile', view).value,
         allowMessages: $('#st-msg', view).value,
         defaultVisibility: $('#st-vis', view).value,
-        allowBotEngagement: $('#st-bots', view).value === 'on'
+        allowBotEngagement: $('#st-bots', view).value === 'on',
+        allowBotMemory: $('#st-memory', view).value === 'on'
       };
       const batch = writeBatch(db);
       batch.update(doc(db, 'users', state.user.uid), { settings: next });
       batch.set(doc(db, 'publicProfiles', state.user.uid), { profileVisibility: next.profileVisibility }, { merge: true });
       batch.set(doc(db, 'botEngagement', state.user.uid), {
-        allowBotEngagement: next.allowBotEngagement, updatedAt: serverTimestamp()
+        allowBotEngagement: next.allowBotEngagement,
+        allowBotMemory: next.allowBotMemory,
+        updatedAt: serverTimestamp()
       }, { merge: true });
+      // Turning memory off revokes Runner access and deletes the user's stored summaries.
+      if (s.allowBotMemory === true && next.allowBotMemory === false) {
+        const memories = await getDocs(query(collection(db, 'botMemories'), where('ownerUid', '==', state.user.uid)));
+        memories.docs.forEach((memory) => batch.delete(memory.ref));
+      }
       await batch.commit();
       toast('Settings saved', 'success');
+    } catch (e) { toast(errMsg(e), 'error'); }
+    btn.disabled = false;
+  });
+
+  $('#st-clear-memory', view).addEventListener('click', async () => {
+    const btn = $('#st-clear-memory', view);
+    btn.disabled = true;
+    try {
+      const memories = await getDocs(query(collection(db, 'botMemories'), where('ownerUid', '==', state.user.uid)));
+      const batch = writeBatch(db);
+      memories.docs.forEach((memory) => batch.delete(memory.ref));
+      if (memories.size) await batch.commit();
+      toast(`Cleared ${memories.size} saved bot memory record(s)`, 'success');
     } catch (e) { toast(errMsg(e), 'error'); }
     btn.disabled = false;
   });
