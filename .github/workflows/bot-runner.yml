@@ -43,6 +43,20 @@ jobs:
           LIVE_APPROVED: ${{ vars.BOT_LIVE_TEST_APPROVED }}
         run: |
           test "$LIVE_APPROVED" = "yes" || { echo "Live test blocked: set BOT_LIVE_TEST_APPROVED=yes only after reviewing the release checklist."; exit 1; }
+      - name: Validate required environment configuration without printing secrets
+        env:
+          RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
+          RUNNER_PASSWORD: ${{ secrets.BOT_RUNNER_PASSWORD }}
+          EXPECTED_PROJECT: ${{ vars.BOT_RUNNER_EXPECTED_PROJECT_ID }}
+          GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: |
+          test -n "$RUNNER_EMAIL" || { echo "Missing BOT_RUNNER_EMAIL environment secret."; exit 1; }
+          test -n "$RUNNER_PASSWORD" || { echo "Missing BOT_RUNNER_PASSWORD environment secret."; exit 1; }
+          test "$EXPECTED_PROJECT" = "meetbook-65d30" || { echo "BOT_RUNNER_EXPECTED_PROJECT_ID must equal meetbook-65d30."; exit 1; }
+          if [ "$DRY_RUN" = "0" ]; then
+            test -n "$GEMINI_KEY" || { echo "Missing GEMINI_API_KEY environment secret."; exit 1; }
+          fi
       - name: Run one selected bot post
         env:
           BOT_RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
