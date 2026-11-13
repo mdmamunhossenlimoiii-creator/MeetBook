@@ -71,55 +71,80 @@ for (const cap of CAPS) {
     if (r.ok && cap.op !== 'get') await seed(); // a write succeeded: restore the seed so cases stay independent
   }
 }
-// Runner authorization hardening: these are negative tests against the REAL Firestore Emulator.
-// All documents are synthetic demo-project fixtures; no live Runner or production Firebase is used.
+// Runner authorization hardening: negative tests against isolated REAL Firestore Emulator projects.
+// Every fixture is synthetic. Each scenario is seeded before its authenticated client is created.
 if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
-  const runnerDb = () => env.authenticatedContext('run').firestore();
   const denied = (promise, label) => assert.rejects(promise, undefined, label);
+  const isolatedRunnerCase = async (projectId, documents, run) => {
+    const isolated = await initializeTestEnvironment({
+      projectId,
+      firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8') }
+    });
+    try {
+      await isolated.withSecurityRulesDisabled(async (ctx) => {
+        const db = ctx.firestore();
+        for (const [path, data] of Object.entries(documents)) await setDoc(doc(db, path), data);
+      });
+      await run(isolated);
+    } finally {
+      await isolated.cleanup();
+    }
+  };
 
   await denied(getDoc(doc(env.authenticatedContext('runoff').firestore(), 'chats/bot_01_u1')),
     'disabled Runner must not read an assigned-bot chat');
   await denied(getDoc(doc(env.authenticatedContext('ghostRunner').firestore(), 'botState/ghostRunner')),
     'UID without a botRunners document must not access runner state');
-
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await setDoc(doc(ctx.firestore(), 'botRunners/emptyRunner'), { enabled: true, botIds: [] });
-    await setDoc(doc(ctx.firestore(), 'botRunners/normalAsBot'), { enabled: true, botIds: ['u2'] });
-  });
-  await denied(getDoc(doc(env.authenticatedContext('emptyRunner').firestore(), 'botState/emptyRunner')),
-    'empty botIds must deny runner state access');
-  await denied(getDoc(doc(env.authenticatedContext('normalAsBot').firestore(), 'chats/u1_u2')),
-    'a normal user in botIds must not make a human-only chat readable');
-
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'users/bot_01'), { active: false });
-  });
-  await denied(getDoc(doc(runnerDb(), 'chats/bot_01_u1')),
-    'inactive assigned bot must not authorize private-chat access');
-  await denied(updateDoc(doc(runnerDb(), 'posts/p2'), { 'reactions.bot_01': 'love' }),
-    'inactive assigned bot must not authorize a reaction');
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'users/bot_01'), { active: true });
-  });
-
-  await denied(updateDoc(doc(runnerDb(), 'posts/p2'), { commentCount: -1 }),
+  await denied(updateDoc(doc(env.authenticatedContext('run').firestore(), 'posts/p2'), { commentCount: -1 }),
     'Runner must not decrement a post comment counter');
 
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'settings/global'), { botsEnabled: false });
+  await isolatedRunnerCase('demo-meetbook-empty-runner', {
+    'settings/global': { botsEnabled: true },
+    'botRunners/emptyRunner': { enabled: true, botIds: [] },
+    'botRunners/normalAsBot': { enabled: true, botIds: ['u2'] },
+    'users/u2': { isBot: false },
+    'chats/u1_u2': { type: 'private', members: ['u1', 'u2'] }
+  }, async (isolated) => {
+    await denied(getDoc(doc(isolated.authenticatedContext('emptyRunner').firestore(), 'botState/emptyRunner')),
+      'empty botIds must deny runner state access');
+    await denied(getDoc(doc(isolated.authenticatedContext('normalAsBot').firestore(), 'chats/u1_u2')),
+      'a normal user in botIds must not make a human-only chat readable');
   });
-  await denied(getDoc(doc(runnerDb(), 'chats/bot_01_u1')),
-    'global botsEnabled=false must deny Runner chat access');
-  await denied(getDoc(doc(runnerDb(), 'botState/run')),
-    'global botsEnabled=false must deny Runner state access');
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await updateDoc(doc(ctx.firestore(), 'settings/global'), { botsEnabled: true });
-    await deleteDoc(doc(ctx.firestore(), 'settings/global'));
+
+  await isolatedRunnerCase('demo-meetbook-inactive-bot', {
+    'settings/global': { botsEnabled: true },
+    'botRunners/inactiveRunner': { enabled: true, botIds: ['bot_02'] },
+    'users/bot_02': { isBot: true, active: false },
+    'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
+    'chats/bot_02_u2': { type: 'private', members: ['bot_02', 'u2'] },
+    'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
+  }, async (isolated) => {
+    const db = isolated.authenticatedContext('inactiveRunner').firestore();
+    await denied(getDoc(doc(db, 'chats/bot_02_u2')),
+      'inactive assigned bot must not authorize private-chat access');
+    await denied(updateDoc(doc(db, 'posts/p2'), { 'reactions.bot_02': 'love' }),
+      'inactive assigned bot must not authorize a reaction');
   });
-  await denied(getDoc(doc(runnerDb(), 'botState/run')),
-    'missing settings/global must fail closed and deny Runner access');
-  await env.withSecurityRulesDisabled(async (ctx) => {
-    await setDoc(doc(ctx.firestore(), 'settings/global'), { botsEnabled: true, botToBotComments: false });
+
+  await isolatedRunnerCase('demo-meetbook-global-stop', {
+    'settings/global': { botsEnabled: false },
+    'botRunners/run': { enabled: true, botIds: ['bot_01'] },
+    'users/bot_01': { isBot: true, active: true },
+    'users/u2': { isBot: false },
+    'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] }
+  }, async (isolated) => {
+    const db = isolated.authenticatedContext('run').firestore();
+    await denied(getDoc(doc(db, 'chats/bot_01_u2')),
+      'global botsEnabled=false must deny Runner chat access');
+    await denied(getDoc(doc(db, 'botState/run')),
+      'global botsEnabled=false must deny Runner state access');
+  });
+
+  await isolatedRunnerCase('demo-meetbook-missing-global', {
+    'botRunners/run': { enabled: true, botIds: ['bot_01'] }
+  }, async (isolated) => {
+    await denied(getDoc(doc(isolated.authenticatedContext('run').firestore(), 'botState/run')),
+      'missing settings/global must fail closed and deny Runner access');
   });
   console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot, global kill switch, missing settings/global, and counter decrement');
 }
