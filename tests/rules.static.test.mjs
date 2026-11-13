@@ -120,11 +120,11 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerMayComment'), /botToBotComments/);
   const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)\s*&& request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\.size\(\) == 1\s*&& request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\.hasOnly\(get\(.*botRunners.*botIds/s;
   assert.match(posts, runnerReaction, 'bot reactions require exactly one allowlisted bot key');
-  assert.match(posts, /request\.resource\.data\.commentCount == resource\.data\.commentCount \+ 1/, 'Runner may only increment commentCount');
+  assert.match(fn('runnerMayIncrementCommentCount'), /request\.resource\.data\.commentCount == resource\.data\.commentCount \+ 1/, 'Runner may only increment commentCount with a validated comment');
   assert.match(fn('canPublishBot'), /runnerMayActAs\(botUid\)/, 'only an assigned active Runner can publish as a bot');
   assert.doesNotMatch(fn('canPublishBot'), /isAdmin/);
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
-  assert.match(posts, /hasOnly\(get\(.*botRunners.*botIds/s, 'reaction key must be in the Runner allowlist');
+  assert.match(fn('runnerMayReact'), /runnerMayActAs\(botUid\)/, 'reaction key must be an active assigned bot');
   // the runner is not allowed to write anything but bot content
   assert.match(block('botState'), /runnerEnabled\(\)/);
   assert.match(block('botInbox'), /runnerHasBot\(resource\.data\.botId\)/);
