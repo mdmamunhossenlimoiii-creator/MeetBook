@@ -276,9 +276,15 @@ async function runSearch() {
   if (q.length < 2) { box.hidden = true; return; }
   try {
     const range = (col) => query(collection(db, col), where('nameLower', '>=', q), where('nameLower', '<=', q + ''), limit(6));
-    const [u, g] = await Promise.all([getDocs(range('publicProfiles')), getDocs(range('groups'))]);
+    const [u, bots, g] = await Promise.all([
+      getDocs(range('publicDirectory')),
+      getDocs(query(collection(db, 'publicProfiles'), where('isBot', '==', true), limit(6))),
+      getDocs(range('groups'))
+    ]);
+    const people = new Map(u.docs.map((d) => [d.id, { id: d.id, ...d.data() }]));
+    bots.docs.forEach((d) => people.set(d.id, { id: d.id, ...d.data() }));
     const rows = [
-      ...u.docs.map((d) => `<a class="search-row" href="#/profile/${d.id}">${avatarHtml(d.data().name, d.data().photo, 32)}<span>${esc(d.data().name)}${botBadge(d.data())}</span></a>`),
+      ...[...people.values()].slice(0, 6).map((p) => `<a class="search-row" href="#/profile/${p.id}">${avatarHtml(p.name, p.photo, 32)}<span>${esc(p.name)}${botBadge(p)}</span></a>`),
       ...g.docs.map((d) => `<a class="search-row" href="#/group/${d.id}"><span class="avatar avatar-initial" style="width:32px;height:32px;background:var(--primary)">${icon('grid', 16)}</span><span>${esc(d.data().name)} <small class="muted">Group</small></span></a>`)
     ];
     box.innerHTML = rows.length ? rows.join('') : '<div class="search-row muted">No results</div>';

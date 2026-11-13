@@ -1,0 +1,72 @@
+name: MeetBook Bot Runner (manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      bot_id:
+        description: "Choose exactly one of the first three Gemini bots"
+        required: true
+        type: choice
+        options: [bot_01, bot_02, bot_03]
+      dry_run:
+        description: "Preflight only: read and validate, do not write"
+        required: true
+        type: boolean
+        default: true
+      confirm_live:
+        description: "Allow one public AI post (requires environment approval and repository variable BOT_LIVE_TEST_APPROVED=yes)"
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meetbook-bot-runner
+  cancel-in-progress: false
+
+jobs:
+  run-one-post:
+    if: ${{ inputs.dry_run == true || inputs.confirm_live == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: meetbook-bot-live
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Require owner release flag for a live post
+        if: ${{ inputs.dry_run != true }}
+        env:
+          LIVE_APPROVED: ${{ vars.BOT_LIVE_TEST_APPROVED }}
+        run: |
+          test "$LIVE_APPROVED" = "yes" || { echo "Live test blocked: set BOT_LIVE_TEST_APPROVED=yes only after reviewing the release checklist."; exit 1; }
+      - name: Validate required environment configuration without printing secrets
+        env:
+          RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
+          RUNNER_PASSWORD: ${{ secrets.BOT_RUNNER_PASSWORD }}
+          EXPECTED_PROJECT: ${{ vars.BOT_RUNNER_EXPECTED_PROJECT_ID }}
+          GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: |
+          test -n "$RUNNER_EMAIL" || { echo "Missing BOT_RUNNER_EMAIL environment secret."; exit 1; }
+          test -n "$RUNNER_PASSWORD" || { echo "Missing BOT_RUNNER_PASSWORD environment secret."; exit 1; }
+          test "$EXPECTED_PROJECT" = "meetbook-65d30" || { echo "BOT_RUNNER_EXPECTED_PROJECT_ID must equal meetbook-65d30."; exit 1; }
+          if [ "$DRY_RUN" = "0" ]; then
+            test -n "$GEMINI_KEY" || { echo "Missing GEMINI_API_KEY environment secret."; exit 1; }
+          fi
+      - name: Run one selected bot post
+        env:
+          BOT_RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
+          BOT_RUNNER_PASSWORD: ${{ secrets.BOT_RUNNER_PASSWORD }}
+          BOT_RUNNER_EXPECTED_PROJECT_ID: ${{ vars.BOT_RUNNER_EXPECTED_PROJECT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          BOT_RUNNER_MODE: post
+          GEMINI_STRICT: ${{ inputs.dry_run && '0' || '1' }}
+          BOT_RUNNER_BOT_ID: ${{ inputs.bot_id }}
+          BOT_POSTS: "1"
+          BOT_COMMENTS: "0"
+          DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+        run: node scripts/bot-runner.mjs

@@ -1,4 +1,4 @@
-// Scheduled job (GitHub Actions): first three bots use server-side Gemini with safe template fallback; remaining bots use templates.
+// Manual GitHub Actions job: the first three bots use server-side Gemini with safe template fallback; remaining bots retain template behavior.
 //
 // Security model
 //  * No Admin SDK / service-account key. The job signs in as a normal Firebase Auth user (the
@@ -10,7 +10,7 @@
 //  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
-//                    Settings -> "Allow AI bots to react and comment" (botEngagement/{uid}.allowBotEngagement only).
+//                    Settings -> "Allow AI bots to react and comment" (Runner reads the minimal botEngagement projection; Firestore Rules verify users/{uid}.settings.allowBotEngagement).
 //                    At most one bot per post, a relevant comment + a reaction, always shown as AI.
 //  4. Bot-to-bot comments: only if settings/global.botToBotComments is on (default OFF, to avoid
 //                    staged conversations that look like real popularity).
@@ -23,20 +23,44 @@ import { BOTS, isBotId } from '../js/bots-data.js';
 import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and } from './lib/firestore-rest.mjs';
-import { generateSmartBotText } from './lib/gemini.mjs';
+import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib/gemini.mjs';
+import { hasBotEngagementConsent } from './lib/bot-consent.mjs';
+import { hasBotMemoryConsent } from './lib/bot-memory-consent.mjs';
+import { botMemoryDocId } from './lib/bot-memory.mjs';
+import { assertExpectedProjectId } from './lib/project-guard.mjs';
 
 const EMAIL = process.env.BOT_RUNNER_EMAIL;
 const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
 const AUTH_URL = process.env.AUTH_URL || 'https://identitytoolkit.googleapis.com';
 const FS_URL = process.env.FS_URL || 'https://firestore.googleapis.com';
 const DRY = process.env.DRY_RUN === '1';
+const MODE = process.env.BOT_RUNNER_MODE || 'all';
+const RUNNER_BOT_ID = process.env.BOT_RUNNER_BOT_ID || '';
+const CHAT_MAX_REPLIES = 1;
 
+if (!['all', 'post', 'chat'].includes(MODE)) {
+  console.error('BOT_RUNNER_MODE must be all, post, or chat.');
+  process.exit(1);
+}
+if (MODE !== 'all' && !SMART_BOT_IDS.has(RUNNER_BOT_ID)) {
+  console.error('Isolated post/chat mode requires BOT_RUNNER_BOT_ID to be one of the first three Gemini bots.');
+  process.exit(1);
+}
 if (!EMAIL || !PASSWORD) {
   console.log('Bot runner is not configured (BOT_RUNNER_EMAIL / BOT_RUNNER_PASSWORD secrets are missing). Nothing to do.');
   process.exit(0);
 }
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   console.error('js/firebase-config.js is missing apiKey or projectId.');
+  process.exit(1);
+}
+try {
+  assertExpectedProjectId({
+    actualProjectId: firebaseConfig.projectId,
+    expectedProjectId: process.env.BOT_RUNNER_EXPECTED_PROJECT_ID
+  });
+} catch (error) {
+  console.error(error.message);
   process.exit(1);
 }
 
@@ -182,17 +206,20 @@ async function main() {
   }
 
   const allowedBotIds = new Set(runner.botIds.filter((id) => isBotId(id)));
-  const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id));
+  const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id)
+    && (!RUNNER_BOT_ID || bot.id === RUNNER_BOT_ID));
   if (!bots.length) { console.log('No assigned bot profiles found for this runner. Nothing to do.'); return; }
   const botMap = new Map(bots.map((b) => [b.id, b]));
   const st = await loadState();
   const stats = { posts: 0, comments: 0, reactions: 0, chats: 0 };
 
+  // Mode isolation: post mode never processes engagement or private chats; chat mode never posts/comments/reacts.
+  if (MODE !== 'chat') {
   // 2. auto posts
   for (const bot of shuffle(bots.filter((b) => b.autoPost !== false && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
     if (!pick || !(await reserveBotAction(bot))) continue;
-    const postText = await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    const postText = DRY ? pick.text : await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
     const id = await createPost(bot, postText);
     spend(st, bot); stats.posts++;
     await log(bot, 'post', id, pick.text);
@@ -201,7 +228,7 @@ async function main() {
 
   // 3/4. engagement on recent public posts
   let engaged = 0;
-  if (nEngage > 0) {
+  if (MODE === 'all' && nEngage > 0) {
     const recent = await fs.query({
       from: [{ collectionId: 'posts' }],
       where: eq('visibility', 'public'),
@@ -213,7 +240,7 @@ async function main() {
     const optedIn = async (uid) => {
       if (!authorOk.has(uid)) {
         const consent = await fs.get(`botEngagement/${uid}`);
-        authorOk.set(uid, !!(consent && consent.allowBotEngagement === true));
+        authorOk.set(uid, hasBotEngagementConsent(consent));
       }
       return authorOk.get(uid);
     };
@@ -234,7 +261,7 @@ async function main() {
       const baseComment = makeComment({ bot, post: { text: post.text, image: post.image, authorName: post.authorName }, used: usedTexts });
       if (!baseComment) continue;
       if (!(await reserveBotAction(bot))) continue;
-      const c = { ...baseComment, text: await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
+      const c = { ...baseComment, text: DRY ? baseComment.text : await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
       await createComment(bot, post.id, c.text);
       spend(st, bot); stats.comments++; engaged++;
       st.commented.push(`${post.id}:${bot.id}`); st.engaged.push(post.id);
@@ -254,13 +281,15 @@ async function main() {
     }
   }
 
+  }
+  if (MODE !== 'post') {
   // 5. chat replies
   const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled !== false).map((bot) =>
     fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
   ));
   const inbox = inboxByBot.flat()
     .sort((a, b) => (a.createdAt?.getTime?.() || 0) - (b.createdAt?.getTime?.() || 0))
-    .slice(0, 25);
+    .slice(0, CHAT_MAX_REPLIES);
   for (const m of inbox) {
     const bot = botMap.get(m.botId);
     const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
@@ -273,11 +302,37 @@ async function main() {
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
     }, `chats/${m.chatId}`)).reverse();
     const reply = chatReply({ bot, text: m.text, history: hist });
-    const replyText = await generateSmartBotText({ bot, kind: 'chat', source: m.text, fallback: reply.text });
-    if (DRY) console.log(`[dry] chat reply as ${bot.name}: ${replyText}`);
+    // Long-term memory is isolated by bot + user and is completely disabled without explicit opt-in.
+    const memoryConsent = await fs.get(`botEngagement/${m.fromUid}`);
+    const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
+    const memoryId = botMemoryDocId(bot.id, m.fromUid);
+    const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
+    const replyText = DRY ? reply.text : await generateSmartBotText({
+      bot, kind: 'chat', source: m.text,
+      history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
+      memoryContext: savedMemory?.summary || '',
+      fallback: reply.text
+    });
+    if (DRY) console.log(`[dry] chat reply prepared as ${bot.name} (${reply.intent}); private text and Gemini calls suppressed.`);
     else {
       await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() });
       await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: replyText, uid: bot.id }, lastAt: new Date() });
+      // Persist only a bounded, non-sensitive summary after an explicit user opt-in.
+      // Other bots/users cannot read this document; the raw transcript is never copied here.
+      if (memoryEnabled && process.env.GEMINI_API_KEY && ['bot_01', 'bot_02', 'bot_03'].includes(bot.id)) {
+        const summary = await updateSmartBotMemory({
+          bot, existingSummary: savedMemory?.summary || '',
+          messages: [...hist, { uid: bot.id, text: replyText }]
+        });
+        if (summary || savedMemory) {
+          const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
+          if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
+          else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
+            // Another scheduled run may have created it concurrently; update the same isolated record.
+            await fs.patch(`botMemories/${memoryId}`, memoryData);
+          });
+        }
+      }
       // Never put private conversation text in audit logs.
       await log(bot, 'chat', m.chatId, reply.intent);
     }
@@ -289,6 +344,7 @@ async function main() {
     console.log(`Chat reply as ${bot.name} (${reply.intent}/${reply.lang})`);
   }
 
+  }
   if (!DRY) await saveState(st);
   console.log(`Done: ${stats.posts} post(s), ${stats.comments} comment(s), ${stats.reactions} reaction(s), ${stats.chats} chat repl${stats.chats === 1 ? 'y' : 'ies'}.`);
 }

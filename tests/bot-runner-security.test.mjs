@@ -48,3 +48,44 @@ test('runner inbox and private chat access are limited to assigned bots', () => 
 test('Admin bot panel does not provide manual posting or commenting as a bot', () => {
   assert.doesNotMatch(adminBots, /Post as a bot|Comment as a bot|data-do="post"|data-do="comment"|postAsBot|commentAsBot/);
 });
+
+test('dry runs never call Gemini or print private reply text', () => {
+  assert.match(runner, /const postText = DRY \? pick\.text : await generateSmartBotText/);
+  assert.match(runner, /text: DRY \? baseComment\.text : await generateSmartBotText/);
+  assert.match(runner, /const replyText = DRY \? reply\.text : await generateSmartBotText/);
+  assert.match(runner, /private text and Gemini calls suppressed/);
+  assert.doesNotMatch(runner, /\[dry\] chat reply as .*replyText/);
+});
+
+
+test('manual runner modes isolate one selected bot and prevent cross-mode actions', () => {
+  assert.match(runner, /const MODE = process\.env\.BOT_RUNNER_MODE \|\| 'all'/);
+  assert.match(runner, /\['all', 'post', 'chat'\]\.includes\(MODE\)/);
+  assert.match(runner, /MODE !== 'all' && !SMART_BOT_IDS\.has\(RUNNER_BOT_ID\)/);
+  assert.match(runner, /bot\.id === RUNNER_BOT_ID/);
+  assert.match(runner, /if \(MODE !== 'chat'\)/);
+  assert.match(runner, /if \(MODE === 'all' && nEngage > 0\)/);
+  assert.match(runner, /if \(MODE !== 'post'\)/);
+  assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
+  assert.match(runner, /\.slice\(0, CHAT_MAX_REPLIES\)/);
+});
+
+test('bot workflows are manual-only, default to dry-run, and require an explicit live gate', () => {
+  const runnerWorkflow = readFileSync(new URL('../.github/workflows/bot-runner.yml', import.meta.url), 'utf8');
+  const chatWorkflow = readFileSync(new URL('../.github/workflows/bot-chat.yml', import.meta.url), 'utf8');
+  for (const workflow of [runnerWorkflow, chatWorkflow]) {
+    assert.match(workflow, /workflow_dispatch:/);
+    assert.match(workflow, /default: true/);
+    assert.match(workflow, /confirm_live:/);
+    assert.match(workflow, /default: false/);
+    assert.match(workflow, /environment: meetbook-bot-live/);
+    assert.match(workflow, /BOT_LIVE_TEST_APPROVED/);
+    assert.match(workflow, /BOT_RUNNER_EXPECTED_PROJECT_ID/);
+    assert.match(workflow, /GEMINI_STRICT:/);
+    assert.doesNotMatch(workflow, /schedule:|pull_request:|push:/);
+  }
+  assert.match(runnerWorkflow, /BOT_RUNNER_MODE: post/);
+  assert.match(runnerWorkflow, /BOT_COMMENTS: "0"/);
+  assert.match(chatWorkflow, /BOT_RUNNER_MODE: chat/);
+  assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
+});
