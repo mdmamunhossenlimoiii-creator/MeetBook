@@ -32,7 +32,7 @@ for (const scenario of scenarios) {
   }
 
   console.log(`PASS ${scenario.topic}: received ${output.length} characters.`);
-  console.log(`  Sample: ${output.replace(/[\\r\\n]+/g, ' ').slice(0, 180)}`);
+  console.log(`  Sample: ${output.replace(/[\r\n]+/g, ' ').slice(0, 180)}`);
 }
 
 if (failures > 0) {
