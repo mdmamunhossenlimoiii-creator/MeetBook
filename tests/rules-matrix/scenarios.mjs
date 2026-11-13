@@ -40,7 +40,7 @@ const newPost = (uid, extra = {}) => ({ ...post(uid), createdAt: { $srv: 1 }, ..
 
 export const SEED = {
   'users/u1': user({ name: 'User One', nameLower: 'user one', active: true, chatEnabled: true, settings: { allowBotEngagement: false, allowBotMemory: false, profileVisibility: 'everyone' } }),
-  'users/u2': user({ name: 'User Two', nameLower: 'user two', settings: { allowBotEngagement: true, allowBotMemory: true, allowMessages: 'friends', profileVisibility: 'friends' } }),
+  'users/u2': user({ name: 'User Two', nameLower: 'user two', active: true, chatEnabled: true, settings: { allowBotEngagement: true, allowBotMemory: true, allowMessages: 'friends', profileVisibility: 'friends' } }),
   'users/u3': user({ name: 'User Three', nameLower: 'user three', settings: { allowMessages: 'friends', profileVisibility: 'friends', allowBotMemory: false } }),
   'users/u4': user({ name: 'User Four', nameLower: 'user four' }),
   'publicProfiles/u1': { name: 'User One', nameLower: 'user one', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
