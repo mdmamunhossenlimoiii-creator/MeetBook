@@ -267,3 +267,21 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
 await env.cleanup();
 console.log(`${total} cases run against the real emulator, ${wrong.length} mismatches.`);
 if (wrong.length) { console.error(wrong.join('\n')); process.exit(1); }
+
+ 
+await isolatedRunnerCase('demo-meetbook-configured-bot-daily-limit', {
+  'settings/global': { botsEnabled: true },
+  'botRunners/limitRunner': { enabled: true, botIds: ['bot_28'] },
+  'users/bot_28': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: 2 },
+  'botRateLimits/bot_28': {
+    botId: 'bot_28', kind: 'botDaily', count: 1,
+    windowStartedAt: Timestamp.fromMillis(Date.now() - 120_000),
+    lastAt: Timestamp.fromMillis(Date.now() - 120_000)
+  }
+}, async (isolated) => {
+  const db = isolated.authenticatedContext('limitRunner').firestore();
+  await updateDoc(doc(db, 'botRateLimits/bot_28'), { count: 2, lastAt: serverTimestamp() });
+  await denied(updateDoc(doc(db, 'botRateLimits/bot_28'), { count: 3, lastAt: serverTimestamp() }),
+    'a bot configured for two daily actions must not reserve a third action');
+  console.log('per-bot dailyLimit is enforced by real Firestore Rules');
+});
