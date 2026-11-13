@@ -33,3 +33,22 @@ test('quota transactions enforce a daily count and a cooldown', async () => {
     await mock.close();
   }
 });
+
+test('expired runner quota windows reset atomically with server request time', async () => {
+  const oldWindow = Date.now() - 25 * 60 * 60 * 1000;
+  const path = 'botRateLimits/runner1/bots/bot_01';
+  const mock = await startMock({ seed: {
+    [path]: { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily', count: 12, windowStartedAt: new Date(oldWindow), lastAt: new Date(oldWindow) }
+  } });
+  try {
+    const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
+    assert.equal(await fs.reserveQuota(path, {
+      max: 12, data: { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily' }
+    }), true);
+    const quota = mock.get(path);
+    assert.equal(quota.count, 1);
+    assert.ok(quota.windowStartedAt.getTime() > oldWindow, 'window start advances after expiry');
+  } finally {
+    await mock.close();
+  }
+});
