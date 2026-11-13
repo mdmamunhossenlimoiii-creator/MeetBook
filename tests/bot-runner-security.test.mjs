@@ -18,6 +18,17 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
   assert.match(rules, /function runnerMayActAs\(botUid\)/);
 });
 
+test('Runner, Rules, and Admin use settings/overall and strict Boolean gates', () => {
+  assert.match(runner, /fs\\.get\\('settings\\/overall'\\)/);
+  assert.doesNotMatch(runner, /settings\\/global/);
+  assert.match(runner, /global\\.botsEnabled !== true/);
+  assert.match(runner, /runner\\.enabled !== true/);
+  assert.match(rules, /documents\\/settings\\/overall/);
+  assert.doesNotMatch(rules, /documents\\/settings\\/global/);
+  assert.match(adminBots, /doc\\(db, 'settings', 'overall'\\)/);
+  assert.doesNotMatch(adminBots, /settings\\/global/);
+});
+
 test('runner applies conservative per-bot and per-user limits', () => {
   assert.match(runner, /Math\.min\(12,/);
   assert.match(runner, /reserveBotAction/);
