@@ -65,11 +65,18 @@ async function dropCollection(path) {
 
 async function purgeRunnerQuotasForUser(uid) {
   let removed = 0;
-  const runners = await fs.listAll('botRunners', { max: 300 });
+  const listOrEmpty = async (path) => {
+    try { return await fs.listAll(path, { max: 300 }); }
+    catch (error) {
+      if (/404|not found/i.test(String(error?.message || error))) return [];
+      throw error;
+    }
+  };
+  const runners = await listOrEmpty('botRunners');
   for (const runner of runners) {
-    const bots = await fs.listAll(`botRateLimits/${runner.id}/bots`, { max: 300 });
+    const bots = await listOrEmpty(`botRateLimits/${runner.id}/bots`);
     for (const bot of bots) {
-      const userQuotas = await fs.listAll(`botRateLimits/${runner.id}/bots/${bot.id}/users`, { max: 300 });
+      const userQuotas = await listOrEmpty(`botRateLimits/${runner.id}/bots/${bot.id}/users`);
       const matches = userQuotas.filter((q) => q.actorUid === uid);
       if (!matches.length) continue;
       if (!DRY) await fs.deleteMany(matches.map((q) => q.path));
