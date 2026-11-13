@@ -51,7 +51,7 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
     'chats/bot_06_u1': { type: 'private', members: ['bot_06', 'u1'] },
     'botInbox/i1': { botId: 'bot_06', fromUid: 'u1', chatId: 'bot_06_u1', text: 'তুমি কি রোবট?', handled: false, createdAt: now }
   } });
-  const env = { BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '2', BOT_COMMENTS: '6' };
+  const env = { BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '2', BOT_COMMENTS: '6' };
   try {
     const r = await run('scripts/bot-runner.mjs', env);
     assert.equal(r.status, 0, r.stderr + r.stdout);
@@ -99,7 +99,7 @@ test('bot runner: global OFF, per-bot OFF and daily limit stop everything', { sk
   ]) {
     const m = await startMock({ seed: { ...seed, 'users/u1': { name: 'R', settings: { allowBotEngagement: true } }, 'posts/p1': post('u1', 'trip to the beach') } });
     try {
-      const r = await run('scripts/bot-runner.mjs', { BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '3', BOT_COMMENTS: '3' });
+      const r = await run('scripts/bot-runner.mjs', { BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '3', BOT_COMMENTS: '3' });
       assert.equal(r.status, 0, `${name}: ${r.stderr}`);
       assert.deepEqual(m.ids('posts'), ['p1'], name);
       assert.equal(m.ids('posts/p1/comments').length, 0, name);
