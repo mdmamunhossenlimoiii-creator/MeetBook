@@ -222,7 +222,7 @@ cap('AI bots', 'Runner raises commentCount on a consenting user\'s post', 'updat
 cap('AI bots', 'Runner raises commentCount on a non-consenting user\'s post', 'update', 'posts/p1', { commentCount: { $inc: 1 } }, N);
 cap('AI bots', 'Runner pretends to be a human in a comment', 'create', 'posts/p2/comments/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('AI bots', 'Read the bot inbox', 'get', 'botInbox/i1', null, [...STAFF, 'runner']);
-cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: pair(a.uid, 'bot_01'), createdAt: { $srv: 1 } }), ['user', 'other']);
+cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: pair(a.uid, 'bot_01'), createdAt: { $srv: 1 }, quotaDay: '2026-11-10' }), []);
 cap('AI bots', 'Send an inbox message to a non-bot', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'u2', text: 'hello', handled: false, chatId: pair(a.uid, 'u2'), createdAt: { $srv: 1 } }), []);
 cap('AI bots', 'Send an inbox message already marked handled', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: true, chatId: pair(a.uid, 'bot_01') }), []);
 cap('AI bots', 'Send inbox message without a matching private chat', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: 'missing-chat', createdAt: { $srv: 1 } }), []);
