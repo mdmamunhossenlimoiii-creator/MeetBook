@@ -7,7 +7,7 @@
 - Service-account credentials are private and belong only in MeetBook GitHub Actions Secrets when a reviewed workflow requires them.
 - No AI bot workflow may run in this project during this stage.
 - Long-term bot memory is opt-in and off by default. Only the first three Gemini-powered bots can use it. Each memory is isolated by bot and user and stores a bounded summary, not a raw transcript. Recent user-authored messages may be sent to Gemini again for summarization when enabled; this can consume additional API quota.
-- Users can inspect and delete individual summaries, clear all summaries, or disable memory. Disabling memory revokes Runner access and deletes stored summaries in the same batch. The Runner can read/write one exact memory only for an assigned bot while the user's consent projection is enabled; only the owner can list or delete memory records.
+- Users can inspect and delete individual summaries, clear all summaries, or disable memory. Disabling memory revokes Runner access and deletes stored summaries in the same batch. The account-deletion job also purges all `botMemories` owned by the deleted user and removes their `publicDirectory` projection. The Runner can read/write one exact memory only for an assigned bot while the user's consent projection is enabled; only the owner can list or delete memory records.
 
 ## Required owner actions
 
