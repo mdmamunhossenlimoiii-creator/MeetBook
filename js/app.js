@@ -72,7 +72,7 @@ async function startSession(user, profileData) {
   }, 'profile');
 
   // site-wide switches (maintenance mode) and announcements, both set from the Admin panel
-  listen(doc(db, 'settings', 'global'), (s) => { state.site = s.exists() ? s.data() : {}; applySite(); emit(); }, 'site');
+  listen(doc(db, 'settings', 'overall'), (s) => { state.site = s.exists() ? s.data() : {}; applySite(); emit(); }, 'site');
   listen(query(collection(db, 'announcements'), where('active', '==', true), limit(5)), (snap) => {
     state.announcements = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
       .filter((a) => !a.expiresAt || tsMs(a.expiresAt) > Date.now())
