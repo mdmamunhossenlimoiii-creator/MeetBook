@@ -130,7 +130,7 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('canPublishBot'), /runnerMayPost\(botUid\)/, 'only an assigned active bot with autoPost ON can publish');
   assert.doesNotMatch(fn('canPublishBot'), /isAdmin/);
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
-  assert.match(fn('runnerMayReact'), /runnerMayActAs\(botUid\)/, 'reaction key must be an active assigned bot');
+  assert.match(fn('runnerMayReact'), /runnerMayReactAs\(botUid\)/, 'reaction key must have explicit autoReaction permission');
   // the runner is not allowed to write anything but bot content
   assert.match(block('botState'), /runnerEnabled\(\)/);
   assert.match(block('botInbox'), /runnerHasBot\(resource\.data\.botId\)/);

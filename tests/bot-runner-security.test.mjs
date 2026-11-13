@@ -41,7 +41,7 @@ test('private chat message bodies are not copied into bot audit logs', () => {
 });
 
 test('runner inbox and private chat access are limited to assigned bots', () => {
-  assert.match(rules, /runnerHasBot\(resource\.data\.botId\)/);
+  assert.match(rules, /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
   assert.match(rules, /function runnerMayIncrementCommentCount\(postId\)/);
   assert.match(rules, /getAfter\(commentPath\)\.data\.get\('ai', false\) == true/);
