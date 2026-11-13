@@ -111,3 +111,25 @@ test('Admin, Runner, and Firestore Rules treat missing bot switches as OFF', () 
   assert.match(rules, /bot\.get\('active', false\) == true/);
   assert.match(rules, /get\('chatEnabled', false\) == true/);
 });
+
+ 
+test('scheduled workflows exist but remain owner-gated and bounded', () => {
+  const social = readFileSync(new URL('../.github/workflows/bot-scheduled-social.yml', import.meta.url), 'utf8');
+  const chat = readFileSync(new URL('../.github/workflows/bot-scheduled-chat.yml', import.meta.url), 'utf8');
+  for (const workflow of [social, chat]) {
+    assert.match(workflow, /schedule:/);
+    assert.match(workflow, /vars\.BOT_SCHEDULE_LIVE_ENABLED == 'yes'/);
+    assert.match(workflow, /environment: meetbook-bot-scheduled/);
+    assert.match(workflow, /BOT_RUNNER_EXPECTED_PROJECT_ID/);
+    assert.match(workflow, /GEMINI_STRICT: "1"/);
+    assert.match(workflow, /DRY_RUN: "0"/);
+    assert.match(workflow, /group: meetbook-bot-automation/);
+    assert.match(workflow, /timeout-minutes: 5/);
+  }
+  assert.match(social, /cron: "17 \*\/6 \* \* \*"/);
+  assert.match(social, /BOT_POSTS: "1"/);
+  assert.match(social, /BOT_COMMENTS: "1"/);
+  assert.match(chat, /cron: "\*\/20 \* \* \* \*"/);
+  assert.match(chat, /BOT_POSTS: "0"/);
+  assert.match(chat, /BOT_COMMENTS: "0"/);
+});

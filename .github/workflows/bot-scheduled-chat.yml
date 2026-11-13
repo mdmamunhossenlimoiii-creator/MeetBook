@@ -1,0 +1,50 @@
+name: MeetBook Bot Scheduler — Chat
+
+on:
+  schedule:
+    - cron: "*/20 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: meetbook-bot-automation
+  cancel-in-progress: false
+
+jobs:
+  chat:
+    if: ${{ vars.BOT_SCHEDULE_LIVE_ENABLED == 'yes' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: meetbook-bot-scheduled
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate owner activation and required configuration
+        env:
+          SCHEDULE_ENABLED: ${{ vars.BOT_SCHEDULE_LIVE_ENABLED }}
+          EXPECTED_PROJECT: ${{ vars.BOT_RUNNER_EXPECTED_PROJECT_ID }}
+          RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
+          RUNNER_PASSWORD: ${{ secrets.BOT_RUNNER_PASSWORD }}
+          GEMINI_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          test "$SCHEDULE_ENABLED" = "yes" || { echo "Scheduled bots are disabled; set BOT_SCHEDULE_LIVE_ENABLED=yes only after owner review."; exit 1; }
+          test "$EXPECTED_PROJECT" = "meetbook-65d30" || { echo "BOT_RUNNER_EXPECTED_PROJECT_ID must equal meetbook-65d30."; exit 1; }
+          test -n "$RUNNER_EMAIL" || { echo "Missing BOT_RUNNER_EMAIL environment secret."; exit 1; }
+          test -n "$RUNNER_PASSWORD" || { echo "Missing BOT_RUNNER_PASSWORD environment secret."; exit 1; }
+          test -n "$GEMINI_KEY" || { echo "Missing GEMINI_API_KEY environment secret."; exit 1; }
+      - name: Process at most one pending bot chat reply
+        env:
+          BOT_RUNNER_EMAIL: ${{ secrets.BOT_RUNNER_EMAIL }}
+          BOT_RUNNER_PASSWORD: ${{ secrets.BOT_RUNNER_PASSWORD }}
+          BOT_RUNNER_EXPECTED_PROJECT_ID: ${{ vars.BOT_RUNNER_EXPECTED_PROJECT_ID }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_STRICT: "1"
+          BOT_RUNNER_MODE: all
+          BOT_POSTS: "0"
+          BOT_COMMENTS: "0"
+          DRY_RUN: "0"
+        run: node scripts/bot-runner.mjs

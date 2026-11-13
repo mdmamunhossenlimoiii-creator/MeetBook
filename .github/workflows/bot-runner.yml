@@ -23,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: meetbook-bot-runner
+  group: meetbook-bot-automation
   cancel-in-progress: false
 
 jobs:
