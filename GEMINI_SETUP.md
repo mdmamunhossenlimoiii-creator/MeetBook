@@ -9,18 +9,21 @@
 - For private chat replies, Gemini may receive up to six recent messages from that same chat, plus a short per-user/per-bot memory summary only when the user explicitly opts in. Raw chat transcripts are not stored in long-term memory. The app must disclose this processing before users enable the feature.
 
 ## Required secret
-Add repository Actions secret `GEMINI_API_KEY` containing a key from Google AI Studio. Do not put it in `js/firebase-config.js`, any browser file, an issue, a commit, or a chat message.
+Add `GEMINI_API_KEY` as an Environment secret in the protected GitHub Environment `meetbook-bot-live`. Do not put it in `js/firebase-config.js`, any browser file, an issue, a commit, or a chat message.
 
 Optional repository Actions variable:
 - `GEMINI_MODEL` = `gemini-3.8-flash` (the code already defaults to this).
 
-## Important: the Gemini key alone does not activate the existing runner
-The current MeetBook bot architecture intentionally requires its separate low-privilege Firebase runner identity and explicit Firestore allowlist. The following must already be configured by the owner before any scheduled bot activity can run:
+## Important: the Gemini key alone does not activate the runner
+The current MeetBook bot architecture intentionally requires its separate low-privilege Firebase runner identity and explicit Firestore allowlist. The manual workflows default to dry-run and have no schedule. Before a live action, the owner must configure:
 - GitHub Actions secrets `BOT_RUNNER_EMAIL` and `BOT_RUNNER_PASSWORD` for a dedicated MeetBook-only Firebase Auth runner account.
 - Firestore `botRunners/{runnerUid}` with `enabled: true` and `botIds: ["bot_01", "bot_02", "bot_03"]`.
 - Firestore `settings/global.botsEnabled: true`.
 - The three bot profile documents must exist and be active.
-- The bot runner workflow is intentionally still disabled pending a separate operational activation step. This code change does not create credentials, change production Firestore data, or start live bot activity.
+- GitHub Environment `meetbook-bot-live` must require owner review. Live dispatch additionally requires `confirm_live=true` and repository variable `BOT_LIVE_TEST_APPROVED=yes`.
+- `BOT_RUNNER_EXPECTED_PROJECT_ID` must be set as an Environment variable to `meetbook-65d30`.
+- The bot runner and chat workflows process only one selected bot/action per manual dispatch; the Chat workflow is limited to one user-initiated private chat reply.
+- Creating the workflows does not create credentials, change production Firestore data, or start live bot activity.
 
 ## Privacy and safety
 - The app discloses in the AI chat banner that messages are sent to Google Gemini.
