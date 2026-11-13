@@ -626,7 +626,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
           && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().size() == 1
           && runnerMayActAs(request.resource.data.reactions.diff(resource.data.reactions).affectedKeys()[0])
-          && request.resource.data.reactions[request.resource.data.reactions.diff(resource.data.reactions).affectedKeys()[0]] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']))
+          && request.resource.data.reactions[request.resource.data.reactions.diff(resource.data.reactions).affectedKeys()[0]] in ['like', 'love', 'haha', 'wow', 'sad', 'angry'])
         // everybody else: their own reaction key, or a counter moved by exactly one step
         || (notBanned() && (
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
