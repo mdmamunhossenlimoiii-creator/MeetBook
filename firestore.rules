@@ -105,6 +105,29 @@ service cloud.firestore {
     function canPublishBot(botUid) {
       return runnerMayActAs(botUid);
     }
+    // Bot comments and the parent counter must be committed atomically. The deterministic
+    // comment ID (bot UID) plus the lastBotCommentBy marker prevents a Runner from fabricating counts.
+    function runnerMayIncrementCommentCount(postId) {
+      let botUid = request.resource.data.lastBotCommentBy;
+      let commentPath = /databases/$(database)/documents/posts/$(postId)/comments/$(botUid);
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'lastBotCommentBy'])
+        && request.resource.data.commentCount == resource.data.commentCount + 1
+        && runnerMayActAs(botUid)
+        && existsAfter(commentPath)
+        && !exists(commentPath)
+        && getAfter(commentPath).data.uid == botUid
+        && getAfter(commentPath).data.get('ai', false) == true;
+    }
+    // A reaction carries its bot identity in a marker so Rules can verify that exact bot is
+    // still active and assigned; an allowlist-only map-key check is not sufficient.
+    function runnerMayReact() {
+      let botUid = request.resource.data.lastBotReactionBy;
+      return runnerMayActAs(botUid)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'lastBotReactionBy'])
+        && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().size() == 1
+        && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([botUid])
+        && request.resource.data.reactions[botUid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
+    }
 
     // Not blocked and not under a temporary suspension.
     function notBanned() {
@@ -614,18 +637,14 @@ service cloud.firestore {
         // staff moderation: hide / restore, switch comments on or off
         if (isStaff()
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['hidden', 'commentsDisabled']))
-        // bot-runner: bump commentCount by one after commenting as a bot
-        || (runnerEnabled()
+        // bot-runner: increment only alongside a newly created comment by that same active assigned bot.
+        || (resource.data.visibility == 'public'
           && engagementOk(resource.data.uid)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
-          && request.resource.data.commentCount == resource.data.commentCount + 1)
-        // bot-runner: add / change a reaction, only under a bot's own key
-        || (runnerEnabled()
-          && resource.data.visibility == 'public'
+          && runnerMayIncrementCommentCount(postId))
+        // bot-runner: react only as the exact active assigned bot identified by the marker.
+        || (resource.data.visibility == 'public'
           && engagementOk(resource.data.uid)
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
-          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().size() == 1
-          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly(get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])))
+          && runnerMayReact())
         // everybody else: their own reaction key, or a counter moved by exactly one step
         || (notBanned() && (
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
