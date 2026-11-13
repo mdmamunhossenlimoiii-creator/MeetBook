@@ -69,7 +69,7 @@ async function purgeRunnerQuotasForUser(uid) {
   for (const runner of runners) {
     const bots = await fs.listAll(`botRateLimits/${runner.id}/bots`, { max: 300 });
     for (const bot of bots) {
-      const userQuotas = await fs.listAll(`${bot.path}/users`, { max: 300 });
+      const userQuotas = await fs.listAll(`botRateLimits/${runner.id}/bots/${bot.id}/users`, { max: 300 });
       const matches = userQuotas.filter((q) => q.actorUid === uid);
       if (!matches.length) continue;
       if (!DRY) await fs.deleteMany(matches.map((q) => q.path));
