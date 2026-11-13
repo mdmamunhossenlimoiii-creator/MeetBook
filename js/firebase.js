@@ -39,5 +39,5 @@ export {
   signOut, sendPasswordResetEmail, updateProfile, GoogleAuthProvider, signInWithPopup,
   collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, deleteDoc,
   query, where, orderBy, limit, onSnapshot, serverTimestamp, increment, deleteField,
-  arrayUnion, arrayRemove, writeBatch, runTransaction, Timestamp, getCountFromServer, getAggregateFromServer, sum, startAfter
+  arrayUnion, arrayRemove, writeBatch, Timestamp, getCountFromServer, getAggregateFromServer, sum, startAfter
 };
