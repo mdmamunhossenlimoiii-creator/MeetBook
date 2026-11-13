@@ -22,11 +22,15 @@ function cleanOutput(value, maxChars) {
 /** Generate a short response for bot_01..bot_03; safely use template fallback on any failure. */
 export async function generateSmartBotText({
   bot, kind, source, history = [], memoryContext = '', fallback = '', apiKey = process.env.GEMINI_API_KEY,
-  model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL, fetchImpl = globalThis.fetch
+  model = process.env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL, fetchImpl = globalThis.fetch,
+  strict = process.env.GEMINI_STRICT === '1'
 } = {}) {
   const maxChars = kind === 'post' ? 900 : kind === 'comment' ? 450 : 700;
   const safeFallback = cleanOutput(fallback, maxChars);
-  if (!SMART_BOT_IDS.has(bot?.id) || !TASKS[kind] || !apiKey || typeof fetchImpl !== 'function') return safeFallback;
+  if (!SMART_BOT_IDS.has(bot?.id) || !TASKS[kind] || !apiKey || typeof fetchImpl !== 'function') {
+    if (strict) throw new Error('Strict Gemini mode requires a supported bot, API key, and fetch implementation.');
+    return safeFallback;
+  }
   const systemText = [
     PERSONAS[bot.id],
     'You are clearly an AI bot on MeetBook, not a human. Never claim real-world experiences, identity, relationships, or professional credentials.',
