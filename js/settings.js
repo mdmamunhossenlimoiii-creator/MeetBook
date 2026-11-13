@@ -47,7 +47,7 @@ export async function render(view) {
         <option value="off" ${s.allowBotMemory ? '' : 'selected'}>Off: do not save bot memories</option>
         <option value="on" ${s.allowBotMemory ? 'selected' : ''}>On: allow each of the first three bots to save a private summary for me</option>
       </select>
-      <div class="muted small">Off by default. If enabled, each of the first three AI bots may save a short summary of non-sensitive preferences you explicitly share. Memories are separated by bot and user, are not raw chat transcripts, and can be cleared here. Avoid sharing sensitive information.</div>
+      <div class="muted small">Off by default. If enabled, each of the first three AI bots may save a short summary of non-sensitive preferences you explicitly share. Memories are separated by bot and user, are not raw chat transcripts, and can be cleared here. Memory summaries may use additional Gemini API quota. Avoid sharing sensitive information.</div>
     </div>
     <p class="muted small">Profile details (bio and cover information) are restricted by database rules when you choose Friends only. Your display name remains in the limited people directory so friends can find you. Public posts may still appear in feeds according to each post's own audience.</p>
     <button class="btn" id="st-clear-memory" type="button">Clear all saved bot memories</button>
