@@ -205,7 +205,7 @@ async function main() {
   for (const bot of shuffle(bots.filter((b) => b.autoPost !== false && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
     if (!pick || !(await reserveBotAction(bot))) continue;
-    const postText = await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    const postText = DRY ? pick.text : await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
     const id = await createPost(bot, postText);
     spend(st, bot); stats.posts++;
     await log(bot, 'post', id, pick.text);
@@ -247,7 +247,7 @@ async function main() {
       const baseComment = makeComment({ bot, post: { text: post.text, image: post.image, authorName: post.authorName }, used: usedTexts });
       if (!baseComment) continue;
       if (!(await reserveBotAction(bot))) continue;
-      const c = { ...baseComment, text: await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
+      const c = { ...baseComment, text: DRY ? baseComment.text : await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
       await createComment(bot, post.id, c.text);
       spend(st, bot); stats.comments++; engaged++;
       st.commented.push(`${post.id}:${bot.id}`); st.engaged.push(post.id);
@@ -291,13 +291,13 @@ async function main() {
     const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
     const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
-    const replyText = await generateSmartBotText({
+    const replyText = DRY ? reply.text : await generateSmartBotText({
       bot, kind: 'chat', source: m.text,
       history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
       memoryContext: savedMemory?.summary || '',
       fallback: reply.text
     });
-    if (DRY) console.log(`[dry] chat reply as ${bot.name}: ${replyText}`);
+    if (DRY) console.log(`[dry] chat reply prepared as ${bot.name} (${reply.intent}); private text and Gemini calls suppressed.`);
     else {
       await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() });
       await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: replyText, uid: bot.id }, lastAt: new Date() });
