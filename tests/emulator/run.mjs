@@ -74,8 +74,9 @@ for (const cap of CAPS) {
   const db = env.authenticatedContext('u1').firestore();
   const day = new Date().toISOString().slice(0, 10);
   const quotaRef = doc(db, 'botInboxRateLimits', 'u1', 'bots', 'bot_01', 'days', day);
-  const inboxRef = doc(collection(db, 'botInbox'));
-  const submit = () => runTransaction(db, async (tx) => {
+  const submit = () => {
+    const inboxRef = doc(collection(db, 'botInbox'));
+    return runTransaction(db, async (tx) => {
     const snap = await tx.get(quotaRef);
     const count = snap.exists() ? snap.data().count : 0;
     tx.set(quotaRef, { senderUid: 'u1', botId: 'bot_01', count: count + 1, lastAt: serverTimestamp() });
@@ -83,10 +84,11 @@ for (const cap of CAPS) {
       fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
       handled: false, createdAt: serverTimestamp(), quotaDay: day
     });
-  });
+    });
+  };
   await submit();
   console.log('atomic bot inbox + quota transaction allowed');
-  await assert.rejects(submit(), 'a second bot inbox message inside the cooldown must be rejected');
+  await assert.rejects(submit());
   console.log('bot inbox cooldown enforced by real Firestore Rules');
 }
 await env.cleanup();
