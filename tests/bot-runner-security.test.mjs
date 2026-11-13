@@ -86,5 +86,5 @@ test('bot workflows are manual-only, default to dry-run, and require an explicit
   assert.match(runnerWorkflow, /BOT_RUNNER_MODE: post/);
   assert.match(runnerWorkflow, /BOT_COMMENTS: "0"/);
   assert.match(chatWorkflow, /BOT_RUNNER_MODE: chat/);
-  assert.match(chatWorkflow, /BOT_CHAT_MAX_REPLIES: "1"/);
+  assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
 });
