@@ -19,13 +19,14 @@ This document records repository source status and CI evidence only. Passing CI 
 
 ## Latest automated verification
 
-For PR #5 head `2e0608c5d17f879f5367e4e96e6f6dec444aa4af`, temporary integration-validation PR #6 combined the branch with PR #4's Runner project-ID guard. GitHub Actions run `43398228562` completed all three jobs (`unit`, `browser`, `rules-emulator`) successfully. PR #6 was closed unmerged after validation. This confirms CI only, not real Gemini API or live Firebase integration.
+PR #7 implements opt-in long-term memory and Firestore-enforced profile metadata privacy. GitHub Actions run `43403846923` completed all three jobs successfully on the code head that includes the account-deletion cleanup.
 
-- Unit: 304/304 passed; import check: 0 problems.
+- Unit: 330/330 passed; import check: passed. This includes frontend syntax checks and an account-deletion test confirming owned bot memories and the public directory projection are purged.
 - Browser/Admin smoke: passed.
-- Firestore Rules Emulator: 2,327 permission cases, 0 mismatches.
+- Firestore Rules Emulator: 2,674 permission cases, 0 mismatches.
+- Additional emulator assertions verified atomic profile-visibility and bot-memory-consent updates, owner-only memory listing, and memory opt-out revocation plus deletion.
 
-The Runner integration tests in the unit suite use the repository's in-memory Firestore/rules test harness. They are not a substitute for a dedicated isolated MeetBook staging project.
+This is CI/emulator evidence only. No real Gemini API summarization, isolated staging integration, Firebase Console publishing, or production deployment has been performed.
 
 ## Release decision
 
