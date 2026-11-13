@@ -110,7 +110,7 @@ export async function updateSmartBotMemory({
     if (!response?.ok) return previous;
     const data = await response.json();
     const raw = data?.candidates?.[0]?.content?.parts?.filter((p) => typeof p?.text === 'string').map((p) => p.text).join('\\n');
-    return sanitizeBotMemory(raw) || previous;
+    return sanitizeBotMemory(raw);
   } catch {
     // Never log the transcript, summary, model response, or API key.
     return previous;
