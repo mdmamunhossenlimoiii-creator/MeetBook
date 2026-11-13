@@ -41,6 +41,10 @@ export const SEED = {
   'users/u1': user({ name: 'User One', settings: { allowBotEngagement: false } }),
   'users/u2': user({ name: 'User Two', settings: { allowBotEngagement: true, allowMessages: 'friends' } }),
   'users/u3': user({ name: 'User Three', settings: { allowMessages: 'friends' } }),
+  'publicProfiles/u1': { name: 'User One', nameLower: 'user one', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/u2': { name: 'User Two', nameLower: 'user two', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/bot_01': { name: 'TechTip Nova', nameLower: 'techtip nova', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '🤖', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'botEngagement/u1': { allowBotEngagement: false },
   'friendships/u1_u2': { members: ['u1', 'u2'] },
   'users/ub': user({ name: 'Blocked User', banned: true }),
   'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3) }),
@@ -91,7 +95,11 @@ const C = [];
 const cap = (group, name, op, path, data, allow) => C.push({ group, name, op, path, data, allow });
 
 // ---------------------------------------------------------------- users
-cap('Users', 'Read any profile', 'get', 'users/u2', null, SIGNED);
+cap('Users', 'Read own private user document', 'get', 'users/u1', null, ['user', 'moderator', 'admin', 'super']);
+cap('Users', 'Read another user private document', 'get', 'users/u2', null, ['other', 'moderator', 'admin', 'super']);
+cap('Users', 'Read a bot user document', 'get', 'users/bot_01', null, SIGNED);
+cap('Users', 'Read safe public profile projection', 'get', 'publicProfiles/u2', null, SIGNED);
+cap('Users', 'Read bot consent projection (owner, staff, active runner only)', 'get', 'botEngagement/u1', null, ['user', 'moderator', 'admin', 'super', 'runner']);
 cap('Users', 'Create own profile', 'create', 'users/u_new', { name: 'New Person', nameLower: 'new person', bio: '', photo: '', cover: '', banned: false, settings: {} }, ['fresh']);
 cap('Users', 'Create own profile as blocked', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: true }, []);
 cap('Users', 'Create own profile as a bot', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: false, isBot: true }, []);
