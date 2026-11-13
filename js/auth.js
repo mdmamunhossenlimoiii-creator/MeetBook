@@ -10,7 +10,8 @@ export const DEFAULT_SETTINGS = {
   profileVisibility: 'everyone', // everyone | friends
   allowMessages: 'everyone',     // everyone | friends
   defaultVisibility: 'public',   // public | friends | me
-  allowBotEngagement: false      // true = AI bots may react / comment on my posts (always labelled AI)
+  allowBotEngagement: false,     // true = AI bots may react / comment on my posts (always labelled AI)
+  allowBotMemory: false          // true = allow the first three AI bots to save a short, private memory summary
 };
 
 // Name typed in the sign-up form; read by ensureProfile because Firebase signs the user in
@@ -46,8 +47,13 @@ async function ensureProfileProjections(uid, data) {
   // The Runner must never read the full users/{uid} document.
   const batch = writeBatch(db);
   batch.set(doc(db, 'publicProfiles', uid), publicProfileData(data), { merge: true });
+  batch.set(doc(db, 'publicDirectory', uid), {
+    name: data.name || 'Unknown user', nameLower: String(data.name || '').toLowerCase(),
+    isBot: data.isBot === true, roleEmoji: data.roleEmoji || '', verified: data.verified === true
+  }, { merge: true });
   batch.set(doc(db, 'botEngagement', uid), {
     allowBotEngagement: data.settings?.allowBotEngagement === true,
+    allowBotMemory: data.settings?.allowBotMemory === true,
     updatedAt: serverTimestamp()
   }, { merge: true });
   await batch.commit();
