@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 const runner = readFileSync(new URL('../scripts/bot-runner.mjs', import.meta.url), 'utf8');
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const adminBots = readFileSync(new URL('../js/admin/bots.js', import.meta.url), 'utf8');
+const adminSettings = readFileSync(new URL('../js/admin/settings.js', import.meta.url), 'utf8');
 const rest = readFileSync(new URL('../scripts/lib/firestore-rest.mjs', import.meta.url), 'utf8');
 
 test('runner fails closed unless global botsEnabled and its own allowlist are explicit', () => {
@@ -27,6 +28,8 @@ test('Runner, Rules, and Admin use settings/overall and strict Boolean gates', (
   assert.ok(!rules.includes('/documents/settings/global'));
   assert.ok(adminBots.includes("doc(db, 'settings', 'overall')"));
   assert.ok(!adminBots.includes('settings/global'));
+  assert.ok(adminSettings.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(adminSettings.includes('s.botsEnabled === true'));
 });
 
 test('runner applies conservative per-bot and per-user limits', () => {
