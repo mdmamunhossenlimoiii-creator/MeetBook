@@ -19,14 +19,14 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
 });
 
 test('Runner, Rules, and Admin use settings/overall and strict Boolean gates', () => {
-  assert.match(runner, /fs\\.get\\('settings\\/overall'\\)/);
-  assert.doesNotMatch(runner, /settings\\/global/);
-  assert.match(runner, /global\\.botsEnabled !== true/);
-  assert.match(runner, /runner\\.enabled !== true/);
-  assert.match(rules, /documents\\/settings\\/overall/);
-  assert.doesNotMatch(rules, /documents\\/settings\\/global/);
-  assert.match(adminBots, /doc\\(db, 'settings', 'overall'\\)/);
-  assert.doesNotMatch(adminBots, /settings\\/global/);
+  assert.ok(runner.includes("fs.get('settings/overall')"));
+  assert.ok(!runner.includes('settings/global'));
+  assert.ok(runner.includes('global.botsEnabled !== true'));
+  assert.ok(runner.includes('runner.enabled !== true'));
+  assert.ok(rules.includes('/documents/settings/overall'));
+  assert.ok(!rules.includes('/documents/settings/global'));
+  assert.ok(adminBots.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(!adminBots.includes('settings/global'));
 });
 
 test('runner applies conservative per-bot and per-user limits', () => {
