@@ -102,8 +102,13 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerEnabled'), /enabled', false\) == true/);
   assert.match(fn('runnerEnabled'), /botIds/);
   assert.match(fn('runnerHasBot'), /botUid in/);
-  assert.match(fn('runnerHasBot'), /botUid in/);
-  assert.match(fn('runnerMayActAs'), /bot\.get\('isBot', false\) == true/);
+  assert.match(fn('runnerHasBot'), /enabled', false\) == true/);
+  assert.match(fn('runnerHasBot'), /botsEnabled', false\) == true/);
+  assert.match(fn('runnerHasBot'), /bot\.get\('isBot', false\) == true/);
+  assert.match(fn('runnerHasBot'), /bot\.get\('active', true\) == true/);
+  assert.match(fn('runnerMayActAs'), /runnerHasBot\(botUid\)/);
+  assert.match(fn('runnerMayReadChat'), /runnerMayActAs\(chat\.members\[0\]\)/);
+  assert.match(fn('runnerMayReadChat'), /runnerMayActAs\(chat\.members\[1\]\)/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   const posts = block('posts');
@@ -113,12 +118,13 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerMayComment'), /engagementOk\(p\.uid\)/, 'bot comments need consent');
   assert.match(fn('runnerMayComment'), /visibility == 'public'/);
   assert.match(fn('runnerMayComment'), /botToBotComments/);
-  const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)/;
-  assert.match(posts, runnerReaction, 'bot reactions need consent and a public post');
+  const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)\s*&& request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\.size\(\) == 1\s*&& request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\.hasOnly\(get\(.*botRunners.*botIds/s;
+  assert.match(posts, runnerReaction, 'bot reactions require exactly one allowlisted bot key');
+  assert.match(posts, /request\.resource\.data\.commentCount == resource\.data\.commentCount \+ 1/, 'Runner may only increment commentCount');
   assert.match(fn('canPublishBot'), /runnerMayActAs\(botUid\)/, 'only an assigned active Runner can publish as a bot');
   assert.doesNotMatch(fn('canPublishBot'), /isAdmin/);
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
-  assert.match(posts, /hasOnly\(get\(.*botRunners.*botIds/s, 'the runner may only set reactions for its assigned bot IDs');
+  assert.match(posts, /hasOnly\(get\(.*botRunners.*botIds/s, 'reaction key must be in the Runner allowlist');
   // the runner is not allowed to write anything but bot content
   assert.match(block('botState'), /runnerEnabled\(\)/);
   assert.match(block('botInbox'), /runnerHasBot\(resource\.data\.botId\)/);

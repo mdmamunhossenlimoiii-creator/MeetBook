@@ -55,6 +55,8 @@ service cloud.firestore {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
       let global = get(/databases/$(database)/documents/settings/global).data;
       return signedIn()
+        && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid))
+        && exists(/databases/$(database)/documents/settings/global)
         && runner.get('enabled', false) == true
         && runner.get('botIds', []) is list
         && runner.get('botIds', []).size() > 0
@@ -63,11 +65,18 @@ service cloud.firestore {
     function runnerHasBot(botUid) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
       let global = get(/databases/$(database)/documents/settings/global).data;
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
       return signedIn()
+        && botUid is string
+        && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid))
+        && exists(/databases/$(database)/documents/settings/global)
+        && exists(/databases/$(database)/documents/users/$(botUid))
         && runner.get('enabled', false) == true
         && runner.get('botIds', []) is list
         && botUid in runner.get('botIds', [])
-        && global.get('botsEnabled', false) == true;
+        && global.get('botsEnabled', false) == true
+        && bot.get('isBot', false) == true
+        && bot.get('active', true) == true;
     }
     function runnerMayActAs(botUid) {
       let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
@@ -79,11 +88,19 @@ service cloud.firestore {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
       let global = get(/databases/$(database)/documents/settings/global).data;
       return signedIn()
+        && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid))
+        && exists(/databases/$(database)/documents/settings/global)
         && runner.get('enabled', false) == true
         && runner.get('botIds', []) is list
+        && runner.get('botIds', []).size() > 0
         && global.get('botsEnabled', false) == true
         && chat.type == 'private'
-        && chat.members.hasAny(runner.get('botIds', []));
+        && chat.members is list
+        && chat.members.size() == 2
+        && ((chat.members[0] in runner.get('botIds', [])
+              && runnerMayActAs(chat.members[0]))
+          || (chat.members[1] in runner.get('botIds', [])
+              && runnerMayActAs(chat.members[1])));
     }
     function canPublishBot(botUid) {
       return runnerMayActAs(botUid);
@@ -601,12 +618,13 @@ service cloud.firestore {
         || (runnerEnabled()
           && engagementOk(resource.data.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount'])
-          && math.abs(request.resource.data.commentCount - resource.data.commentCount) <= 1)
+          && request.resource.data.commentCount == resource.data.commentCount + 1)
         // bot-runner: add / change a reaction, only under a bot's own key
         || (runnerEnabled()
           && resource.data.visibility == 'public'
           && engagementOk(resource.data.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().size() == 1
           && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly(get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data.get('botIds', [])))
         // everybody else: their own reaction key, or a counter moved by exactly one step
         || (notBanned() && (
