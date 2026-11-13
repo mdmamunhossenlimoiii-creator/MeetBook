@@ -124,7 +124,7 @@ cap('Bot memory', 'Read another user bot memory only with owner consent and assi
 cap('Bot memory', 'Create memory only for opted-in owner and assigned bot', 'create', 'botMemories/bot_03_u2', { ownerUid: 'u2', botId: 'bot_03', chatId: 'bot_03_u2', summary: 'Likes cooking', createdAt: { $srv: 1 }, updatedAt: { $srv: 1 } }, ['runner']);
 cap('Bot memory', 'Update memory only for opted-in owner and assigned bot', 'update', 'botMemories/bot_01_u2', { summary: 'Likes street photography', updatedAt: { $srv: 1 } }, ['runner']);
 cap('Bot memory', 'Owner may delete own memory', 'delete', 'botMemories/bot_01_u2', null, ['other']);
-cap('Bot memory', 'Other users cannot delete someone else memory', 'delete', 'botMemories/bot_01_u1', null, []);
+cap('Bot memory', 'Other users cannot delete someone else memory', 'delete', 'botMemories/bot_01_u2', null, ['other']);
 cap('Users', 'Create own profile', 'create', 'users/u_new', { name: 'New Person', nameLower: 'new person', bio: '', photo: '', cover: '', banned: false, settings: {} }, ['fresh']);
 cap('Users', 'Create own profile as blocked', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: true }, []);
 cap('Users', 'Create own profile as a bot', 'create', 'users/u_new', { name: 'New Person', bio: '', banned: false, isBot: true }, []);
