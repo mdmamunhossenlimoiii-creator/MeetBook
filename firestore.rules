@@ -246,61 +246,73 @@ service cloud.firestore {
       allow read: if isOwner(uid);
       allow write: if false; // create by hand in the Firebase console
     }
-    // Durable bot quotas. Transactions in the runner serialize concurrent reservations;
-    // the Rules enforce immutable ownership, assigned bot IDs, daily caps and chat cooldowns.
-    match /botRateLimits/{runnerUid}/bots/{botId}/days/{day} {
+    // Durable runner quotas: fixed paths prevent resetting limits by changing a date/path.
+    // Each bot gets 12 actions per rolling 24h; each user gets 15 chat replies per bot per rolling 24h + 60s cooldown.
+    match /botRateLimits/{runnerUid}/bots/{botId} {
       function validBotQuota(d) {
-        return d.keys().hasOnly(['runnerUid', 'botId', 'kind', 'count', 'lastAt'])
+        return d.keys().hasOnly(['runnerUid', 'botId', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.runnerUid == runnerUid
           && d.botId == botId
           && d.kind == 'botDaily'
           && d.count is int
           && d.count >= 1 && d.count <= 12
+          && d.windowStartedAt is timestamp
           && d.lastAt is timestamp
-          && d.lastAt <= request.time
-          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+          && d.windowStartedAt <= request.time
+          && d.lastAt <= request.time;
       }
       allow read: if isOwner(runnerUid);
       allow create: if isOwner(runnerUid) && runnerHasBot(botId)
         && validBotQuota(request.resource.data)
-        && request.resource.data.count == 1;
+        && request.resource.data.count == 1
+        && request.resource.data.windowStartedAt == request.time;
       allow update: if isOwner(runnerUid) && runnerHasBot(botId)
         && validBotQuota(request.resource.data)
         && resource.data.runnerUid == runnerUid
         && resource.data.botId == botId
         && resource.data.kind == 'botDaily'
-        && resource.data.count < 12
-        && request.resource.data.count == resource.data.count + 1
-        && request.resource.data.lastAt > resource.data.lastAt;
+        && request.resource.data.lastAt > resource.data.lastAt
+        && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
+          ? resource.data.count < 12
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.windowStartedAt == resource.data.windowStartedAt
+          : request.resource.data.count == 1
+            && request.resource.data.windowStartedAt == request.time);
       allow delete: if false;
     }
 
-    match /botRateLimits/{runnerUid}/bots/{botId}/users/{actorUid}/days/{day} {
+    match /botRateLimits/{runnerUid}/bots/{botId}/users/{actorUid} {
       function validChatQuota(d) {
-        return d.keys().hasOnly(['runnerUid', 'botId', 'actorUid', 'kind', 'count', 'lastAt'])
+        return d.keys().hasOnly(['runnerUid', 'botId', 'actorUid', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.runnerUid == runnerUid
           && d.botId == botId
           && d.actorUid == actorUid
           && d.kind == 'chatDaily'
           && d.count is int
           && d.count >= 1 && d.count <= 15
+          && d.windowStartedAt is timestamp
           && d.lastAt is timestamp
-          && d.lastAt <= request.time
-          && day.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+          && d.windowStartedAt <= request.time
+          && d.lastAt <= request.time;
       }
       allow read: if isOwner(runnerUid);
       allow create: if isOwner(runnerUid) && runnerHasBot(botId)
         && validChatQuota(request.resource.data)
-        && request.resource.data.count == 1;
+        && request.resource.data.count == 1
+        && request.resource.data.windowStartedAt == request.time;
       allow update: if isOwner(runnerUid) && runnerHasBot(botId)
         && validChatQuota(request.resource.data)
         && resource.data.runnerUid == runnerUid
         && resource.data.botId == botId
         && resource.data.actorUid == actorUid
         && resource.data.kind == 'chatDaily'
-        && resource.data.count < 15
-        && request.resource.data.count == resource.data.count + 1
-        && request.resource.data.lastAt >= resource.data.lastAt + duration.value(60, 's');
+        && request.resource.data.lastAt >= resource.data.lastAt + duration.value(60, 's')
+        && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
+          ? resource.data.count < 15
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.windowStartedAt == resource.data.windowStartedAt
+          : request.resource.data.count == 1
+            && request.resource.data.windowStartedAt == request.time);
       allow delete: if false;
     }
 
