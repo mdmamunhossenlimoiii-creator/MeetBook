@@ -77,7 +77,8 @@ export async function render(view, uid) {
         else if (button.dataset.act === 'decline') await declineRequest(uid);
         else if (button.dataset.act === 'report') { openReport('user', { id: uid, uid }); return; }
         const updated = await relationship(uid);
-        $('[data-actions]', view).innerHTML = actionButtons(uid, updated);
+        if (updated === 'friends') await render(view, uid);
+        else $('[data-actions]', view).innerHTML = privateProfileActions(uid, updated);
       } catch (e) { toast(errMsg(e), 'error'); button.disabled = false; }
     });
     return;
