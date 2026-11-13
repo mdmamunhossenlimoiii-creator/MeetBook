@@ -63,6 +63,7 @@ export const SEED = {
   'botRateLimits/run/bots/bot_01': { runnerUid: 'run', botId: 'bot_01', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/run/bots/bot_03': { runnerUid: 'run', botId: 'bot_03', kind: 'botDaily', count: 12, windowStartedAt: T(-90000000), lastAt: T(-90000000) },
   'botRateLimits/run/bots/bot_05': { runnerUid: 'run', botId: 'bot_05', kind: 'botDaily', count: 12, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/run/bots/bot_05/users/u1': { runnerUid: 'run', botId: 'bot_05', actorUid: 'u1', kind: 'chatDaily', count: 15, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/run/bots/bot_01/users/u1': { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
@@ -250,6 +251,7 @@ cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/ru
 cap('AI bots', 'Runner resets bot quota after full 24-hour window', 'update', 'botRateLimits/run/bots/bot_03', { count: 1, windowStartedAt: T(0), lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Runner cannot reset bot quota before 24 hours', 'update', 'botRateLimits/run/bots/bot_03', { count: 1, windowStartedAt: T(-30000000), lastAt: T(0) }, []);
 cap('AI bots', 'Runner cannot exceed 12 actions per rolling 24 hours', 'update', 'botRateLimits/run/bots/bot_05', { count: 13, lastAt: T(0) }, []);
+cap('AI bots', 'Runner cannot exceed 15 replies per user per bot per rolling 24 hours', 'update', 'botRateLimits/run/bots/bot_05/users/u1', { count: 16, lastAt: T(0) }, []);
 cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/run/bots/bot_04/users/u1', { runnerUid: 'run', botId: 'bot_04', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
 cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1', { count: 2, lastAt: T(-90000) }, []);
 cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1', { count: 2, lastAt: T(0) }, ['runner']);
