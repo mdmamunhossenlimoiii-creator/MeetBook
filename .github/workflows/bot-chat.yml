@@ -9,7 +9,7 @@ on:
         type: choice
         options: [bot_01, bot_02, bot_03]
       dry_run:
-        description: "Preflight only: inspect one pending request without replying"
+        description: "Preflight only: verify runner authentication and project guard; exits safely if bots are OFF"
         required: true
         type: boolean
         default: true
