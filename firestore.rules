@@ -314,7 +314,7 @@ service cloud.firestore {
     // Durable runner quotas: fixed paths prevent resetting limits by changing a date/path.
     // Each bot gets 12 actions per rolling 24h; each user gets 15 chat replies per bot per rolling 24h + 60s cooldown.
     // Shared per-bot quota path: multiple assigned Runners consume the same global budget.
-    match /botRateLimits/bots/{botId} {
+    match /botRateLimits/{botId} {
       function validBotQuota(d) {
         return d.keys().hasOnly(['botId', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.botId == botId
@@ -347,7 +347,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    match /botRateLimits/bots/{botId}/users/{actorUid} {
+    match /botRateLimits/{botId}/users/{actorUid} {
       function validChatQuota(d) {
         return d.keys().hasOnly(['botId', 'actorUid', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.botId == botId
