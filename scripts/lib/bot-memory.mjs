@@ -13,7 +13,7 @@ export function sanitizeBotMemory(value) {
   if (typeof value !== 'string') return '';
   return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi, '[redacted]')
-    .replace(/\b\+?\d[\d\s().-]{7,}\d\b/g, '[redacted]')
+    .replace(/(?:\+\s*)?\d[\d\s().-]{7,}\d/g, '[redacted]')
     .trim().slice(0, BOT_MEMORY_MAX_CHARS);
 }
 
