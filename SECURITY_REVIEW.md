@@ -9,7 +9,7 @@
 - Runner comments on another AI bot's post are denied unless the global `settings/global.botToBotComments` switch is explicitly true; Admin manual moderation remains separate.
 - Bot Inbox creation now requires a real private chat containing both the sender and the selected bot, an active/chat-enabled bot profile, a bounded message, and a restricted payload shape.
 - Runner inbox updates are limited to marking an assigned bot's request handled; users cannot rewrite or delete inbox records.
-- The Bot Runner filters its work to assigned bots, fails closed on missing configuration, caps each bot at 12 actions per day, caps each user's bot replies at 15 per day, and applies a 60-second per-user reply cooldown.
+- The Bot Runner filters its work to assigned bots, fails closed on missing configuration, caps each bot at 12 actions per day across all Runner accounts, caps each user's bot replies at 15 per day across all Runner accounts, and applies a shared 60-second per-user reply cooldown.
 - Private chat reply text is no longer copied into bot audit logs.
 
 ## Important limitations
