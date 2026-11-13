@@ -7,12 +7,12 @@
 //    comments, a reaction under a bot's own key, chat replies). It cannot touch real users' data.
 //
 // What it does each run (all limits are enforced here AND configurable from the Admin panel):
-//  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
+//  1. Global switch  settings/overall.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
 //                    Settings -> "Allow AI bots to react and comment" (Runner reads the minimal botEngagement projection; Firestore Rules verify users/{uid}.settings.allowBotEngagement).
 //                    At most one bot per post, a relevant comment + a reaction, always shown as AI.
-//  4. Bot-to-bot comments: only if settings/global.botToBotComments is on (default OFF, to avoid
+//  4. Bot-to-bot comments: only if settings/overall.botToBotComments is on (default OFF, to avoid
 //                    staged conversations that look like real popularity).
 //  5. Chat replies   answers messages users sent to a bot (botInbox).
 //  Every action is written to botLogs.
@@ -216,7 +216,7 @@ async function main() {
   if (!process.env.GEMINI_API_KEY) console.log('GEMINI_API_KEY is missing; the first three bots will use their safe template fallback.');
 
   await signIn();
-  const global = (await fs.get('settings/global')) || {};
+  const global = (await fs.get('settings/overall')) || {};
   if (global.botsEnabled !== true) { console.log('Bots are OFF or not explicitly enabled. Nothing to do.'); return; }
   const runner = await fs.get(`botRunners/${runnerUid}`);
   if (!runner || runner.enabled !== true || !Array.isArray(runner.botIds) || runner.botIds.length === 0) {
