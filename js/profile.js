@@ -34,6 +34,13 @@ function actionButtons(uid, rel) {
   return `${main}${followBtn}${msg}${reportBtn}`;
 }
 
+function privateProfileActions(uid, rel) {
+  const report = `<button class="btn" data-act="report" title="Report this profile">${icon('flag', 16)}Report</button>`;
+  if (rel === 'incoming') return `<button class="btn btn-primary" data-act="accept">Confirm request</button><button class="btn" data-act="decline">Delete</button>${report}`;
+  if (rel === 'outgoing') return `<button class="btn" data-act="cancel">Cancel request</button>${report}`;
+  return `<button class="btn btn-primary" data-act="add">${icon('plus', 16)}Add friend</button>${report}`;
+}
+
 export async function render(view, uid) {
   const me = state.user.uid;
   const isMe = uid === me;
@@ -52,7 +59,7 @@ export async function render(view, uid) {
           <div class="profile-avatar">${avatarHtml(directory.name, '', 96)}</div>
           <div class="profile-info"><h2>${esc(directory.name)}${botBadge(directory)}</h2>
             <p class="muted">This person shares profile details with friends only.</p></div>
-          <div class="profile-actions row gap wrap" data-actions>${actionButtons(uid, rel)}</div>
+          <div class="profile-actions row gap wrap" data-actions>${privateProfileActions(uid, rel)}</div>
         </div>
       </section>
       <div class="card pad center"><span class="lock-icon">${icon('lock', 32)}</span>
