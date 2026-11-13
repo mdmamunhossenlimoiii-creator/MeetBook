@@ -27,6 +27,10 @@ test('runner applies conservative per-bot and per-user limits', () => {
   assert.match(rest, /currentDocument: current \? \{ updateTime: current\.updateTime \} : \{ exists: false \}/);
   assert.match(rules, /request\.resource\.data\.count == resource\.data\.count \+ 1/);
   assert.match(rules, /duration\.value\(60, 's'\)/);
+  assert.match(rest, /86_400_000/);
+  assert.match(rules, /duration\.value\(1, 'd'\)/);
+  assert.match(rules, /d\.count <= 20/);
+  assert.match(rules, /duration\.value\(10, 's'\)/);
 });
 
 test('private chat message bodies are not copied into bot audit logs', () => {
