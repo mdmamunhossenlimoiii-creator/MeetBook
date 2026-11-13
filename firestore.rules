@@ -404,6 +404,66 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Shared daily activity cap across every assigned bot and Runner.
+    match /botGlobalRateLimits/{scope} {
+      function validGlobalQuota(d) {
+        return scope == 'global'
+          && d.keys().hasOnly(['kind', 'count', 'windowStartedAt', 'lastAt'])
+          && d.kind == 'globalDaily'
+          && d.count is int && d.count >= 1 && d.count <= 60
+          && d.windowStartedAt is timestamp && d.lastAt is timestamp
+          && d.windowStartedAt <= request.time && d.lastAt <= request.time
+          && d.lastAt + duration.value(5, 's') >= request.time;
+      }
+      allow read: if scope == 'global' && runnerEnabled();
+      allow create: if scope == 'global' && runnerEnabled()
+        && validGlobalQuota(request.resource.data)
+        && request.resource.data.count == 1
+        && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
+      allow update: if scope == 'global' && runnerEnabled()
+        && validGlobalQuota(request.resource.data)
+        && resource.data.kind == 'globalDaily'
+        && request.resource.data.lastAt > resource.data.lastAt
+        && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
+          ? resource.data.count < 60
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.windowStartedAt == resource.data.windowStartedAt
+          : request.resource.data.count == 1
+            && request.resource.data.windowStartedAt >= resource.data.windowStartedAt + duration.value(1, 'd')
+            && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time);
+      allow delete: if false;
+    }
+
+    // Gemini request budget is separate from activity quotas and shared across all bots.
+    match /botGeminiRateLimits/{scope} {
+      function validGeminiQuota(d) {
+        return scope == 'global'
+          && d.keys().hasOnly(['kind', 'count', 'windowStartedAt', 'lastAt'])
+          && d.kind == 'geminiDaily'
+          && d.count is int && d.count >= 1 && d.count <= 60
+          && d.windowStartedAt is timestamp && d.lastAt is timestamp
+          && d.windowStartedAt <= request.time && d.lastAt <= request.time
+          && d.lastAt + duration.value(5, 's') >= request.time;
+      }
+      allow read: if scope == 'global' && runnerEnabled();
+      allow create: if scope == 'global' && runnerEnabled()
+        && validGeminiQuota(request.resource.data)
+        && request.resource.data.count == 1
+        && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
+      allow update: if scope == 'global' && runnerEnabled()
+        && validGeminiQuota(request.resource.data)
+        && resource.data.kind == 'geminiDaily'
+        && request.resource.data.lastAt > resource.data.lastAt
+        && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
+          ? resource.data.count < 60
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.windowStartedAt == resource.data.windowStartedAt
+          : request.resource.data.count == 1
+            && request.resource.data.windowStartedAt >= resource.data.windowStartedAt + duration.value(1, 'd')
+            && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time);
+      allow delete: if false;
+    }
+
     match /botState/{uid} {
       allow read, write: if isOwner(uid) && runnerEnabled();
     }
