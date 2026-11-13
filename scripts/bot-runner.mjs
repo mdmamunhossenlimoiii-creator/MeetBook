@@ -10,7 +10,7 @@
 //  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
-//                    Settings -> "Allow AI bots to react and comment" (users/{uid}.settings.allowBotEngagement is canonical).
+//                    Settings -> "Allow AI bots to react and comment" (Runner reads the minimal botEngagement projection; Firestore Rules verify users/{uid}.settings.allowBotEngagement).
 //                    At most one bot per post, a relevant comment + a reaction, always shown as AI.
 //  4. Bot-to-bot comments: only if settings/global.botToBotComments is on (default OFF, to avoid
 //                    staged conversations that look like real popularity).
