@@ -63,6 +63,22 @@ async function dropCollection(path) {
   throw new Error(`Could not empty ${path}`);
 }
 
+async function purgeRunnerQuotasForUser(uid) {
+  let removed = 0;
+  const runners = await fs.listAll('botRunners', { max: 300 });
+  for (const runner of runners) {
+    const bots = await fs.listAll(`botRateLimits/${runner.id}/bots`, { max: 300 });
+    for (const bot of bots) {
+      const userQuotas = await fs.listAll(`${bot.path}/users`, { max: 300 });
+      const matches = userQuotas.filter((q) => q.actorUid === uid);
+      if (!matches.length) continue;
+      if (!DRY) await fs.deleteMany(matches.map((q) => q.path));
+      removed += matches.length;
+    }
+  }
+  return removed;
+}
+
 async function purge(uid) {
   const counts = {};
   const add = (k, n) => { counts[k] = (counts[k] || 0) + n; };
@@ -93,6 +109,7 @@ async function purge(uid) {
   await drain('botInbox', 'botInbox', eq('fromUid', uid));
   add('saved', await dropCollection(`users/${uid}/saved`));
   add('botInboxRateLimits', await dropCollection(`botInboxRateLimits/${uid}/bots`));
+  add('botRateLimits', await purgeRunnerQuotasForUser(uid));
 
   // chats: private chats are deleted with their messages; group chats only lose this member
   for (let i = 0; i < 2000; i++) {
