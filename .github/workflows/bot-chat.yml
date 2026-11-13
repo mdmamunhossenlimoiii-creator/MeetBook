@@ -64,6 +64,7 @@ jobs:
           BOT_RUNNER_EXPECTED_PROJECT_ID: ${{ vars.BOT_RUNNER_EXPECTED_PROJECT_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           BOT_RUNNER_MODE: chat
+          GEMINI_STRICT: ${{ inputs.dry_run && '0' || '1' }}
           BOT_RUNNER_BOT_ID: ${{ inputs.bot_id }}
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: node scripts/bot-runner.mjs
