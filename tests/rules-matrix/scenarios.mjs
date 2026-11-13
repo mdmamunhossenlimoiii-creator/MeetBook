@@ -208,7 +208,7 @@ cap('AI bots', 'Bot comment WITHOUT the AI flag (must be refused for everyone)',
 cap('AI bots', 'Bot comment with the AI flag missing entirely', 'create', 'posts/p2/comments/new', { uid: 'bot_01', authorName: 'TechTip Nova', text: 'Nice one.', createdAt: { $srv: 1 } }, []);
 cap('AI bots', 'Bot comment on a post of a user who did NOT allow it (u1)', 'create', 'posts/p1/comments/new', botComment, []);
 cap('AI bots', 'Bot comment on a friends-only post', 'create', 'posts/pf/comments/new', botComment, []);
-cap('AI bots', 'Bot comment on a bot\'s post', 'create', 'posts/pb/comments/new', botComment, [...ADM, 'runner']);
+cap('AI bots', 'Bot comment on a bot\'s post while bot-to-bot comments are OFF', 'create', 'posts/pb/comments/new', botComment, [...ADM]);
 cap('AI bots', 'Bot comment where comments are off (owner allowed)', 'create', 'posts/pn/comments/new', botComment, []);
 cap('AI bots', 'Bot reaction on a post of a user who allowed it', 'update', 'posts/p2', { 'reactions.bot_01': 'love' }, ['runner']);
 cap('AI bots', 'Runner cannot react as an unassigned bot', 'update', 'posts/p2', { 'reactions.bot_02': 'love' }, []);
