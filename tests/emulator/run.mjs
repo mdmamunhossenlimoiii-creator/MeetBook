@@ -6,7 +6,7 @@
 //   ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-meetbook "node tests/emulator/run.mjs"
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp, runTransaction } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
 const PROJECT = 'demo-meetbook';
@@ -75,17 +75,17 @@ for (const cap of CAPS) {
   const day = new Date().toISOString().slice(0, 10);
   const quotaRef = doc(db, 'botInboxRateLimits', 'u1', 'bots', 'bot_01', 'days', day);
   let inboxNumber = 0;
-  const submit = () => {
+  const submit = async () => {
     const inboxRef = doc(db, 'botInbox', `atomic-${++inboxNumber}`);
-    return runTransaction(db, async (tx) => {
-    const snap = await tx.get(quotaRef);
+    const snap = await getDoc(quotaRef);
     const count = snap.exists() ? snap.data().count : 0;
-    tx.set(quotaRef, { senderUid: 'u1', botId: 'bot_01', count: count + 1, lastAt: serverTimestamp() });
-    tx.set(inboxRef, {
+    const batch = writeBatch(db);
+    batch.set(quotaRef, { senderUid: 'u1', botId: 'bot_01', count: count + 1, lastAt: serverTimestamp() });
+    batch.set(inboxRef, {
       fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
       handled: false, createdAt: serverTimestamp(), quotaDay: day
     });
-    });
+    await batch.commit();
   };
   await submit();
   console.log('atomic bot inbox + quota transaction allowed');
