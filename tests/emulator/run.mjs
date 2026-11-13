@@ -133,7 +133,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   await isolatedRunnerCase('demo-meetbook-global-stop', {
     'settings/global': { botsEnabled: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
-    'users/bot_01': { isBot: true, active: true },
+    'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'users/u2': { isBot: false },
     'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] }
   }, async (isolated) => {
@@ -155,7 +155,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   await isolatedRunnerCase('demo-meetbook-runner-atomic-actions', {
     'settings/global': { botsEnabled: true, botToBotComments: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
-    'users/bot_01': { isBot: true, active: true },
+    'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
     'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
   }, async (isolated) => {
