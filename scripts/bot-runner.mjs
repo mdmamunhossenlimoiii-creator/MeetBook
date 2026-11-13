@@ -35,14 +35,14 @@ const AUTH_URL = process.env.AUTH_URL || 'https://identitytoolkit.googleapis.com
 const FS_URL = process.env.FS_URL || 'https://firestore.googleapis.com';
 const DRY = process.env.DRY_RUN === '1';
 const MODE = process.env.BOT_RUNNER_MODE || 'all';
-const CHAT_BOT_ID = process.env.BOT_CHAT_BOT_ID || '';
-const CHAT_MAX_REPLIES = num(process.env.BOT_CHAT_MAX_REPLIES, 1, 1);
+const RUNNER_BOT_ID = process.env.BOT_RUNNER_BOT_ID || '';
+const CHAT_MAX_REPLIES = 1;
 
 if (!['all', 'post', 'chat'].includes(MODE)) {
   console.error('BOT_RUNNER_MODE must be all, post, or chat.');
   process.exit(1);
 }
-if (MODE === 'chat' && !SMART_BOT_IDS.has(CHAT_BOT_ID)) {
+if (MODE === 'chat' && !SMART_BOT_IDS.has(RUNNER_BOT_ID)) {
   console.error('Chat-only mode requires BOT_CHAT_BOT_ID to be one of the first three Gemini bots.');
   process.exit(1);
 }
@@ -207,7 +207,7 @@ async function main() {
 
   const allowedBotIds = new Set(runner.botIds.filter((id) => isBotId(id)));
   const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id)
-    && (!CHAT_BOT_ID || bot.id === CHAT_BOT_ID));
+    && (!RUNNER_BOT_ID || bot.id === RUNNER_BOT_ID));
   if (!bots.length) { console.log('No assigned bot profiles found for this runner. Nothing to do.'); return; }
   const botMap = new Map(bots.map((b) => [b.id, b]));
   const st = await loadState();
