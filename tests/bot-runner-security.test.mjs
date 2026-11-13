@@ -81,6 +81,7 @@ test('bot workflows are manual-only, default to dry-run, and require an explicit
     assert.match(workflow, /environment: meetbook-bot-live/);
     assert.match(workflow, /BOT_LIVE_TEST_APPROVED/);
     assert.match(workflow, /BOT_RUNNER_EXPECTED_PROJECT_ID/);
+    assert.match(workflow, /GEMINI_STRICT:/);
     assert.doesNotMatch(workflow, /schedule:|pull_request:|push:/);
   }
   assert.match(runnerWorkflow, /BOT_RUNNER_MODE: post/);
