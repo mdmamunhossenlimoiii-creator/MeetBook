@@ -46,7 +46,17 @@ export const updateDoc = async (r, data) => { if (!DB[r.path]) throw new Error('
 export const deleteDoc = async (r) => { delete DB[r.path]; LOG.push(['deleteDoc', r.path]); changed(r.path); };
 export const serverTimestamp = () => ts(Date.now()); export const increment = (n) => ({ __inc: n }); export const deleteField = () => null;
 export const arrayUnion = (x) => x; export const arrayRemove = (x) => x;
-export const writeBatch = () => { const ops = []; return { set(r, d) { ops.push([r, d]); }, update() {}, delete() {}, commit: async () => ops.forEach(([r, d]) => { DB[r.path] = d; }) }; };
+export const writeBatch = () => { const ops = []; return {
+  set(r, d, opt) { ops.push(['setDoc', r, d, opt]); },
+  update(r, d) { ops.push(['updateDoc', r, d]); },
+  delete(r) { ops.push(['deleteDoc', r]); },
+  commit: async () => { for (const [kind, r, d, opt] of ops) {
+    if (kind === 'setDoc') DB[r.path] = opt && opt.merge ? apply(DB[r.path], d) : { ...d };
+    else if (kind === 'updateDoc') { if (!DB[r.path]) throw new Error('no document to update: ' + r.path); DB[r.path] = apply(DB[r.path], d); }
+    else delete DB[r.path];
+    LOG.push([kind, r.path, d]); changed(r.path);
+  } }
+}; };
 export const Timestamp = { now: () => ts(Date.now()), fromMillis: (m) => ts(m), fromDate: (d) => ts(d.getTime()) };
 export const getCountFromServer = async (q) => ({ data: () => ({ count: rows(q).length }) });
 export const sum = (f) => ({ sum: f });
@@ -63,6 +73,11 @@ def seed(role, extra=None):
         'users/me': dict(name='Test User', nameLower='test user', bio='hi', photo='', cover='', banned=False, createdAt=t(now - 86400000), lastActiveAt=t(now), settings=dict(profileVisibility='everyone', allowMessages='everyone', defaultVisibility='public')),
         'users/u2': dict(name='Rafi Ahmed', nameLower='rafi ahmed', bio='', photo='', cover='', banned=False, verified=True, createdAt=t(now - 86400000), settings={}),
         'users/u3': dict(name='Mina Khan', nameLower='mina khan', bio='', photo='', cover='', banned=False, createdAt=t(now - 3600000), settings={}),
+        'publicProfiles/me': dict(name='Test User', nameLower='test user', bio='hi', photo='', cover='', isBot=False, roleEmoji='', verified=False, profileVisibility='everyone', createdAt=t(now - 86400000)),
+        'publicProfiles/u2': dict(name='Rafi Ahmed', nameLower='rafi ahmed', bio='', photo='', cover='', isBot=False, roleEmoji='', verified=True, profileVisibility='everyone', createdAt=t(now - 86400000)),
+        'publicProfiles/u3': dict(name='Mina Khan', nameLower='mina khan', bio='', photo='', cover='', isBot=False, roleEmoji='', verified=False, profileVisibility='everyone', createdAt=t(now - 3600000)),
+        'publicProfiles/bot_01': dict(name='TechTip Nova', nameLower='techtip nova', bio='I am an AI bot.', photo='', cover='', isBot=True, roleEmoji='🤖', verified=False, profileVisibility='everyone', createdAt=t(now - 86400000)),
+        'botEngagement/me': dict(allowBotEngagement=False, updatedAt=t(now)),
         'users/bot_01': dict(name='TechTip Nova', nameLower='techtip nova', username='techtip_nova', bio='I am an AI bot.', photo='', cover='', isBot=True, banned=False, personality='tech', lang='both', interests=['tech'], dailyLimit=6, active=True, chatEnabled=True, settings={}),
         'posts/p1': dict(uid='u2', authorName='Rafi Ahmed', text='Visible post by Rafi', image='', videoUrl='', visibility='public', audience=[], groupId=None, reactions={'me': 'love', 'u2': 'like', 'bot_01': 'wow'}, commentCount=2, shareCount=0, createdAt=t(now - 5000)),
         'posts/p2': dict(uid='u2', authorName='Rafi Ahmed', text='HIDDEN post text', image='', videoUrl='', visibility='public', audience=[], groupId=None, reactions={}, commentCount=0, shareCount=0, hidden=True, createdAt=t(now - 6000)),
@@ -233,7 +248,7 @@ async def main():
         check('chat with a bot shows the AI notice', 'AI bot' in await pg.inner_text('#main') and 'automatic' in (await pg.inner_text('#main')).lower())
         await pg.fill('[data-text]', 'Hello bot'); await pg.press('[data-text]', 'Enter'); await pg.wait_for_timeout(500)
         log = await pg.evaluate('window.__log')
-        check('sending to a bot also files a botInbox request', any(l[0] == 'addDoc' and l[1] == 'botInbox' and l[2]['botId'] == 'bot_01' and l[2]['handled'] is False for l in log), str(log)[-300:])
+        check('sending to a bot also files a botInbox request', any(l[0] == 'setDoc' and l[1].startswith('botInbox/') and l[2]['botId'] == 'bot_01' and l[2]['handled'] is False for l in log), str(log)[-300:])
         check('no JS errors (user)', not errors, '; '.join(errors[:3]))
         await b.close()
 
