@@ -39,7 +39,7 @@ const post = (uid, text, more = {}) => ({ uid, authorName: uid, text, image: '',
 test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfigured }, async () => {
   const m = await startMock({ seed: {
     ...seedBots(),
-    'settings/global': { botsEnabled: true, botToBotComments: false },
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
     'users/u2': { name: 'Sam', banned: false, settings: { allowBotEngagement: false } },
     'botEngagement/u1': { allowBotEngagement: true },
@@ -93,9 +93,15 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
 
 test('bot runner: global OFF, per-bot OFF and daily limit stop everything', { skip: !botRunnerConfigured }, async () => {
   for (const [name, seed] of [
-    ['global off', { ...seedBots(), 'settings/global': { botsEnabled: false } }],
-    ['bots inactive', { ...seedBots({ active: false }) }],
-    ['limit 0', { ...seedBots({ dailyLimit: 0 }) }]
+    ['global document missing', { ...seedBots() }],
+    ['global off', { ...seedBots(), 'settings/overall': { botsEnabled: false } }],
+    ['global string true', { ...seedBots(), 'settings/overall': { botsEnabled: 'true' } }],
+    ['global fake string', { ...seedBots(), 'settings/overall': { botsEnabled: 'fake' } }],
+    ['runner string true', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'true', botIds: ['bot_01'] } }],
+    ['runner fake string', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'fake', botIds: ['bot_01'] } }],
+    ['runner missing enabled', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { botIds: ['bot_01'] } }],
+    ['bots inactive', { ...seedBots({ active: false }), 'settings/overall': { botsEnabled: true } }],
+    ['limit 0', { ...seedBots({ dailyLimit: 0 }), 'settings/overall': { botsEnabled: true } }]
   ]) {
     const m = await startMock({ seed: { ...seed, 'users/u1': { name: 'R', settings: { allowBotEngagement: true } }, 'posts/p1': post('u1', 'trip to the beach') } });
     try {
