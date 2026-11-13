@@ -80,7 +80,7 @@ export const SEED = {
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
   'posts/p1': post('u1', { reactions: {} }),
-  'posts/p2': post('u2', { reactions: { u1: 'like' } }),
+  'posts/p2': post('u2', { reactions: { u1: 'like' } }),\n  'posts/p2/comments/bot_01': { uid: 'bot_01', ai: true, text: 'existing bot comment' },
   'posts/pb': post('bot_01'),
   'posts/pf': post('u1', { visibility: 'friends', audience: ['u1'] }),
   'posts/pn': post('u2', { commentsDisabled: true }),
@@ -251,7 +251,7 @@ cap('AI bots', 'Bot comment on a bot\'s post while bot-to-bot comments are OFF',
 cap('AI bots', 'Bot comment where comments are off (owner allowed)', 'create', 'posts/pn/comments/new', botComment, []);
 cap('AI bots', 'Bot reaction on a post of a user who allowed it', 'update', 'posts/p2', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, ['runner']);
 cap('AI bots', 'Runner cannot react as an unassigned bot', 'update', 'posts/p2', { 'reactions.bot_02': 'love' }, []);
-cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update', 'posts/p1', { 'reactions.bot_01': 'love' }, []);
+cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update', 'posts/p1', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
 cap('AI bots', 'Bot reaction on a friends-only post', 'update', 'posts/pf', { 'reactions.bot_01': 'love' }, []);
 cap('AI bots', 'Bot reaction on a bot\'s post', 'update', 'posts/pb', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, ['runner']);
 cap('AI bots', 'Runner writes a reaction under a human\'s key (u2)', 'update', 'posts/p2', { 'reactions.u2': 'wow' }, ['other']);
