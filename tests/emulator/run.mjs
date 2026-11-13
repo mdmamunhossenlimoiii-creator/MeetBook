@@ -243,7 +243,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
 
   const memoryOwnerDb = env.authenticatedContext('u2').firestore();
   const ownMemories = await realFirestore.getDocs(realFirestore.query(realFirestore.collection(memoryOwnerDb, 'botMemories'), realFirestore.where('ownerUid', '==', 'u2')));
-  if (ownMemories.size !== 1) throw new Error('memory owner could not list their own saved summaries');
+  if (ownMemories.size !== 2) throw new Error('memory owner could not list all of their own saved summaries');
   await assert.rejects(realFirestore.getDocs(realFirestore.query(realFirestore.collection(env.authenticatedContext('u4').firestore(), 'botMemories'), realFirestore.where('ownerUid', '==', 'u2'))));
   console.log('bot-memory list queries are restricted to the owning user');
 

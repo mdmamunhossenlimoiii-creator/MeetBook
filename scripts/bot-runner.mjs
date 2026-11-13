@@ -278,10 +278,6 @@ async function main() {
     const pick = nextPostText(bot, st.used);
     const postId = `post_${bot.id}_${RUN_ID}`;
     if (!pick) continue;
-    if (!DRY && await fs.get(`posts/${postId}`)) {
-      console.log(`Duplicate post prevented for ${bot.name} (workflow ${RUN_ID}).`);
-      continue;
-    }
     if (!(await reserveBotAction(bot))) continue;
     const postText = DRY ? pick.text : await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
     const id = await createPost(bot, postText, postId);

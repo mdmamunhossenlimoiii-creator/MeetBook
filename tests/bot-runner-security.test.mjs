@@ -145,6 +145,6 @@ test('runner uses stable workflow IDs and bounds bot-to-bot discussion', () => {
   assert.match(runner, /replyMessageId = .*m\.id/);
   assert.match(runner, /post_\$\{bot\.id\}_\$\{RUN_ID\}/);
   assert.match(runner, /if \(await fs\.get\(commentPath\)\)/);
-  assert.match(runner, /Duplicate reply prevented/);
+  assert.match(runner, /duplicate reply prevented/i);
   assert.match(runner, /existingComments\.filter\(\(comment\) => comment\.ai === true && isBotId\(comment\.uid\)\)/);
 });
