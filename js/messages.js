@@ -91,7 +91,7 @@ export async function render(view, a, b) {
         ${isGroup ? `<span class="avatar avatar-initial" style="width:40px;height:40px;background:var(--primary)">${icon('users', 20)}</span>` : `<a href="#/profile/${esc(otherUid)}">${avatarHtml(other?.name, other?.photo, 40)}</a>`}
         <div><b>${esc(title)}</b>${isGroup ? `<small class="muted">${chat.members.length} members</small>` : ''}</div>
       </header>
-      ${other?.isBot ? '<div class="notice small">You are chatting with an <b>AI bot</b>. Its replies are automatic, template-based and can take a few minutes. It is not a person and can make mistakes.</div>' : ''}
+      ${other?.isBot ? '<div class="notice small">You are chatting with an <b>AI bot</b>. For the first three Smart AI bots, your message text is sent to Google Gemini to generate a reply. Free-tier data may be used by Google to improve its products, so do not share passwords, verification codes, financial details or other sensitive information. Replies can take a few minutes and may be wrong.</div>' : ''}
       <div class="chat-messages" data-msgs><div class="loading">Loading…</div></div>
       <form class="chat-form" data-form>
         <label class="icon-btn" title="Send a photo">${icon('image')}<input type="file" accept="image/*" hidden data-photo></label>
