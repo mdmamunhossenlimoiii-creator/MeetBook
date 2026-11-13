@@ -60,8 +60,8 @@ export const SEED = {
   'botRunners/runoff': { enabled: false, botIds: ['bot_01'] },
   'botState/run': { used: '{}' },
   'botState/runoff': { used: '{}' },
-  'botRateLimits/run/bots/bot_01/days/2026-11-10': { runnerUid: 'run', botId: 'bot_01', kind: 'botDaily', count: 1, lastAt: T(-120000) },
-  'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10': { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, lastAt: T(-120000) },
+  'botRateLimits/run/bots/bot_01': { runnerUid: 'run', botId: 'bot_01', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/run/bots/bot_01/users/u1': { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
   'posts/p1': post('u1', { reactions: {} }),
@@ -241,13 +241,13 @@ cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bo
 cap('AI bots', 'Read bot activity logs', 'get', 'botLogs/bl1', null, STAFF);
 cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'changed' }, []);
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
-cap('AI bots', 'Runner reserves its assigned bot daily quota', 'create', 'botRateLimits/run/bots/bot_01/days/2026-11-11', { runnerUid: 'run', botId: 'bot_01', kind: 'botDaily', count: 1, lastAt: { $srv: 1 } }, ['runner']);
-cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'botRateLimits/run/bots/bot_02/days/2026-11-11', { runnerUid: 'run', botId: 'bot_02', kind: 'botDaily', count: 1, lastAt: { $srv: 1 } }, []);
-cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/run/bots/bot_01/days/2026-11-10', { count: 2, lastAt: T(0) }, ['runner']);
-cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/run/bots/bot_01/days/2026-11-10', { count: 12, lastAt: T(1000) }, []);
-cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-11', { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, lastAt: { $srv: 1 } }, ['runner']);
-cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10', { count: 2, lastAt: T(-90000) }, []);
-cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner reserves its assigned bot daily quota', 'create', 'botRateLimits/run/bots/bot_01', { runnerUid: 'run', botId: 'bot_01', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
+cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'botRateLimits/run/bots/bot_02', { runnerUid: 'run', botId: 'bot_02', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
+cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/run/bots/bot_01', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/run/bots/bot_01', { count: 12, lastAt: T(0) }, []);
+cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/run/bots/bot_01/users/u1', { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
+cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1', { count: 2, lastAt: T(-90000) }, []);
+cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1', { count: 2, lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Read the runner state', 'get', 'botState/run', null, ['runner']);
 cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runoff', null, []);
 cap('AI bots', 'Only an enabled runner can publish as an assigned bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
