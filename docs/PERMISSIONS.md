@@ -12,9 +12,6 @@
 | ❌ | denied (Firestore rules reject the request) |
 | ◐ | normal users are allowed **only for their own data** (or only for data of a specific owner, see the row text); the other normal user is denied |
 
-Roles come from `/admins/{uid}.role` (only a Super Admin can write that collection). **A missing or unknown role means no power at all.**
-Normal users cannot change their own role: `/admins` is not writable by them, and the `role` field on a profile document has no effect.
-
 | Column | Who |
 |---|---|
 | Normal user | signed in, has a profile, not blocked, not suspended |
@@ -212,7 +209,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | Bot reaction on a friends-only post | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Bot reaction on a bot's post | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Runner writes a reaction under a human's key (u2) | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Runner raises commentCount on a consenting user's post | ◐ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ |
+| Runner cannot raise commentCount without a same-batch new comment | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner raises commentCount on a non-consenting user's post | ◐ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | Runner pretends to be a human in a comment | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Read the bot inbox | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
