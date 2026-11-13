@@ -15,9 +15,9 @@ const failures = (text) => {
 const MUTATIONS = [
   ['role-less admin doc becomes super admin again', ".get('role', 'none')", ".get('role', 'super_admin')"],
   ['unknown role counts as staff', "signedIn() && roleOf() in ['super_admin', 'admin', 'moderator']", "signedIn() && exists(/databases/$(database)/documents/admins/$(request.auth.uid))"],
-  ['bot comments may skip the AI flag', "            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI\n            && textOk(request.resource.data.text, 2000)", "            && textOk(request.resource.data.text, 2000)"],
+  ['bot comments may skip the AI flag', "            && request.resource.data.get('ai', false) == true\n            && textOk(request.resource.data.text, 2000)", "            && textOk(request.resource.data.text, 2000)"],
   ['bot chat messages may skip the AI flag', "            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI\n            && textOk(request.resource.data.text, 4000)", "            && textOk(request.resource.data.text, 4000)"],
-  ['bot consent not checked for comments', "&& engagementOk(p.uid);", ";"],
+  ['bot consent not checked for comments', ": engagementOk(p.uid));", ": true);"],
   ['bot consent not checked for runner reactions', "&& resource.data.visibility == 'public'\n          && engagementOk(resource.data.uid)\n          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])", "&& resource.data.visibility == 'public'\n          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])"],
   ['admin may block other staff', "&& (isSuper() || !isStaffUid(uid))", ""],
   ['moderator may suspend staff', "isMod()\n          && !isStaffUid(uid)", "isMod()"],
