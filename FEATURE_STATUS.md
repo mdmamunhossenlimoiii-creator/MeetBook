@@ -19,7 +19,7 @@ This document records repository source status and CI evidence only. Passing CI 
 
 ## Latest automated verification
 
-For the code-bearing head of PR #5 (`942ff83a813138c3d770234fb75391382eb791f8`), GitHub Actions run `43397604874` completed all three jobs (`unit`, `browser`, `rules-emulator`) successfully. Subsequent commits on the branch only corrected documentation. This confirms CI only, not real Gemini API or live Firebase integration.
+For PR #5 head `2e0608c5d17f879f5367e4e96e6f6dec444aa4af`, temporary integration-validation PR #6 combined the branch with PR #4's Runner project-ID guard. GitHub Actions run `43398228562` completed all three jobs (`unit`, `browser`, `rules-emulator`) successfully. PR #6 was closed unmerged after validation. This confirms CI only, not real Gemini API or live Firebase integration.
 
 - Unit: 304/304 passed; import check: 0 problems.
 - Browser/Admin smoke: passed.
