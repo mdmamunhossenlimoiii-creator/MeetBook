@@ -26,7 +26,7 @@ const fs = createClient({ projectId: sa.project_id, fsUrl: process.env.FS_URL ||
 const OUT = process.env.OUT_DIR || 'backup-out';
 const KEEP_IMAGES = process.env.BACKUP_INCLUDE_IMAGES === '1';
 
-const TOP = ['users', 'posts', 'reels', 'stories', 'groups', 'friendships', 'friendRequests', 'follows', 'notifications', 'reports', 'chats', 'admins', 'adminLogs', 'settings', 'announcements', 'deletionRequests', 'botLogs'];
+const TOP = ['users', 'publicProfiles', 'botEngagement', 'posts', 'reels', 'stories', 'groups', 'friendships', 'friendRequests', 'follows', 'notifications', 'reports', 'chats', 'admins', 'adminLogs', 'settings', 'announcements', 'deletionRequests', 'botLogs'];
 const SUB = { posts: 'comments', chats: 'messages', groups: 'requests' };
 
 const slim = (v) => {
