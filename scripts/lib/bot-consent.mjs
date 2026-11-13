@@ -1,5 +1,5 @@
-// Canonical consent check shared by the bot runner and unit tests.
-// The users/{uid}.settings field is the source of truth; projection documents are not authoritative.
-export function hasBotEngagementConsent(user) {
-  return user?.settings?.allowBotEngagement === true;
+// The Runner reads only this privacy-minimized projection, never the full user document.
+// Firestore Rules independently verify the canonical users/{uid}.settings value on bot writes.
+export function hasBotEngagementConsent(projection) {
+  return projection?.allowBotEngagement === true;
 }
