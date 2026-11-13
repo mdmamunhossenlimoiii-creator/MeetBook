@@ -118,6 +118,10 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(block('botRateLimits'), /function botDailyLimit\(\)/);
   assert.match(block('botRateLimits'), /d\.count <= botDailyLimit\(\)/);
   assert.match(block('botRateLimits'), /resource\.data\.count < botDailyLimit\(\)/);
+  assert.match(block('botGlobalRateLimits'), /d\.count <= 60/);
+  assert.match(block('botGeminiRateLimits'), /d\.count <= 60/);
+  assert.match(block('botGlobalRateLimits'), /resource\.data\.count < 60/);
+  assert.match(block('botGeminiRateLimits'), /resource\.data\.count < 60/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   const posts = block('posts');

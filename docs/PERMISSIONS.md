@@ -24,7 +24,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | No role / Unknown role | admin document without `role` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in `/botRunners` |
 
-200 capabilities × 14 actors = 2800 cases are executed on every test run.
+204 capabilities × 14 actors = 2856 cases are executed on every test run.
 
 
 ## Users
@@ -236,6 +236,10 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | Runner increments bot quota by exactly one | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Runner increments quota up to the configured daily limit | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Runner cannot exceed the configured daily limit | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Runner increments the global daily activity budget | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Runner cannot exceed the global daily activity budget | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Runner increments the Gemini request budget | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Runner cannot exceed the Gemini request budget | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner cannot jump bot quota count | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner resets bot quota after full 24-hour window | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Runner cannot reset bot quota before 24 hours | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |

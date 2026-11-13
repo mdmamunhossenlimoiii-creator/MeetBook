@@ -82,6 +82,8 @@ export const SEED = {
   'botRateLimits/bot_03': { botId: 'bot_03', kind: 'botDaily', count: 12, windowStartedAt: T(-90000000), lastAt: T(-90000000) },
   'botRateLimits/bot_05': { botId: 'bot_05', kind: 'botDaily', count: 12, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/bot_28': { botId: 'bot_28', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botGlobalRateLimits/global': { kind: 'globalDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botGeminiRateLimits/global': { kind: 'geminiDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/bot_05/users/u1': { botId: 'bot_05', actorUid: 'u1', kind: 'chatDaily', count: 15, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/bot_01/users/u1': { botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
@@ -291,6 +293,10 @@ cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'b
 cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/bot_01', { count: 2, lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Runner increments quota up to the configured daily limit', 'update', 'botRateLimits/bot_28', { count: 2, lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Runner cannot exceed the configured daily limit', 'update', 'botRateLimits/bot_28', { count: 3, lastAt: T(0) }, []);
+cap('AI bots', 'Runner increments the global daily activity budget', 'update', 'botGlobalRateLimits/global', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot exceed the global daily activity budget', 'update', 'botGlobalRateLimits/global', { count: 61, lastAt: T(0) }, []);
+cap('AI bots', 'Runner increments the Gemini request budget', 'update', 'botGeminiRateLimits/global', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot exceed the Gemini request budget', 'update', 'botGeminiRateLimits/global', { count: 61, lastAt: T(0) }, []);
 cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/bot_01', { count: 12, lastAt: T(0) }, []);
 cap('AI bots', 'Runner resets bot quota after full 24-hour window', 'update', 'botRateLimits/bot_03', { count: 1, windowStartedAt: T(0), lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Runner cannot reset bot quota before 24 hours', 'update', 'botRateLimits/bot_03', { count: 1, windowStartedAt: T(-30000000), lastAt: T(0) }, []);

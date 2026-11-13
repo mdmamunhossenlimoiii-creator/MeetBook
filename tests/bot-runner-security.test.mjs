@@ -21,6 +21,11 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
 test('runner applies conservative per-bot and per-user limits', () => {
   assert.match(runner, /Math\.min\(12,/);
   assert.match(runner, /reserveBotAction/);
+  assert.match(runner, /GLOBAL_DAILY_ACTION_LIMIT = 60/);
+  assert.match(runner, /GEMINI_DAILY_REQUEST_LIMIT = 60/);
+  assert.match(runner, /reserveQuota\('botGlobalRateLimits\/global'/);
+  assert.match(runner, /reserveQuota\('botGeminiRateLimits\/global'/);
+  assert.match(runner, /Gemini daily request budget reached/);
   assert.match(runner, /reserveChatReply/);
   assert.match(runner, /cooldownMs: 60_000/);
   assert.match(rest, /beginTransaction/);
