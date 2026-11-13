@@ -44,7 +44,7 @@ export async function generateSmartBotText({
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: systemText }] },
         contents: [{ role: 'user', parts: [{ text: input || 'Create a short, friendly opening message.' }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 220 }
+        generationConfig: { maxOutputTokens: 220 }
       }),
       signal: AbortSignal.timeout(20_000)
     });
