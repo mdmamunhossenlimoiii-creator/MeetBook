@@ -386,9 +386,9 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/chats/$(d.chatId)).data.members.hasAll([d.ownerUid, d.botId]);
       }
       allow get: if signedIn()
-        && (isOwner(resource.data.ownerUid) || isStaff()
+        && (isOwner(resource.data.ownerUid)
           || (runnerHasBot(resource.data.botId) && botMemoryConsent(resource.data.ownerUid)));
-      allow list: if signedIn() && (isOwner(resource.data.ownerUid) || isStaff());
+      allow list: if signedIn() && isOwner(resource.data.ownerUid);
       allow create: if runnerHasBot(request.resource.data.botId)
         && botMemoryConsent(request.resource.data.ownerUid)
         && validMemory(request.resource.data);
@@ -399,7 +399,7 @@ service cloud.firestore {
         && resource.data.chatId == request.resource.data.chatId
         && request.resource.data.createdAt == resource.data.createdAt
         && validMemory(request.resource.data);
-      allow delete: if isOwner(resource.data.ownerUid) || isAdmin();
+      allow delete: if isOwner(resource.data.ownerUid);
     }
 
     match /botInbox/{id} {
