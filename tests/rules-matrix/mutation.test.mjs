@@ -36,6 +36,8 @@ const MUTATIONS = [
   ['suspension is ignored', "(u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time)", "true"],
   ['blocked users can write', "u.banned != true", "true"],
   ['bot posts may contain video', "&& request.resource.data.videoUrl == ''", ""],
+  ['runner reaction must validate the active assigned bot', "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return runnerMayActAs(botUid)", "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return true"],
+  ['runner comment counter must require a new atomic comment', "&& existsAfter(commentPath)\n        && !exists(commentPath)", "&& existsAfter(commentPath)"],
   ['bot-runner may read every chat', "&& chat.members.size() == 2\n        && ((chat.members[0] in runner.get('botIds', [])\n              && runnerMayActAs(chat.members[0]))\n          || (chat.members[1] in runner.get('botIds', [])\n              && runnerMayActAs(chat.members[1])));", "&& chat.members.size() == 2\n        && true;"],
   ['comments stay possible when switched off', "return p.get('commentsDisabled', false) == false && canSeePost(p);", "return canSeePost(p);"],
   ['any reaction value is accepted', "|| request.resource.data.reactions[request.auth.uid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']", "|| true"],
