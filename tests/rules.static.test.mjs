@@ -93,6 +93,7 @@ test('private user documents are not readable by other ordinary users', () => {
 
 test('settings/overall only accepts the known fields with real booleans', () => {
   const s = block('settings');
+  assert.match(s, /id == 'overall'/);
   assert.match(s, /keys\(\)\.hasOnly\(\['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'\]\)/);
   assert.match(s, /'botsEnabled', true\) is bool/);
 });
