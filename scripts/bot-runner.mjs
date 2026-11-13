@@ -249,7 +249,7 @@ async function reserveGeminiRequest() {
   });
 }
 async function generateText(options) {
-  if (DRY || !process.env.GEMINI_API_KEY) return options.fallback;
+  if (DRY || !process.env.GEMINI_API_KEY || !SMART_BOT_IDS.has(options.bot?.id)) return options.fallback;
   if (!(await reserveGeminiRequest())) {
     console.warn('Gemini daily request budget reached; using safe template fallback.');
     return options.fallback;
