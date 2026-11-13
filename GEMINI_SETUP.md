@@ -27,3 +27,7 @@ The current MeetBook bot architecture intentionally requires its separate low-pr
 - Google states that Free Tier prompts and responses may be used to improve Google products. Users should not send passwords, verification codes, financial details or sensitive personal information to these bots.
 - Comments and reactions remain opt-in for human users; no unsolicited direct messages are generated.
 - Keep the global bot kill switch and per-bot/user quotas enabled.
+## Runner Firebase project pinning
+The runner now requires the environment variable `BOT_RUNNER_EXPECTED_PROJECT_ID`. Set it to the exact Firebase project ID intended for that runner environment (for example, the staging project's own ID). The runner compares this value with `firebaseConfig.projectId` and exits before Firebase Auth sign-in if the value is missing or does not match. Do not copy a production ID into a staging environment, and do not use a guessed project ID.
+
+This guard is a safety check, not proof that the Firebase project is staging. Before any staging integration test, independently verify the Firebase project's identity and use staging-only credentials and data. The bot workflows remain disabled; this change does not activate them.
