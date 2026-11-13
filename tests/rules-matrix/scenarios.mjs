@@ -233,7 +233,7 @@ cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'chan
 cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
 cap('AI bots', 'Runner reserves its assigned bot daily quota', 'create', 'botRateLimits/run/bots/bot_01/days/2026-11-11', { runnerUid: 'run', botId: 'bot_01', kind: 'botDaily', count: 1, lastAt: { $srv: 1 } }, ['runner']);
 cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'botRateLimits/run/bots/bot_02/days/2026-11-11', { runnerUid: 'run', botId: 'bot_02', kind: 'botDaily', count: 1, lastAt: { $srv: 1 } }, []);
-cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/run/bots/bot_01/days/2026-11-10', { count: 2, lastAt: T(1000) }, ['runner']);
+cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/run/bots/bot_01/days/2026-11-10', { count: 2, lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/run/bots/bot_01/days/2026-11-10', { count: 12, lastAt: T(1000) }, []);
 cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-11', { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, lastAt: { $srv: 1 } }, ['runner']);
 cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10', { count: 2, lastAt: T(-90000) }, []);
