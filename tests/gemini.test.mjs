@@ -42,3 +42,38 @@ test('generated output is trimmed', async () => {
   });
   assert.equal(result, 'A friendly reply.');
 });
+
+test('chat generation receives only the six most recent messages as bounded context', async () => {
+  let payload;
+  const history = Array.from({ length: 8 }, (_, i) => ({ uid: i % 2 ? 'bot_01' : 'user-1', text: `message-${i}` }));
+  const result = await generateSmartBotText({
+    bot: bot('bot_01'), kind: 'chat', source: 'latest-question', history, fallback: 'fallback', apiKey: 'x',
+    fetchImpl: async (_url, options) => {
+      payload = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Context-aware answer.' }] } }] }) };
+    }
+  });
+  assert.equal(result, 'Context-aware answer.');
+  const prompt = payload.contents[0].parts[0].text;
+  assert.doesNotMatch(prompt, /message-0|message-1/);
+  assert.match(prompt, /User: message-2/);
+  assert.match(prompt, /Bot: message-3/);
+  assert.match(prompt, /User: message-6/);
+  assert.match(prompt, /Bot: message-7/);
+  assert.match(prompt, /Latest user message: latest-question/);
+  assert.match(prompt, /untrusted/);
+});
+
+test('non-chat generation ignores supplied conversation history', async () => {
+  let prompt = '';
+  await generateSmartBotText({
+    bot: bot('bot_01'), kind: 'comment', source: 'public post', history: [{ uid: 'user-1', text: 'private detail' }],
+    fallback: 'fallback', apiKey: 'x',
+    fetchImpl: async (_url, options) => {
+      prompt = JSON.parse(options.body).contents[0].parts[0].text;
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'A comment.' }] } }] }) };
+    }
+  });
+  assert.equal(prompt, 'public post');
+  assert.doesNotMatch(prompt, /private detail/);
+});
