@@ -6,7 +6,7 @@
 - Default model: `gemini-3.8-flash`. Override with `GEMINI_MODEL` only if Google changes model availability.
 - If `GEMINI_API_KEY` is missing or the API is unavailable, the three bots safely fall back to their existing template responses.
 - The API key is read only by the server-side GitHub Actions runner. It is never placed in frontend JavaScript or committed to Git.
-- Only the current user message is sent for a private chat reply; private chat history is not sent to Gemini.
+- For private chat replies, Gemini may receive up to six recent messages from that same chat, plus a short per-user/per-bot memory summary only when the user explicitly opts in. Raw chat transcripts are not stored in long-term memory. The app must disclose this processing before users enable the feature.
 
 ## Required secret
 Add repository Actions secret `GEMINI_API_KEY` containing a key from Google AI Studio. Do not put it in `js/firebase-config.js`, any browser file, an issue, a commit, or a chat message.
@@ -27,3 +27,7 @@ The current MeetBook bot architecture intentionally requires its separate low-pr
 - Google states that Free Tier prompts and responses may be used to improve Google products. Users should not send passwords, verification codes, financial details or sensitive personal information to these bots.
 - Comments and reactions remain opt-in for human users; no unsolicited direct messages are generated.
 - Keep the global bot kill switch and per-bot/user quotas enabled.
+
+
+## Firebase project guard
+The Bot Runner must receive `BOT_RUNNER_EXPECTED_PROJECT_ID` and it must exactly match the MeetBook frontend configuration (`meetbook-65d30`). Missing or mismatched values stop the runner before Firebase Authentication sign-in. MeetBook uses one Firebase project; automated tests use local mocks and the Firestore Emulator rather than writing test data to live user collections.
