@@ -39,9 +39,9 @@ const post = (uid, extra = {}) => ({ uid, authorName: uid, text: 'hello', image:
 const newPost = (uid, extra = {}) => ({ ...post(uid), createdAt: { $srv: 1 }, ...extra });
 
 export const SEED = {
-  'users/u1': user({ name: 'User One', settings: { allowBotEngagement: false } }),
-  'users/u2': user({ name: 'User Two', settings: { allowBotEngagement: true, allowMessages: 'friends' } }),
-  'users/u3': user({ name: 'User Three', settings: { allowMessages: 'friends', profileVisibility: 'friends', allowBotMemory: false } }),
+  'users/u1': user({ name: 'User One', nameLower: 'user one', settings: { allowBotEngagement: false, allowBotMemory: false, profileVisibility: 'everyone' } }),
+  'users/u2': user({ name: 'User Two', nameLower: 'user two', settings: { allowBotEngagement: true, allowBotMemory: true, allowMessages: 'friends', profileVisibility: 'friends' } }),
+  'users/u3': user({ name: 'User Three', nameLower: 'user three', settings: { allowMessages: 'friends', profileVisibility: 'friends', allowBotMemory: false } }),
   'publicProfiles/u1': { name: 'User One', nameLower: 'user one', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
   'publicProfiles/u2': { name: 'User Two', nameLower: 'user two', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'friends', createdAt: T(-1000) },
   'publicProfiles/u3': { name: 'User Three', nameLower: 'user three', bio: 'Private bio', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'friends', createdAt: T(-1000) },
@@ -114,6 +114,9 @@ cap('Users', 'Read a bot user document', 'get', 'users/bot_01', null, SIGNED);
 cap('Users', 'Read friend-only profile metadata (owner, friend and staff)', 'get', 'publicProfiles/u2', null, ['user', 'other', 'moderator', 'admin', 'super']);
 cap('Users', 'Read another friend-only profile without friendship', 'get', 'publicProfiles/u3', null, ['third', 'moderator', 'admin', 'super']);
 cap('Users', 'Read minimal public directory entry', 'get', 'publicDirectory/u3', null, SIGNED);
+cap('Users', 'Cannot loosen profile visibility through projection alone', 'update', 'publicProfiles/u3', { profileVisibility: 'everyone' }, []);
+cap('Users', 'Cannot forge a public directory name', 'update', 'publicDirectory/u2', { name: 'Forged Name' }, []);
+cap('Users', 'Cannot forge bot memory consent projection', 'update', 'botEngagement/u2', { allowBotMemory: false, updatedAt: { $srv: 1 } }, []);
 cap('Users', 'Read bot consent projection (owner, staff, active runner only)', 'get', 'botEngagement/u1', null, ['user', 'moderator', 'admin', 'super', 'runner']);
 cap('Bot memory', 'Read own bot memory when consent is off', 'get', 'botMemories/bot_01_u1', null, ['user', 'moderator', 'admin', 'super']);
 cap('Bot memory', 'Read another user bot memory only with owner consent and assigned runner', 'get', 'botMemories/bot_01_u2', null, ['other', 'moderator', 'admin', 'super', 'runner']);
@@ -130,6 +133,7 @@ cap('Users', 'Set valid messaging privacy preference', 'update', 'users/u1', { s
 cap('Users', 'Set invalid messaging privacy preference', 'update', 'users/u1', { settings: { allowMessages: 'anyone' } }, []);
 cap('Users', 'Set invalid profile visibility preference', 'update', 'users/u1', { settings: { profileVisibility: 'private' } }, []);
 cap('Users', 'Set non-boolean bot engagement consent', 'update', 'users/u1', { settings: { allowBotEngagement: 'yes' } }, []);
+cap('Users', 'Set non-boolean bot memory consent', 'update', 'users/u1', { settings: { allowBotMemory: 'yes' } }, []);
 cap('Users', 'Moderator edits own bio (a super admin may too)', 'update', 'users/mod', { bio: 'hello' }, ['moderator', 'super']);
 cap('Users', 'Admin edits own bio (a super admin may too)', 'update', 'users/adm', { bio: 'hello' }, ['admin', 'super']);
 cap('Users', 'Super admin edits own bio (nobody else may)', 'update', 'users/sup', { bio: 'hello' }, ['super']);
