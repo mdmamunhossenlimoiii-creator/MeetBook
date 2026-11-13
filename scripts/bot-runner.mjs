@@ -43,7 +43,7 @@ if (!['all', 'post', 'chat'].includes(MODE)) {
   process.exit(1);
 }
 if (MODE === 'chat' && !SMART_BOT_IDS.has(RUNNER_BOT_ID)) {
-  console.error('Chat-only mode requires BOT_CHAT_BOT_ID to be one of the first three Gemini bots.');
+  console.error('Chat-only mode requires BOT_RUNNER_BOT_ID to be one of the first three Gemini bots.');
   process.exit(1);
 }
 if (!EMAIL || !PASSWORD) {
