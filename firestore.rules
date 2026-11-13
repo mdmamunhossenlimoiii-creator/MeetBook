@@ -84,6 +84,24 @@ service cloud.firestore {
         && bot.get('isBot', false) == true
         && bot.get('active', false) == true;
     }
+    // Task-specific flags are enforced in Rules as well as in the Runner.
+    // Missing flags are OFF: a Runner cannot bypass an Admin's per-bot controls.
+    function runnerMayPost(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('autoPost', false) == true;
+    }
+    function runnerMayCommentAs(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('autoComment', false) == true;
+    }
+    function runnerMayReactAs(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('autoReaction', false) == true;
+    }
+    function runnerMayChatAs(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('chatEnabled', false) == true;
+    }
     function runnerMayReadChat(chat) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
       let global = get(/databases/$(database)/documents/settings/global).data;
@@ -98,12 +116,12 @@ service cloud.firestore {
         && chat.members is list
         && chat.members.size() == 2
         && ((chat.members[0] in runner.get('botIds', [])
-              && runnerMayActAs(chat.members[0]))
+              && runnerMayChatAs(chat.members[0]))
           || (chat.members[1] in runner.get('botIds', [])
-              && runnerMayActAs(chat.members[1])));
+              && runnerMayChatAs(chat.members[1])));
     }
     function canPublishBot(botUid) {
-      return runnerMayActAs(botUid);
+      return runnerMayPost(botUid);
     }
     // Bot comments and the parent counter must be committed atomically. The deterministic
     // comment ID (bot UID) plus the lastBotCommentBy marker prevents a Runner from fabricating counts.
@@ -112,7 +130,7 @@ service cloud.firestore {
       let commentPath = /databases/$(database)/documents/posts/$(postId)/comments/$(botUid);
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'lastBotCommentBy'])
         && request.resource.data.commentCount == resource.data.commentCount + 1
-        && runnerMayActAs(botUid)
+        && runnerMayCommentAs(botUid)
         && existsAfter(commentPath)
         && !exists(commentPath)
         && getAfter(commentPath).data.uid == botUid
@@ -122,7 +140,7 @@ service cloud.firestore {
     // still active and assigned; an allowlist-only map-key check is not sufficient.
     function runnerMayReact() {
       let botUid = request.resource.data.lastBotReactionBy;
-      return runnerMayActAs(botUid)
+      return runnerMayReactAs(botUid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'lastBotReactionBy'])
         && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().size() == 1
         && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([botUid])
@@ -441,12 +459,12 @@ service cloud.firestore {
       }
       allow get: if signedIn()
         && (isOwner(resource.data.ownerUid)
-          || (runnerHasBot(resource.data.botId) && botMemoryConsent(resource.data.ownerUid)));
+          || (runnerMayChatAs(resource.data.botId) && botMemoryConsent(resource.data.ownerUid)));
       allow list: if signedIn() && isOwner(resource.data.ownerUid);
-      allow create: if runnerHasBot(request.resource.data.botId)
+      allow create: if runnerMayChatAs(request.resource.data.botId)
         && botMemoryConsent(request.resource.data.ownerUid)
         && validMemory(request.resource.data);
-      allow update: if runnerHasBot(resource.data.botId)
+      allow update: if runnerMayChatAs(resource.data.botId)
         && botMemoryConsent(resource.data.ownerUid)
         && resource.data.ownerUid == request.resource.data.ownerUid
         && resource.data.botId == request.resource.data.botId
@@ -487,9 +505,9 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
         && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.type == 'private'
         && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.members.hasAll([request.auth.uid, request.resource.data.botId]);
-      allow read: if isStaff() || runnerHasBot(resource.data.botId);
+      allow read: if isStaff() || runnerMayChatAs(resource.data.botId);
       allow update: if isAdmin()
-        || (runnerHasBot(resource.data.botId)
+        || (runnerMayChatAs(resource.data.botId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
           && request.resource.data.handled == true
           && request.resource.data.handledAt is timestamp);
@@ -666,7 +684,7 @@ service cloud.firestore {
             && textOk(request.resource.data.text, 2000)
             && userMayComment(postId))
           // Only the assigned Runner may comment as an AI bot; Admins do not impersonate bot accounts.
-          || (runnerMayActAs(request.resource.data.uid)
+          || (runnerMayCommentAs(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true
             && textOk(request.resource.data.text, 2000)
             && runnerMayComment(postId));
@@ -771,7 +789,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt'])
           && request.resource.data.lastMessage is map
           && request.resource.data.lastMessage.keys().hasOnly(['text', 'uid'])
-          && runnerMayActAs(request.resource.data.lastMessage.uid)
+          && runnerMayChatAs(request.resource.data.lastMessage.uid)
           && request.resource.data.lastMessage.uid in resource.data.members
           && textOk(request.resource.data.lastMessage.text, 120)
           && (request.resource.data.lastAt is timestamp));
@@ -789,7 +807,7 @@ service cloud.firestore {
             && (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group'
               || canSendPrivateMessage(get(/databases/$(database)/documents/chats/$(chatId)).data)))
           // bot-runner answering a user's message as the bot that is a member of this chat
-          || (runnerMayActAs(request.resource.data.uid)
+          || (runnerMayChatAs(request.resource.data.uid)
             && isBotUser(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI
             && textOk(request.resource.data.text, 4000)
