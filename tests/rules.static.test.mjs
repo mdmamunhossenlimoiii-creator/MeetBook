@@ -83,6 +83,14 @@ test('moderators get only moderation powers: no settings, staff, logs, bot logs 
   assert.match(rep, /hasOnly\(\['status', 'action', 'resolvedBy', 'resolvedAt'\]\)/);
 });
 
+test('private user documents are not readable by other ordinary users', () => {
+  assert.match(block('users'), /allow read: if isOwner\(uid\) \|\| isStaff\(\) \|\| \(signedIn\(\) && resource\.data\.get\('isBot', false\) == true\)/);
+  assert.match(block('publicProfiles'), /allow read: if signedIn\(\)/);
+  assert.match(block('publicProfiles'), /hasOnly\(\['name', 'nameLower', 'bio', 'photo', 'cover', 'isBot', 'roleEmoji', 'verified', 'profileVisibility', 'createdAt'\]\)/);
+  assert.match(block('botEngagement'), /runnerEnabled\(\)/);
+  assert.doesNotMatch(block('botEngagement'), /allow write/);
+});
+
 test('settings/global only accepts the known fields with real booleans', () => {
   const s = block('settings');
   assert.match(s, /keys\(\)\.hasOnly\(\['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'\]\)/);
