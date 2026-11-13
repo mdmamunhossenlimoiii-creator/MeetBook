@@ -14,6 +14,7 @@ test('memory summaries are sanitized and strictly bounded', () => {
   assert.equal(sanitizeBotMemory('  likes photography  '), 'likes photography');
   assert.equal(sanitizeBotMemory('x'.repeat(BOT_MEMORY_MAX_CHARS + 20)).length, BOT_MEMORY_MAX_CHARS);
   assert.equal(sanitizeBotMemory(null), '');
+  assert.equal(sanitizeBotMemory('Contact me at limon@example.com or +1 202 555 0188'), 'Contact me at [redacted] or [redacted]');
 });
 
 test('only six recent messages are included and each message is bounded', () => {
