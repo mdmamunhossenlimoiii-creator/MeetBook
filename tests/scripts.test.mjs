@@ -120,7 +120,11 @@ test('bot runner: a wrong password fails loudly, missing secrets do nothing', as
 test('account deletion: purges data + auth user, refuses staff and bots', async () => {
   const m = await startMock({ authUsers: ['del1', 'adm1'], seed: {
     'admins/boss': { role: 'super_admin' }, 'admins/ex': { role: 'admin' },
-    'users/del1': { name: 'Del' }, 'publicProfiles/del1': { name: 'Del', nameLower: 'del' }, 'botEngagement/del1': { allowBotEngagement: false }, 'botInboxRateLimits/del1/bots/bot_01': { senderUid: 'del1', botId: 'bot_01', count: 1 }, 'users/del2': { name: 'Del2' }, 'deletionRequests/del2': { status: 'pending', requestedBy: 'ex' }, 'users/del1/saved/x': { createdAt: now }, 'users/keep': { name: 'Keep' }, 'users/adm1': { name: 'Boss' }, 'admins/adm1': { role: 'admin' },
+    'users/del1': { name: 'Del' }, 'publicProfiles/del1': { name: 'Del', nameLower: 'del' }, 'botEngagement/del1': { allowBotEngagement: false }, 'botInboxRateLimits/del1/bots/bot_01': { senderUid: 'del1', botId: 'bot_01', count: 1 },
+    'botRunners/runner1': { enabled: true, botIds: ['bot_01'] },
+    'botRateLimits/runner1/bots/bot_01': { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily', count: 1 },
+    'botRateLimits/runner1/bots/bot_01/users/del1': { runnerUid: 'runner1', botId: 'bot_01', actorUid: 'del1', kind: 'chatDaily', count: 1 },
+    'botRateLimits/runner1/bots/bot_01/users/keep': { runnerUid: 'runner1', botId: 'bot_01', actorUid: 'keep', kind: 'chatDaily', count: 1 }, 'users/del2': { name: 'Del2' }, 'deletionRequests/del2': { status: 'pending', requestedBy: 'ex' }, 'users/del1/saved/x': { createdAt: now }, 'users/keep': { name: 'Keep' }, 'users/adm1': { name: 'Boss' }, 'admins/adm1': { role: 'admin' },
     'posts/a': post('del1', 'mine'), 'posts/a/comments/c1': { uid: 'keep', text: 'hi' }, 'posts/b': post('keep', 'theirs'), 'posts/b/comments/c2': { uid: 'del1', text: 'old comment' },
     'friendships/del1_keep': { members: ['del1', 'keep'] }, 'follows/keep_del1': { follower: 'keep', followed: 'del1' },
     'chats/del1_keep': { type: 'private', members: ['del1', 'keep'] }, 'chats/del1_keep/messages/m1': { uid: 'keep', text: 'yo' },
@@ -136,9 +140,9 @@ test('account deletion: purges data + auth user, refuses staff and bots', async 
   try {
     const r = await run('scripts/account-deletion.mjs', env);
     assert.equal(r.status, 0, r.stderr + r.stdout);
-    for (const p of ['users/del1', 'publicProfiles/del1', 'botEngagement/del1', 'botInboxRateLimits/del1/bots/bot_01', 'users/del1/saved/x', 'posts/a', 'posts/a/comments/c1', 'friendships/del1_keep', 'follows/keep_del1', 'chats/del1_keep', 'chats/del1_keep/messages/m1', 'groups/solo', 'notifications/n1'])
+    for (const p of ['users/del1', 'publicProfiles/del1', 'botEngagement/del1', 'botInboxRateLimits/del1/bots/bot_01', 'botRateLimits/runner1/bots/bot_01/users/del1', 'users/del1/saved/x', 'posts/a', 'posts/a/comments/c1', 'friendships/del1_keep', 'follows/keep_del1', 'chats/del1_keep', 'chats/del1_keep/messages/m1', 'groups/solo', 'notifications/n1'])
       assert.equal(m.get(p), null, `${p} should be deleted`);
-    for (const p of ['users/keep', 'posts/b', 'groups/shared', 'users/adm1', 'chats/g1']) assert.notEqual(m.get(p), null, `${p} should stay`);
+    for (const p of ['users/keep', 'botRateLimits/runner1/bots/bot_01/users/keep', 'botRateLimits/runner1/bots/bot_01', 'posts/b', 'groups/shared', 'users/adm1', 'chats/g1']) assert.notEqual(m.get(p), null, `${p} should stay`);
     assert.deepEqual(m.get('groups/shared').members, ['keep']);
     assert.deepEqual(m.get('chats/g1').members, ['keep', 'x']);
     assert.equal(m.ids('posts').filter((id) => id.startsWith('bulk')).length, 0, 'all 1100 posts removed (paging)');
