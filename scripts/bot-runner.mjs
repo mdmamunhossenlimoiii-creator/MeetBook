@@ -213,8 +213,8 @@ async function main() {
     const authorOk = new Map();
     const optedIn = async (uid) => {
       if (!authorOk.has(uid)) {
-        const user = await fs.get(`users/${uid}`);
-        authorOk.set(uid, hasBotEngagementConsent(user));
+        const consent = await fs.get(`botEngagement/${uid}`);
+        authorOk.set(uid, hasBotEngagementConsent(consent));
       }
       return authorOk.get(uid);
     };
