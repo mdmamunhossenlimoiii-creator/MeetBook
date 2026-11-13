@@ -116,6 +116,8 @@ test('rules: runner allowlist and global emergency stop are enforced server-side
     const { call, comment } = await asRunner(m);
     assert.equal(await call('POST', 'posts/p1/comments?documentId=unassigned', comment('bot_02')), 403,
       'runner cannot comment as a bot outside its botIds allowlist');
+    assert.equal(await call('POST', 'posts/pb/comments?documentId=bot-chat-off', comment('bot_01')), 403,
+      'runner cannot comment on another bot while botToBotComments is OFF');
     assert.equal(await call('GET', 'botInbox/i1'), 403,
       'runner cannot read inbox entries for a bot outside its allowlist');
     m.put('settings/global', { botsEnabled: false, botToBotComments: false });
