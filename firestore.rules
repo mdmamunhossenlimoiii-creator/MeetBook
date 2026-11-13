@@ -84,6 +84,13 @@ service cloud.firestore {
         && bot.get('isBot', false) == true
         && bot.get('active', true) == true;
     }
+    function runnerMayReactAs(botUid, newReactions, oldReactions) {
+      let changed = newReactions.diff(oldReactions).affectedKeys();
+      return changed.size() == 1
+        && changed.hasOnly([botUid])
+        && newReactions.get(botUid, null) in ['like', 'love', 'haha', 'wow', 'sad', 'angry']
+        && runnerMayActAs(botUid);
+    }
     function runnerMayReadChat(chat) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
       let global = get(/databases/$(database)/documents/settings/global).data;
@@ -624,9 +631,37 @@ service cloud.firestore {
           && resource.data.visibility == 'public'
           && engagementOk(resource.data.uid)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
-          && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().size() == 1
-          && runnerMayActAs(request.resource.data.reactions.diff(resource.data.reactions).affectedKeys()[0])
-          && request.resource.data.reactions[request.resource.data.reactions.diff(resource.data.reactions).affectedKeys()[0]] in ['like', 'love', 'haha', 'wow', 'sad', 'angry'])
+          && (
+            runnerMayReactAs('bot_01', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_02', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_03', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_04', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_05', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_06', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_07', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_08', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_09', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_10', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_11', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_12', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_13', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_14', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_15', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_16', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_17', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_18', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_19', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_20', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_21', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_22', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_23', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_24', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_25', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_26', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_27', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_28', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_29', request.resource.data.reactions, resource.data.reactions)
+            || runnerMayReactAs('bot_30', request.resource.data.reactions, resource.data.reactions)))
         // everybody else: their own reaction key, or a counter moved by exactly one step
         || (notBanned() && (
           (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
