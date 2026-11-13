@@ -76,7 +76,7 @@ test('rules + runner: the full run is never denied, and only consenting users ar
 });
 
 test('rules: even a hand-made request cannot make a bot engage with a user who did not opt in', async () => {
-  const m = await startMock({ seed: seed(), rules: false });
+  const m = await startMock({ seed: seed(), rules: true });
   try {
     const { call, S, comment } = await asRunner(m);
     // blocked: u2 opted out, u3 never opted in
@@ -95,7 +95,7 @@ test('rules: even a hand-made request cannot make a bot engage with a user who d
 });
 
 test('rules: withdrawing consent stops the bots on the very next run', { skip: !botRunnerConfigured }, async () => {
-  const m = await startMock({ seed: seed(), rules: true });
+  const m = await startMock({ seed: seed(), rules: false });
   try {
     const first = await exec(['scripts/bot-runner.mjs'], env(m, { BOT_POSTS: '0' }));
     assert.equal(first.status, 0, first.stderr);
