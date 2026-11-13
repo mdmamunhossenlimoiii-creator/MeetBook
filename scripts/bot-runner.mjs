@@ -23,11 +23,10 @@ import { BOTS, isBotId } from '../js/bots-data.js';
 import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and } from './lib/firestore-rest.mjs';
-import { generateSmartBotText } from './lib/gemini.mjs';
+import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib/gemini.mjs';
 import { hasBotEngagementConsent } from './lib/bot-consent.mjs';
 import { hasBotMemoryConsent } from './lib/bot-memory-consent.mjs';
 import { botMemoryDocId } from './lib/bot-memory.mjs';
-import { updateSmartBotMemory } from './lib/gemini.mjs';
 
 const EMAIL = process.env.BOT_RUNNER_EMAIL;
 const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
@@ -279,7 +278,7 @@ async function main() {
     const reply = chatReply({ bot, text: m.text, history: hist });
     // Long-term memory is isolated by bot + user and is completely disabled without explicit opt-in.
     const memoryConsent = await fs.get(`botEngagement/${m.fromUid}`);
-    const memoryEnabled = hasBotMemoryConsent(memoryConsent);
+    const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
     const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
     const replyText = await generateSmartBotText({
