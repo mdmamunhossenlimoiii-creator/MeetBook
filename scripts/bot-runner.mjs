@@ -146,6 +146,24 @@ const usedToday = (st, bot) => st.daily.counts[bot.id] || 0;
 const canAct = (st, bot) => bot.active !== false && usedToday(st, bot) < limitOf(bot);
 const spend = (st, bot) => { st.daily.counts[bot.id] = usedToday(st, bot) + 1; };
 
+// Durable quota reservations are enforced by Firestore Rules and serialized by REST transactions.
+// A reserved slot is intentionally not refunded after a failed action (fail-closed behavior).
+async function reserveBotAction(bot, kind = 'botDaily') {
+  if (DRY) return true;
+  return fs.reserveQuota(`botRateLimits/${runnerUid}_${bot.id}_${today()}`, {
+    max: 12,
+    data: { runnerUid, botId: bot.id, kind }
+  });
+}
+async function reserveChatReply(bot, uid) {
+  if (DRY) return true;
+  return fs.reserveQuota(`botRateLimits/${runnerUid}_${bot.id}_${uid}_${today()}`, {
+    max: 15,
+    cooldownMs: 60_000,
+    data: { runnerUid, botId: bot.id, actorUid: uid, kind: 'chatDaily' }
+  });
+}
+
 // ------------------------------------------------------------ main
 async function main() {
   const nPosts = num(process.env.BOT_POSTS, 1 + rand(2));
@@ -171,7 +189,7 @@ async function main() {
   // 2. auto posts
   for (const bot of shuffle(bots.filter((b) => b.autoPost !== false && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
-    if (!pick) continue;
+    if (!pick || !(await reserveBotAction(bot))) continue;
     const id = await createPost(bot, pick.text);
     spend(st, bot); stats.posts++;
     await log(bot, 'post', id, pick.text);
@@ -212,6 +230,7 @@ async function main() {
       const usedTexts = [...(st.usedComments[bot.id] || [])];
       const c = makeComment({ bot, post: { text: post.text, image: post.image, authorName: post.authorName }, used: usedTexts });
       if (!c) continue;
+      if (!(await reserveBotAction(bot))) continue;
       await createComment(bot, post.id, c.text);
       spend(st, bot); stats.comments++; engaged++;
       st.commented.push(`${post.id}:${bot.id}`); st.engaged.push(post.id);
@@ -221,7 +240,7 @@ async function main() {
       console.log(`Commented as ${bot.name} on post ${post.id} (${c.topic}/${c.lang}): ${c.text.slice(0, 60)}`);
       if (bot.autoReaction !== false && canAct(st, bot)) {
         const r = pickReaction({ bot, post });
-        if (r) {
+        if (r && await reserveBotAction(bot)) {
           await react(bot, post.id, r);
           spend(st, bot); stats.reactions++;
           await log(bot, 'reaction', post.id, r);
@@ -242,9 +261,7 @@ async function main() {
     const bot = botMap.get(m.botId);
     const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
     if (!bot || bot.active === false || bot.chatEnabled === false) { await mark('chat-disabled'); continue; }
-    if ((st.daily.chat[m.fromUid] || 0) >= 15) { await mark('daily-limit'); continue; }
-    const lastChatAt = Number(st.daily.chatAt[m.fromUid] || 0);
-    if (Date.now() - lastChatAt < 60_000) { await mark('cooldown'); continue; }
+    if (!(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
     const chat = await fs.get(`chats/${m.chatId}`);
     if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) { await mark('no-chat'); continue; }
     const hist = (await fs.query({
