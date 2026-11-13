@@ -71,6 +71,58 @@ for (const cap of CAPS) {
     if (r.ok && cap.op !== 'get') await seed(); // a write succeeded: restore the seed so cases stay independent
   }
 }
+// Runner authorization hardening: these are negative tests against the REAL Firestore Emulator.
+// All documents are synthetic demo-project fixtures; no live Runner or production Firebase is used.
+if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
+  const runnerDb = env.authenticatedContext('run').firestore();
+  const denied = (promise, label) => assert.rejects(promise, undefined, label);
+
+  await denied(getDoc(doc(env.authenticatedContext('runoff').firestore(), 'chats/bot_01_u1')),
+    'disabled Runner must not read an assigned-bot chat');
+  await denied(getDoc(doc(env.authenticatedContext('ghostRunner').firestore(), 'botState/ghostRunner')),
+    'UID without a botRunners document must not access runner state');
+
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'botRunners/emptyRunner'), { enabled: true, botIds: [] });
+    await setDoc(doc(ctx.firestore(), 'botRunners/normalAsBot'), { enabled: true, botIds: ['u2'] });
+  });
+  await denied(getDoc(doc(env.authenticatedContext('emptyRunner').firestore(), 'botState/emptyRunner')),
+    'empty botIds must deny runner state access');
+  await denied(getDoc(doc(env.authenticatedContext('normalAsBot').firestore(), 'chats/u1_u2')),
+    'a normal user in botIds must not make a human-only chat readable');
+
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'users/bot_01'), { active: false });
+  });
+  await denied(getDoc(doc(runnerDb, 'chats/bot_01_u1')),
+    'inactive assigned bot must not authorize private-chat access');
+  await denied(updateDoc(doc(runnerDb, 'posts/p2'), { 'reactions.bot_01': 'love' }),
+    'inactive assigned bot must not authorize a reaction');
+  await seed();
+
+  await denied(updateDoc(doc(runnerDb, 'posts/p2'), { commentCount: -1 }),
+    'Runner must not decrement a post comment counter');
+  await seed();
+
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await updateDoc(doc(ctx.firestore(), 'settings/global'), { botsEnabled: false });
+  });
+  await denied(getDoc(doc(runnerDb, 'chats/bot_01_u1')),
+    'global botsEnabled=false must deny Runner chat access');
+  await denied(getDoc(doc(runnerDb, 'botState/run')),
+    'global botsEnabled=false must deny Runner state access');
+  await seed();
+
+  await env.clearFirestore();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await setDoc(doc(ctx.firestore(), 'botRunners/run'), { enabled: true, botIds: ['bot_01'] });
+  });
+  await denied(getDoc(doc(runnerDb, 'botState/run')),
+    'missing settings/global must fail closed and deny Runner access');
+  await seed();
+  console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot, global kill switch, missing settings/global, and counter decrement');
+}
+
 // Prove a real user can create a bot inbox item only in the same transaction as its quota increment.
 // The lightweight harness fake does not model atomic multi-document write batches.
 if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
