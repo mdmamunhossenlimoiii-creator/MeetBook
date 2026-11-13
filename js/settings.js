@@ -1,5 +1,5 @@
 // Settings: appearance, privacy, account.
-import { auth, db, doc, collection, query, where, getDocs, writeBatch, serverTimestamp, sendPasswordResetEmail, signOut } from './firebase.js';
+import { auth, db, doc, collection, query, where, getDocs, deleteDoc, writeBatch, serverTimestamp, sendPasswordResetEmail, signOut } from './firebase.js';
 import { state } from './state.js';
 import { $, esc, toast, errMsg } from './utils.js';
 import { getThemePref, setThemePref } from './theme.js';
@@ -50,7 +50,8 @@ export async function render(view) {
       <div class="muted small">Off by default. If enabled, each of the first three AI bots may save a short summary of non-sensitive preferences you explicitly share. Memories are separated by bot and user, are not raw chat transcripts, and can be cleared here. Memory summaries may use additional Gemini API quota. Avoid sharing sensitive information.</div>
     </div>
     <p class="muted small">Profile details (bio and cover information) are restricted by database rules when you choose Friends only. Your display name remains in the limited people directory so friends can find you. Public posts may still appear in feeds according to each post's own audience.</p>
-    <button class="btn" id="st-clear-memory" type="button">Clear all saved bot memories</button>
+    <div class="row gap wrap"><button class="btn" id="st-view-memory" type="button">View saved bot memories</button><button class="btn" id="st-clear-memory" type="button">Clear all saved bot memories</button></div>
+    <div id="st-memory-list" class="stack gap" hidden aria-live="polite"></div>
     <button class="btn btn-primary" id="st-save">Save privacy settings</button>
   </section>
 
@@ -93,11 +94,42 @@ export async function render(view) {
         memories.docs.forEach((memory) => batch.delete(memory.ref));
       }
       await batch.commit();
+      if (next.allowBotMemory === false) $('#st-memory-list', view).innerHTML = '<p class="muted small">No saved bot memories.</p>';
       toast('Settings saved', 'success');
     } catch (e) { toast(errMsg(e), 'error'); }
     btn.disabled = false;
   });
 
+  const memoryList = $('#st-memory-list', view);
+  $('#st-view-memory', view).addEventListener('click', async () => {
+    const btn = $('#st-view-memory', view);
+    if (!memoryList.hidden) { memoryList.hidden = true; btn.textContent = 'View saved bot memories'; return; }
+    btn.disabled = true;
+    try {
+      const memories = await getDocs(query(collection(db, 'botMemories'), where('ownerUid', '==', state.user.uid)));
+      const names = { bot_01: 'TechTip Nova', bot_02: 'Pixel Pal', bot_03: 'Chef Byte' };
+      memoryList.innerHTML = memories.empty
+        ? '<p class="muted small">No saved bot memories.</p>'
+        : memories.docs.map((memory) => {
+          const data = memory.data();
+          return `<article class="card pad"><div class="row between align-center"><b>${esc(names[data.botId] || 'AI bot')}</b><button class="btn btn-sm" type="button" data-delete-memory="${esc(memory.id)}">Delete</button></div><p class="small">${esc(data.summary || 'No summary saved.')}</p></article>`;
+        }).join('');
+      memoryList.hidden = false;
+      btn.textContent = 'Hide saved bot memories';
+    } catch (e) { toast(errMsg(e), 'error'); }
+    btn.disabled = false;
+  });
+  memoryList.addEventListener('click', async (event) => {
+    const btn = event.target.closest('[data-delete-memory]');
+    if (!btn) return;
+    btn.disabled = true;
+    try {
+      await deleteDoc(doc(db, 'botMemories', btn.dataset.deleteMemory));
+      btn.closest('article')?.remove();
+      if (!memoryList.querySelector('article')) memoryList.innerHTML = '<p class="muted small">No saved bot memories.</p>';
+      toast('Bot memory deleted', 'success');
+    } catch (e) { toast(errMsg(e), 'error'); btn.disabled = false; }
+  });
   $('#st-clear-memory', view).addEventListener('click', async () => {
     const btn = $('#st-clear-memory', view);
     btn.disabled = true;
@@ -106,6 +138,7 @@ export async function render(view) {
       const batch = writeBatch(db);
       memories.docs.forEach((memory) => batch.delete(memory.ref));
       if (memories.size) await batch.commit();
+      memoryList.innerHTML = '<p class="muted small">No saved bot memories.</p>';
       toast(`Cleared ${memories.size} saved bot memory record(s)`, 'success');
     } catch (e) { toast(errMsg(e), 'error'); }
     btn.disabled = false;
