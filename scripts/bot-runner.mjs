@@ -261,7 +261,7 @@ async function main() {
     const bot = botMap.get(m.botId);
     const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
     if (!bot || bot.active === false || bot.chatEnabled === false) { await mark('chat-disabled'); continue; }
-    if (!(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
+    if (!(await reserveBotAction(bot)) || !(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
     const chat = await fs.get(`chats/${m.chatId}`);
     if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) { await mark('no-chat'); continue; }
     const hist = (await fs.query({
@@ -276,6 +276,7 @@ async function main() {
       // Never put private conversation text in audit logs.
       await log(bot, 'chat', m.chatId, reply.intent);
     }
+    spend(st, bot);
     st.daily.chat[m.fromUid] = (st.daily.chat[m.fromUid] || 0) + 1;
     st.daily.chatAt[m.fromUid] = Date.now();
     stats.chats++;
