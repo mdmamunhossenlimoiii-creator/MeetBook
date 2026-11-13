@@ -277,6 +277,7 @@ service cloud.firestore {
             && request.resource.data.count == resource.data.count + 1
             && request.resource.data.windowStartedAt == resource.data.windowStartedAt
           : request.resource.data.count == 1
+            && request.resource.data.windowStartedAt >= resource.data.windowStartedAt + duration.value(1, 'd')
             && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time);
       allow delete: if false;
     }
