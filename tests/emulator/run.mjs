@@ -114,6 +114,25 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   const reset = await getDoc(quotaRef);
   if (reset.data().count !== 1) throw new Error('expired quota window did not reset to one');
   console.log('rolling 24-hour quota resets after expiry');
+
+  // Profile metadata visibility and consent projections must match canonical user settings atomically.
+  const ownerDb = env.authenticatedContext('u3').firestore();
+  await assert.rejects(updateDoc(doc(ownerDb, 'publicProfiles/u3'), { profileVisibility: 'everyone' }));
+  await assert.rejects(updateDoc(doc(ownerDb, 'botEngagement/u3'), { allowBotMemory: true, updatedAt: serverTimestamp() }));
+  const profileBatch = writeBatch(ownerDb);
+  profileBatch.update(doc(ownerDb, 'users/u3'), {
+    settings: {
+      allowMessages: 'friends', profileVisibility: 'everyone', defaultVisibility: 'public',
+      allowBotEngagement: false, allowBotMemory: true
+    }
+  });
+  profileBatch.set(doc(ownerDb, 'publicProfiles/u3'), { profileVisibility: 'everyone' }, { merge: true });
+  profileBatch.set(doc(ownerDb, 'botEngagement/u3'), {
+    allowBotEngagement: false, allowBotMemory: true, updatedAt: serverTimestamp()
+  }, { merge: true });
+  await profileBatch.commit();
+  await assert.doesNotReject(getDoc(doc(env.authenticatedContext('u4').firestore(), 'publicProfiles/u3')));
+  console.log('profile visibility and bot-memory consent require canonical atomic settings updates');
 }
 }
 await env.cleanup();
