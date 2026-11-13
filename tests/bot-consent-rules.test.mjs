@@ -33,6 +33,9 @@ const seed = () => {
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
     'users/u2': { name: 'Sam', banned: false, settings: { allowBotEngagement: false } },
     'users/u3': { name: 'Tina (never opened settings)', banned: false },
+    'botEngagement/u1': { allowBotEngagement: true },
+    'botEngagement/u2': { allowBotEngagement: false },
+    'botEngagement/u3': { allowBotEngagement: false },
     'posts/p1': post('u1', "Went to Cox's Bazar with friends, the sea was amazing! Best trip ever."),
     'posts/p2': post('u2', 'Lovely travel photo from my trip to the beach'),
     'posts/p3': post('u3', 'Amazing travel trip to the sea with friends'),
@@ -99,6 +102,7 @@ test('rules: withdrawing consent stops the bots on the very next run', { skip: !
     assert.equal(m.ids('posts/p1/comments').length, 1);
     // the user switches the setting off, a fresh post appears
     m.put('users/u1', { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: false } });
+    m.put('botEngagement/u1', { allowBotEngagement: false });
     m.put('posts/p9', post('u1', 'Another amazing trip to the beach with friends'));
     const second = await exec(['scripts/bot-runner.mjs'], env(m, { BOT_POSTS: '0' }));
     assert.equal(second.status, 0, second.stderr);
