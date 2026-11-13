@@ -108,6 +108,23 @@ service cloud.firestore {
       return exists(/databases/$(database)/documents/botEngagement/$(uid))
         && get(/databases/$(database)/documents/botEngagement/$(uid)).data.get('allowBotMemory', false) == true;
     }
+    function profileMetadataMatches(uid, profile) {
+      let user = getAfter(/databases/$(database)/documents/users/$(uid)).data;
+      return profile.profileVisibility == user.get('settings', {}).get('profileVisibility', 'everyone');
+    }
+    function directoryMatches(uid, directory) {
+      let user = getAfter(/databases/$(database)/documents/users/$(uid)).data;
+      return directory.name == user.name
+        && directory.nameLower == user.get('nameLower', '')
+        && directory.isBot == user.get('isBot', false)
+        && directory.roleEmoji == user.get('roleEmoji', '')
+        && directory.verified == user.get('verified', false);
+    }
+    function botConsentMatches(uid, projection) {
+      let settings = getAfter(/databases/$(database)/documents/users/$(uid)).data.get('settings', {});
+      return projection.allowBotEngagement == settings.get('allowBotEngagement', false)
+        && projection.get('allowBotMemory', false) == settings.get('allowBotMemory', false);
+    }
 
     // Enforce the recipient's private-message preference in Firestore, not only in the UI.
     function canSendPrivateMessage(chat) {
@@ -475,7 +492,9 @@ service cloud.firestore {
         && (isOwner(uid) || isStaff() || resource.data.get('isBot', false) == true
           || resource.data.get('profileVisibility', 'everyone') == 'everyone'
           || isFriend(uid));
-      allow create, update: if (isOwner(uid) || isAdmin()) && validPublicProfile(request.resource.data);
+      allow create, update: if (isOwner(uid) || isAdmin())
+        && validPublicProfile(request.resource.data)
+        && profileMetadataMatches(uid, request.resource.data);
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -488,7 +507,9 @@ service cloud.firestore {
           && d.roleEmoji is string && d.verified is bool;
       }
       allow read: if signedIn();
-      allow create, update: if (isOwner(uid) || isAdmin()) && validDirectory(request.resource.data);
+      allow create, update: if (isOwner(uid) || isAdmin())
+        && validDirectory(request.resource.data)
+        && directoryMatches(uid, request.resource.data);
       allow delete: if isOwner(uid) || isAdmin();
     }
 
@@ -499,7 +520,8 @@ service cloud.firestore {
         && request.resource.data.keys().hasOnly(['allowBotEngagement', 'allowBotMemory', 'updatedAt'])
         && request.resource.data.allowBotEngagement is bool
         && request.resource.data.get('allowBotMemory', false) is bool
-        && request.resource.data.updatedAt == request.time;
+        && request.resource.data.updatedAt == request.time
+        && botConsentMatches(uid, request.resource.data);
       allow delete: if false;
     }
 
