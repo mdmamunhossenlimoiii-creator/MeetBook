@@ -174,7 +174,7 @@ cap('Posts', 'Read a friends-only post of u1', 'get', 'posts/pf', null, ['user',
 cap('Posts', 'Publish own post', 'create', 'posts/new', (a) => newPost(a.uid), N);
 cap('Posts', 'Publish a post as someone else', 'create', 'posts/new', () => newPost('u1'), ['user']);
 cap('Posts', 'Bot runner cannot publish as its own normal account', 'create', 'posts/new', () => newPost('run'), []);
-cap('Posts', 'Publish a post as an AI bot', 'create', 'posts/new', () => newPost('bot_01'), [...ADM, 'runner']);
+cap('Posts', 'Publish a post as an AI bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
 cap('Posts', 'Runner cannot publish as an unassigned bot', 'create', 'posts/new', () => newPost('bot_02'), [...ADM]);
 cap('Posts', 'Publish an AI-bot post with a video', 'create', 'posts/new', () => newPost('bot_01', { videoUrl: 'https://x/y.mp4' }), []);
 cap('Posts', 'Publish a friends-only AI-bot post', 'create', 'posts/new', () => newPost('bot_01', { visibility: 'friends', audience: ['bot_01'] }), []);
@@ -202,13 +202,13 @@ cap('Comments', 'Delete a comment (author u2, post owner u1)', 'delete', 'posts/
 
 // ---------------------------------------------------------------- AI bots and consent
 const botComment = { uid: 'bot_01', authorName: 'TechTip Nova', text: 'Nice one.', ai: true, createdAt: { $srv: 1 } };
-cap('AI bots', 'Bot comment on a post of a user who ALLOWED it (u2)', 'create', 'posts/p2/comments/new', botComment, [...ADM, 'runner']);
+cap('AI bots', 'Bot comment on a post of a user who ALLOWED it (u2)', 'create', 'posts/p2/comments/new', botComment, ['runner']);
 cap('AI bots', 'Runner cannot comment as an unassigned bot', 'create', 'posts/p2/comments/new', { ...botComment, uid: 'bot_02' }, [...ADM]);
 cap('AI bots', 'Bot comment WITHOUT the AI flag (must be refused for everyone)', 'create', 'posts/p2/comments/new', { ...botComment, ai: false }, []);
 cap('AI bots', 'Bot comment with the AI flag missing entirely', 'create', 'posts/p2/comments/new', { uid: 'bot_01', authorName: 'TechTip Nova', text: 'Nice one.', createdAt: { $srv: 1 } }, []);
 cap('AI bots', 'Bot comment on a post of a user who did NOT allow it (u1)', 'create', 'posts/p1/comments/new', botComment, []);
 cap('AI bots', 'Bot comment on a friends-only post', 'create', 'posts/pf/comments/new', botComment, []);
-cap('AI bots', 'Bot comment on a bot\'s post while bot-to-bot comments are OFF', 'create', 'posts/pb/comments/new', botComment, [...ADM]);
+cap('AI bots', 'Bot comment on a bot\'s post while bot-to-bot comments are OFF', 'create', 'posts/pb/comments/new', botComment, []);
 cap('AI bots', 'Bot comment where comments are off (owner allowed)', 'create', 'posts/pn/comments/new', botComment, []);
 cap('AI bots', 'Bot reaction on a post of a user who allowed it', 'update', 'posts/p2', { 'reactions.bot_01': 'love' }, ['runner']);
 cap('AI bots', 'Runner cannot react as an unassigned bot', 'update', 'posts/p2', { 'reactions.bot_02': 'love' }, []);
