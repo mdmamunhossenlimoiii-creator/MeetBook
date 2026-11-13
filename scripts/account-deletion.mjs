@@ -8,10 +8,10 @@
 //   2. block the account (users/{uid}.banned = true) so it cannot write new data while we purge
 //   3. purge in pages until nothing is left (queries return max 500 docs, deletes go in batches of 400,
 //      a Firestore commit allows 500)
-//   4. delete users/{uid}, then the Firebase Auth user
+//   4. delete public projections, bot quotas, users/{uid}, then the Firebase Auth user
 //   5. mark the request done + write an admin log entry
 //
-// Deleted: Auth user, users/{uid} (+saved), their posts (+comments), reels, stories, friend requests,
+// Deleted: Auth user, users/{uid} (+saved), publicProfiles/{uid}, botEngagement/{uid}, bot inbox quotas, their posts (+comments), reels, stories, friend requests,
 // friendships, follows, notifications (to/from), bot-chat inbox, private chats (+messages), groups they alone belong to.
 // Removed from: group chats and shared groups (membership only).
 // NOT removed (honest limits): comments they wrote on OTHER people's posts, their reaction on others' posts,
@@ -92,6 +92,7 @@ async function purge(uid) {
   await drain('notifications', 'notifications', eq('from', uid));
   await drain('botInbox', 'botInbox', eq('fromUid', uid));
   add('saved', await dropCollection(`users/${uid}/saved`));
+  add('botInboxRateLimits', await dropCollection(`botInboxRateLimits/${uid}/bots`));
 
   // chats: private chats are deleted with their messages; group chats only lose this member
   for (let i = 0; i < 2000; i++) {
@@ -137,9 +138,18 @@ async function main() {
       if (!requester || requester.role !== 'super_admin') { await finish('refused', 'The person who requested this is not a super admin (any more).'); continue; }
 
       const user = await fs.get(`users/${uid}`);
+      const [publicProfile, consent] = await Promise.all([
+        fs.get(`publicProfiles/${uid}`), fs.get(`botEngagement/${uid}`)
+      ]);
       if (user && !DRY) await fs.patch(`users/${uid}`, { banned: true }, ['banned']); // stop new writes while purging
       const out = await purge(uid);
-      if (user && !DRY) await fs.deleteMany([user.path]);
+      if (!DRY) {
+        const remove = [user?.path, publicProfile?.path, consent?.path].filter(Boolean);
+        if (remove.length) await fs.deleteMany(remove);
+      }
+      if (publicProfile) out.counts.publicProfiles = (out.counts.publicProfiles || 0) + 1;
+      if (consent) out.counts.botEngagement = (out.counts.botEngagement || 0) + 1;
+      out.total = Object.values(out.counts).reduce((a, n) => a + n, 0);
       const auth = DRY ? 'skipped (dry run)' : await deleteAuthUser(uid);
       await finish('done', `Auth: ${auth}. Firestore documents removed: ${out.total}${user ? '' : ' (no profile document existed)'}.`, { counts: out.counts });
       console.log(`Deleted ${uid}: auth ${auth}, ${out.total} docs`);
