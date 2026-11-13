@@ -65,8 +65,8 @@ async function dropCollection(path) {
 
 async function purgeRunnerQuotasForUser(uid) {
   let removed = 0;
-  const listOrEmpty = async (path) => {
-    try { return await fs.listAll(path, { max: 300 }); }
+  const listOrEmpty = async (path, max = 300) => {
+    try { return await fs.listAll(path, { max }); }
     catch (error) {
       if (/404|not found/i.test(String(error?.message || error))) return [];
       throw error;
@@ -76,7 +76,7 @@ async function purgeRunnerQuotasForUser(uid) {
   for (const runner of runners) {
     const bots = await listOrEmpty(`botRateLimits/${runner.id}/bots`);
     for (const bot of bots) {
-      const userQuotas = await listOrEmpty(`botRateLimits/${runner.id}/bots/${bot.id}/users`);
+      const userQuotas = await listOrEmpty(`botRateLimits/${runner.id}/bots/${bot.id}/users`, 100000);
       const matches = userQuotas.filter((q) => q.actorUid === uid);
       if (!matches.length) continue;
       if (!DRY) await fs.deleteMany(matches.map((q) => q.path));
