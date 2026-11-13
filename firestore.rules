@@ -115,7 +115,7 @@ service cloud.firestore {
     function directoryMatches(uid, directory) {
       let user = getAfter(/databases/$(database)/documents/users/$(uid)).data;
       return directory.name == user.name
-        && directory.nameLower == user.get('nameLower', '')
+        && directory.nameLower == user.get('nameLower', directory.nameLower)
         && directory.isBot == user.get('isBot', false)
         && directory.roleEmoji == user.get('roleEmoji', '')
         && directory.verified == user.get('verified', false);
