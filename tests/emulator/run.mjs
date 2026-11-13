@@ -6,7 +6,7 @@
 //   ./tests/emulator/node_modules/.bin/firebase emulators:exec --only firestore --project demo-meetbook "node tests/emulator/run.mjs"
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp, collection, runTransaction } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
 const PROJECT = 'demo-meetbook';
@@ -68,6 +68,26 @@ for (const cap of CAPS) {
     if (r.ok !== want || (!r.ok && !r.permission)) wrong.push(`[${cap.group}] ${cap.name} as ${name}: expected ${want ? 'ALLOW' : 'DENY'}, got ${r.ok ? 'ALLOW' : 'DENY'}${r.ok || r.permission ? '' : ` (NOT a permission error: ${r.error.slice(0, 160)})`}`);
     if (r.ok && cap.op !== 'get') await seed(); // a write succeeded: restore the seed so cases stay independent
   }
+}
+// Prove a real user can create a bot inbox item only in the same transaction as its quota increment.
+{
+  const db = env.authenticatedContext('u1').firestore();
+  const day = new Date().toISOString().slice(0, 10);
+  const quotaRef = doc(db, 'botInboxRateLimits', 'u1', 'bots', 'bot_01', 'days', day);
+  const inboxRef = doc(collection(db, 'botInbox'));
+  const submit = () => runTransaction(db, async (tx) => {
+    const snap = await tx.get(quotaRef);
+    const count = snap.exists() ? snap.data().count : 0;
+    tx.set(quotaRef, { senderUid: 'u1', botId: 'bot_01', count: count + 1, lastAt: serverTimestamp() });
+    tx.set(inboxRef, {
+      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
+      handled: false, createdAt: serverTimestamp(), quotaDay: day
+    });
+  });
+  await submit();
+  console.log('atomic bot inbox + quota transaction allowed');
+  await assert.rejects(submit(), 'a second bot inbox message inside the cooldown must be rejected');
+  console.log('bot inbox cooldown enforced by real Firestore Rules');
 }
 await env.cleanup();
 console.log(`${total} cases run against the real emulator, ${wrong.length} mismatches.`);
