@@ -34,7 +34,7 @@ export const fromValue = (v) => {
 };
 export const fromFields = (fields = {}) => Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, fromValue(v)]));
 export const idOf = (name) => String(name).split('/').pop();
-export const decodeDoc = (d) => ({ id: idOf(d.name), path: d.name, ...fromFields(d.fields) });
+export const decodeDoc = (d) => ({ id: idOf(d.name), path: d.name, updateTime: d.updateTime, ...fromFields(d.fields) });
 
 export function createClient({ projectId, fsUrl = 'https://firestore.googleapis.com', getToken }) {
   const docs = `projects/${projectId}/databases/(default)/documents`;

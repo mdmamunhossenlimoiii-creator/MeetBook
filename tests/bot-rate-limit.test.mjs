@@ -7,8 +7,8 @@ test('transactional quota reservations serialize concurrent runners', async () =
   const mock = await startMock();
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
-    const path = 'botRateLimits/runner1/bots/bot_01';
-    const data = { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily' };
+    const path = 'botRateLimits/bots/bot_01';
+    const data = { botId: 'bot_01', kind: 'botDaily' };
     const results = await Promise.all([
       fs.reserveQuota(path, { max: 1, data }),
       fs.reserveQuota(path, { max: 1, data })
@@ -24,8 +24,8 @@ test('quota transactions enforce a daily count and a cooldown', async () => {
   const mock = await startMock();
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
-    const path = 'botRateLimits/runner1/bots/bot_01/users/u1';
-    const data = { runnerUid: 'runner1', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily' };
+    const path = 'botRateLimits/bots/bot_01/users/u1';
+    const data = { botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily' };
     assert.equal(await fs.reserveQuota(path, { max: 15, cooldownMs: 60_000, data }), true);
     assert.equal(await fs.reserveQuota(path, { max: 15, cooldownMs: 60_000, data }), false);
     assert.equal(mock.get(path).count, 1, 'a rejected cooldown attempt must not consume another slot');
@@ -38,7 +38,7 @@ test('expired runner quota windows reset atomically with server request time', a
   const oldWindow = Date.now() - 25 * 60 * 60 * 1000;
   const path = 'botRateLimits/runner1/bots/bot_01';
   const mock = await startMock({ seed: {
-    [path]: { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily', count: 12, windowStartedAt: new Date(oldWindow), lastAt: new Date(oldWindow) }
+    [path]: { botId: 'bot_01', kind: 'botDaily', count: 12, windowStartedAt: new Date(oldWindow), lastAt: new Date(oldWindow) }
   } });
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });

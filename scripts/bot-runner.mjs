@@ -22,7 +22,7 @@
 import { BOTS, isBotId } from '../js/bots-data.js';
 import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
-import { createClient, eq, and } from './lib/firestore-rest.mjs';
+import { createClient, eq, and, toFields } from './lib/firestore-rest.mjs';
 import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib/gemini.mjs';
 import { hasBotEngagementConsent } from './lib/bot-consent.mjs';
 import { hasBotMemoryConsent } from './lib/bot-memory-consent.mjs';
@@ -129,13 +129,32 @@ async function createPost(bot, text) {
 
 async function createComment(bot, postId, text) {
   if (DRY) { console.log(`[dry] comment as ${bot.name} on ${postId}: ${text}`); return; }
-  await fs.create(`posts/${postId}/comments`, { uid: bot.id, authorName: bot.name, text, ai: true, createdAt: new Date() });
-  await fs.increment(`posts/${postId}`, 'commentCount', 1);
+  const post = await fs.get(`posts/${postId}`);
+  if (!post || !post.updateTime) throw new Error('Cannot safely count a bot comment: post updateTime is missing.');
+  // One atomic commit: create the deterministic bot comment and increment the parent counter.
+  // Firestore Rules require both writes and validate the comment through getAfter().
+  await fs.call(`${fs.base}:commit`, { method: 'POST', body: { writes: [
+    {
+      update: { name: `${fs.docs}/posts/${postId}/comments/${bot.id}`, fields: toFields({
+        uid: bot.id, authorName: bot.name, text, ai: true, createdAt: new Date()
+      }) },
+      currentDocument: { exists: false }
+    },
+    {
+      update: { name: `${fs.docs}/posts/${postId}`, fields: toFields({
+        commentCount: (Number(post.commentCount) || 0) + 1, lastBotCommentBy: bot.id
+      }) },
+      updateMask: { fieldPaths: ['commentCount', 'lastBotCommentBy'] },
+      currentDocument: { updateTime: post.updateTime }
+    }
+  ] } });
 }
 
 async function react(bot, postId, type) {
   if (DRY) { console.log(`[dry] ${type} reaction as ${bot.name} on ${postId}`); return; }
-  await fs.patch(`posts/${postId}`, { reactions: { [bot.id]: type } }, [`reactions.${bot.id}`]);
+  await fs.patch(`posts/${postId}`, {
+    reactions: { [bot.id]: type }, lastBotReactionBy: bot.id
+  }, [`reactions.${bot.id}`, 'lastBotReactionBy']);
 }
 
 async function tell(bot, toUid, type, postId, extra) {
@@ -175,17 +194,17 @@ const spend = (st, bot) => { st.daily.counts[bot.id] = usedToday(st, bot) + 1; }
 // A reserved slot is intentionally not refunded after a failed action (fail-closed behavior).
 async function reserveBotAction(bot, kind = 'botDaily') {
   if (DRY) return true;
-  return fs.reserveQuota(`botRateLimits/${runnerUid}/bots/${bot.id}`, {
+  return fs.reserveQuota(`botRateLimits/bots/${bot.id}`, {
     max: 12,
-    data: { runnerUid, botId: bot.id, kind }
+    data: { botId: bot.id, kind }
   });
 }
 async function reserveChatReply(bot, uid) {
   if (DRY) return true;
-  return fs.reserveQuota(`botRateLimits/${runnerUid}/bots/${bot.id}/users/${uid}`, {
+  return fs.reserveQuota(`botRateLimits/bots/${bot.id}/users/${uid}`, {
     max: 15,
     cooldownMs: 60_000,
-    data: { runnerUid, botId: bot.id, actorUid: uid, kind: 'chatDaily' }
+    data: { botId: bot.id, actorUid: uid, kind: 'chatDaily' }
   });
 }
 

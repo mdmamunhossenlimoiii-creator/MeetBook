@@ -26,6 +26,8 @@ test('runner applies conservative per-bot and per-user limits', () => {
   assert.match(rest, /beginTransaction/);
   assert.match(rest, /currentDocument: current \? \{ updateTime: current\.updateTime \} : \{ exists: false \}/);
   assert.match(rules, /request\.resource\.data\.count == resource\.data\.count \+ 1/);
+  assert.match(rules, /match \/botRateLimits\/bots\/\{botId\}/);
+  assert.doesNotMatch(rules, /match \/botRateLimits\/\{runnerUid\}/, 'bot quotas must not be partitioned by Runner UID');
   assert.match(rules, /duration\.value\(60, 's'\)/);
   assert.match(rest, /86_400_000/);
   assert.match(rules, /duration\.value\(1, 'd'\)/);
@@ -41,6 +43,10 @@ test('private chat message bodies are not copied into bot audit logs', () => {
 test('runner inbox and private chat access are limited to assigned bots', () => {
   assert.match(rules, /runnerHasBot\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
+  assert.match(rules, /function runnerMayIncrementCommentCount\(postId\)/);
+  assert.match(rules, /getAfter\(commentPath\)\.data\.get\('ai', false\) == true/);
+  assert.match(rules, /function runnerMayReact\(\)/);
+  assert.match(rules, /runnerMayActAs\(botUid\)/);
   assert.match(rules, /runnerMayActAs\(request\.resource\.data\.uid\)/);
 });
 

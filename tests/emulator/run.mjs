@@ -125,6 +125,9 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     await denied(setDoc(doc(db, 'posts/p2/comments/new'), {
       uid: 'bot_02', ai: true, text: 'hello', createdAt: serverTimestamp()
     }), 'inactive assigned bot must not publish a comment');
+    await denied(updateDoc(doc(db, 'posts/p2'), {
+      reactions: { bot_02: 'love' }, lastBotReactionBy: 'bot_02'
+    }), 'inactive assigned bot must not react to a post');
   });
 
   await isolatedRunnerCase('demo-meetbook-global-stop', {
@@ -147,7 +150,31 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     await denied(getDoc(doc(isolated.authenticatedContext('run').firestore(), 'botState/run')),
       'missing settings/global must fail closed and deny Runner access');
   });
-  console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot, global kill switch, missing settings/global, and counter decrement');
+  console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/global, and counter decrement');
+
+  await isolatedRunnerCase('demo-meetbook-runner-atomic-actions', {
+    'settings/global': { botsEnabled: true, botToBotComments: false },
+    'botRunners/run': { enabled: true, botIds: ['bot_01'] },
+    'users/bot_01': { isBot: true, active: true },
+    'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
+    'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
+  }, async (isolated) => {
+    const db = isolated.authenticatedContext('run').firestore();
+    await denied(updateDoc(doc(db, 'posts/p2'), { commentCount: 1 }),
+      'Runner cannot fabricate a comment count without a same-batch comment');
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'posts/p2/comments/bot_01'), {
+      uid: 'bot_01', authorName: 'Bot One', text: 'hello', ai: true, createdAt: serverTimestamp()
+    });
+    batch.update(doc(db, 'posts/p2'), { commentCount: 1, lastBotCommentBy: 'bot_01' });
+    await batch.commit();
+    const post = await getDoc(doc(db, 'posts/p2'));
+    assert.equal(post.data().commentCount, 1);
+    await updateDoc(doc(db, 'posts/p2'), {
+      reactions: { bot_01: 'love' }, lastBotReactionBy: 'bot_01'
+    });
+    console.log('active assigned bot comment+counter atomic batch and identity-bound reaction allowed');
+  });
 }
 
 // Prove a real user can create a bot inbox item only in the same transaction as its quota increment.
