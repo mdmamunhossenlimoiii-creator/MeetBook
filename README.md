@@ -28,7 +28,7 @@ The current codebase includes:
 - 24-hour stories and short-video reels.
 - Public/private groups and join requests.
 - Notifications and privacy preferences, including Firestore-enforced friends-only profile details and a minimal searchable people directory.
-- Optional long-term memory for the first three Gemini-powered bots: off by default, stored as a short per-user/per-bot summary (not raw transcripts), and removable from Settings.
+- Optional long-term memory for the first three Gemini-powered bots: off by default, stored as a short per-user/per-bot summary (not raw transcripts), and viewable/removable from Settings.
 - Responsive light/dark interface.
 - Admin dashboard, user management, staff roles, moderation, reports, announcements, maintenance settings and activity logs.
 
