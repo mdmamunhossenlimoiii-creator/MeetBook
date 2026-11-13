@@ -74,7 +74,7 @@ export async function generateSmartBotText({
       return safeFallback;
     }
     const data = await response.json();
-    const raw = data?.candidates?.[0]?.content?.parts?.filter((p) => typeof p?.text === 'string').map((p) => p.text).join('\\n');
+    const raw = data?.candidates?.[0]?.content?.parts?.filter((p) => typeof p?.text === 'string').map((p) => p.text).join('\n');
     const output = cleanOutput(raw, maxChars);
     if (!output && strict) throw new Error('Gemini returned no usable text.');
     return output || safeFallback;
