@@ -10,7 +10,7 @@
 //  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
-//                    Settings -> "Allow AI bots to react and comment" (botEngagement/{uid}.allowBotEngagement only).
+//                    Settings -> "Allow AI bots to react and comment" (users/{uid}.settings.allowBotEngagement is canonical).
 //                    At most one bot per post, a relevant comment + a reaction, always shown as AI.
 //  4. Bot-to-bot comments: only if settings/global.botToBotComments is on (default OFF, to avoid
 //                    staged conversations that look like real popularity).
@@ -24,6 +24,7 @@ import { makeComment, pickReaction, chatReply, nextPostText, relevance, normaliz
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and } from './lib/firestore-rest.mjs';
 import { generateSmartBotText } from './lib/gemini.mjs';
+import { hasBotEngagementConsent } from './lib/bot-consent.mjs';
 
 const EMAIL = process.env.BOT_RUNNER_EMAIL;
 const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
@@ -212,8 +213,8 @@ async function main() {
     const authorOk = new Map();
     const optedIn = async (uid) => {
       if (!authorOk.has(uid)) {
-        const consent = await fs.get(`botEngagement/${uid}`);
-        authorOk.set(uid, !!(consent && consent.allowBotEngagement === true));
+        const user = await fs.get(`users/${uid}`);
+        authorOk.set(uid, hasBotEngagementConsent(user));
       }
       return authorOk.get(uid);
     };
@@ -273,7 +274,11 @@ async function main() {
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
     }, `chats/${m.chatId}`)).reverse();
     const reply = chatReply({ bot, text: m.text, history: hist });
-    const replyText = await generateSmartBotText({ bot, kind: 'chat', source: m.text, fallback: reply.text });
+    const replyText = await generateSmartBotText({
+      bot, kind: 'chat', source: m.text,
+      history: hist.map(({ uid, text }) => ({ uid, text })),
+      fallback: reply.text
+    });
     if (DRY) console.log(`[dry] chat reply as ${bot.name}: ${replyText}`);
     else {
       await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() });
