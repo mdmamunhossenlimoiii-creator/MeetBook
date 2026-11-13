@@ -137,7 +137,7 @@ export function createClient({ projectId, fsUrl = 'https://firestore.googleapis.
           return true;
         } catch (error) {
           const message = String(error && error.message || error);
-          if (!/409|ABORTED|transaction.*(expired|aborted)/i.test(message) || attempt === retries - 1) throw error;
+          if (!/409|ABORTED|FAILED_PRECONDITION|transaction.*(expired|aborted)/i.test(message) || attempt === retries - 1) throw error;
         }
       }
       return false;
