@@ -140,6 +140,22 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   if (ownMemories.size !== 1) throw new Error('memory owner could not list their own saved summaries');
   await assert.rejects(realFirestore.getDocs(realFirestore.query(realFirestore.collection(env.authenticatedContext('u4').firestore(), 'botMemories'), realFirestore.where('ownerUid', '==', 'u2'))));
   console.log('bot-memory list queries are restricted to the owning user');
+
+  const disableMemoryBatch = writeBatch(memoryOwnerDb);
+  disableMemoryBatch.update(doc(memoryOwnerDb, 'users/u2'), {
+    settings: {
+      allowMessages: 'friends', profileVisibility: 'friends', defaultVisibility: 'public',
+      allowBotEngagement: true, allowBotMemory: false
+    }
+  });
+  disableMemoryBatch.set(doc(memoryOwnerDb, 'botEngagement/u2'), {
+    allowBotEngagement: true, allowBotMemory: false, updatedAt: serverTimestamp()
+  }, { merge: true });
+  ownMemories.docs.forEach((memory) => disableMemoryBatch.delete(memory.ref));
+  await disableMemoryBatch.commit();
+  const afterDisable = await realFirestore.getDocs(realFirestore.query(realFirestore.collection(memoryOwnerDb, 'botMemories'), realFirestore.where('ownerUid', '==', 'u2')));
+  if (!afterDisable.empty) throw new Error('turning memory off did not delete saved summaries');
+  console.log('turning memory off atomically revokes consent and deletes saved summaries');
 }
 }
 await env.cleanup();
