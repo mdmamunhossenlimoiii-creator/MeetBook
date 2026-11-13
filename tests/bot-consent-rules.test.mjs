@@ -43,7 +43,7 @@ const seed = () => {
     'botInbox/i1': { botId: 'bot_06', fromUid: 'u2', chatId: 'bot_06_u2', text: 'hello', handled: false, createdAt: now }
   };
 };
-const env = (m, more = {}) => ({ BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '1', BOT_COMMENTS: '10', ...more });
+const env = (m, more = {}) => ({ BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '1', BOT_COMMENTS: '10', ...more });
 
 const DOCS = '/v1/projects/test-proj/databases/(default)/documents';
 async function asRunner(m) {
