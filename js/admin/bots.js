@@ -52,7 +52,7 @@ export async function render(body) {
     switch (b.dataset.do) {
       case 'global': {
         const next = site.botsEnabled !== true;
-        if (await act(b, () => setDoc(doc(db, 'settings', 'overall'), { botsEnabled: next, updatedBy: state.user.uid, updatedAt: serverTimestamp() }, { merge: true }), { ok: next ? 'Bots are ON' : 'Bots are OFF', log: ['bots global switch', 'settings/global', next ? 'on' : 'off'] })) draw();
+        if (await act(b, () => setDoc(doc(db, 'settings', 'overall'), { botsEnabled: next, updatedBy: state.user.uid, updatedAt: serverTimestamp() }, { merge: true }), { ok: next ? 'Bots are ON' : 'Bots are OFF', log: ['bots global switch', 'settings/overall', next ? 'on' : 'off'] })) draw();
         break;
       }
       case 'seed': if (await act(b, async () => { const r = await seedBots(); toast(`${r.created} created, ${r.existing} already existed`, 'success'); }, { ok: '', log: ['built-in bots created', '', ''] })) draw(); break;
