@@ -139,3 +139,40 @@ test('negative control: without the rules gate the same hand-made write succeeds
     assert.equal(await call('POST', 'posts/p2/comments?documentId=x1', comment('bot_01')), 200);
   } finally { await m.close(); }
 });
+
+ 
+test('retrying the same GitHub workflow ID does not create a duplicate bot post', { skip: !botRunnerConfigured }, async () => {
+  const data = seed();
+  data['botRunners/runner1'] = { enabled: true, botIds: ['bot_01'] };
+  const m = await startMock({ seed: data, rules: true });
+  try {
+    const settings = env(m, {
+      GITHUB_RUN_ID: 'retry-post-001', BOT_RUNNER_MODE: 'all', BOT_RUNNER_BOT_ID: 'bot_01',
+      BOT_POSTS: '1', BOT_COMMENTS: '0'
+    });
+    const first = await exec(['scripts/bot-runner.mjs'], settings);
+    assert.equal(first.status, 0, first.stderr + first.stdout);
+    const afterFirst = m.ids('posts').length;
+    const second = await exec(['scripts/bot-runner.mjs'], settings);
+    assert.equal(second.status, 0, second.stderr + second.stdout);
+    assert.equal(m.ids('posts').length, afterFirst, 'workflow retry must not add another post');
+    assert.equal(m.ids('posts').filter((id) => id === 'post_bot_01_retry-post-001').length, 1);
+  } finally { await m.close(); }
+});
+
+test('an unhandled inbox item with an existing deterministic reply is recovered without a second message', { skip: !botRunnerConfigured }, async () => {
+  const data = seed();
+  data['chats/bot_06_u2/messages/reply_bot_06_i1'] = {
+    uid: 'bot_06', text: 'Existing reply', image: '', ai: true, createdAt: new Date()
+  };
+  const m = await startMock({ seed: data, rules: true });
+  try {
+    const result = await exec(['scripts/bot-runner.mjs'], env(m, {
+      GITHUB_RUN_ID: 'retry-chat-001', BOT_POSTS: '0', BOT_COMMENTS: '0'
+    }));
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.equal(m.ids('chats/bot_06_u2/messages').length, 1, 'existing reply is reused, not duplicated');
+    assert.equal(m.get('botInbox/i1').handled, true, 'recovered inbox item is marked handled');
+    assert.equal(m.get('chats/bot_06_u2').lastMessage.text, 'Existing reply');
+  } finally { await m.close(); }
+});

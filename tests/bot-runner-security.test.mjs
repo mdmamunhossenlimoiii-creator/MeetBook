@@ -137,3 +137,14 @@ test('scheduled workflows exist but remain owner-gated and bounded', () => {
   assert.match(chat, /BOT_POSTS: "0"/);
   assert.match(chat, /BOT_COMMENTS: "0"/);
 });
+
+ 
+test('runner uses stable workflow IDs and bounds bot-to-bot discussion', () => {
+  assert.match(runner, /process\.env\.GITHUB_RUN_ID/);
+  assert.match(runner, /const BOT_TO_BOT_MAX_TURNS = 2/);
+  assert.match(runner, /replyMessageId = .*m\.id/);
+  assert.match(runner, /post_\$\{bot\.id\}_\$\{RUN_ID\}/);
+  assert.match(runner, /if \(await fs\.get\(commentPath\)\)/);
+  assert.match(runner, /Duplicate reply prevented/);
+  assert.match(runner, /existingComments\.filter\(\(comment\) => comment\.ai === true && isBotId\(comment\.uid\)\)/);
+});

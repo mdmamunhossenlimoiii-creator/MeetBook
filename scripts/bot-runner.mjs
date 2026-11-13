@@ -276,9 +276,15 @@ async function main() {
   // 2. auto posts
   for (const bot of shuffle(bots.filter((b) => b.autoPost === true && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
-    if (!pick || !(await reserveBotAction(bot))) continue;
+    const postId = `post_${bot.id}_${RUN_ID}`;
+    if (!pick) continue;
+    if (!DRY && await fs.get(`posts/${postId}`)) {
+      console.log(`Duplicate post prevented for ${bot.name} (workflow ${RUN_ID}).`);
+      continue;
+    }
+    if (!(await reserveBotAction(bot))) continue;
     const postText = DRY ? pick.text : await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
-    const id = await createPost(bot, postText, `post_${bot.id}_${RUN_ID}`);
+    const id = await createPost(bot, postText, postId);
     if (!id) continue;
     spend(st, bot); stats.posts++;
     await log(bot, 'post', id, pick.text);
@@ -324,6 +330,7 @@ async function main() {
       const usedTexts = [...(st.usedComments[bot.id] || [])];
       const baseComment = makeComment({ bot, post: { text: post.text, image: post.image, authorName: post.authorName }, used: usedTexts });
       if (!baseComment) continue;
+      if (!DRY && await fs.get(`posts/${post.id}/comments/${bot.id}`)) continue;
       if (!(await reserveBotAction(bot))) continue;
       const c = { ...baseComment, text: DRY ? baseComment.text : await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
       const created = await createComment(bot, post.id, c.text);
