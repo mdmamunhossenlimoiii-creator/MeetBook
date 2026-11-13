@@ -81,8 +81,13 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     const inboxRef = doc(db, 'botInbox', `atomic-${++inboxNumber}`);
     const snap = await getDoc(quotaRef);
     const count = snap.exists() ? snap.data().count : 0;
+    const windowAt = snap.exists() ? snap.data().windowStartedAt.toMillis() : 0;
+    const expired = !snap.exists() || Date.now() - windowAt >= 86_400_000;
     const batch = writeBatch(db);
-    batch.set(quotaRef, { senderUid: 'u1', botId: 'bot_01', count: count + 1, windowStartedAt: count === 0 ? serverTimestamp() : snap.data().windowStartedAt, lastAt: serverTimestamp() });
+    batch.set(quotaRef, {
+      senderUid: 'u1', botId: 'bot_01', count: expired ? 1 : count + 1,
+      windowStartedAt: expired ? serverTimestamp() : snap.data().windowStartedAt, lastAt: serverTimestamp()
+    });
     batch.set(inboxRef, {
       fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
       handled: false, createdAt: serverTimestamp()
@@ -93,6 +98,22 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   console.log('atomic bot inbox + quota transaction allowed');
   await assert.rejects(submit());
   console.log('bot inbox cooldown enforced by real Firestore Rules');
+
+  await env.withSecurityRulesDisabled(async (ctx) => updateDoc(doc(ctx.firestore(), 'botInboxRateLimits/u1/bots/bot_01'), {
+    count: 20, windowStartedAt: Timestamp.fromMillis(Date.now() - 3_600_000),
+    lastAt: Timestamp.fromMillis(Date.now() - 20_000)
+  }));
+  await assert.rejects(submit());
+  console.log('20-message rolling-window cap enforced');
+
+  const expiredAt = Date.now() - 25 * 3_600_000;
+  await env.withSecurityRulesDisabled(async (ctx) => updateDoc(doc(ctx.firestore(), 'botInboxRateLimits/u1/bots/bot_01'), {
+    count: 20, windowStartedAt: Timestamp.fromMillis(expiredAt), lastAt: Timestamp.fromMillis(expiredAt)
+  }));
+  await submit();
+  const reset = await getDoc(quotaRef);
+  if (reset.data().count !== 1) throw new Error('expired quota window did not reset to one');
+  console.log('rolling 24-hour quota resets after expiry');
 }
 }
 await env.cleanup();
