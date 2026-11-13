@@ -259,7 +259,8 @@ service cloud.firestore {
           && d.windowStartedAt is timestamp
           && d.lastAt is timestamp
           && d.windowStartedAt <= request.time
-          && d.lastAt <= request.time;
+          && d.lastAt <= request.time
+          && d.lastAt + duration.value(5, 's') >= request.time;
       }
       allow read: if isOwner(runnerUid);
       allow create: if isOwner(runnerUid) && runnerHasBot(botId)
