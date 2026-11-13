@@ -44,7 +44,7 @@ const MUTATIONS = [
   ['a report can be edited freely by staff', "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt'])\n        && request.resource.data.status in ['open', 'resolved']", "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt', 'targetUid'])\n        && request.resource.data.status in ['open', 'resolved']"],
   ['moderators can delete reports', "allow delete: if isAdmin();\n    }\n\n    // ---------- friends", "allow delete: if isStaff();\n    }\n\n    // ---------- friends"],
   ['anyone can read the activity log', "allow read: if isAdmin();\n      allow update, delete: if false;", "allow read: if signedIn();\n      allow update, delete: if false;"],
-  ['inbox quota accepts non-bot targets', "allow create: if isOwner(senderUid) && notBanned()\n        && isBotUser(botId)\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true", "allow create: if isOwner(senderUid) && notBanned()\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true"],
+  ['inbox quota accepts non-bot targets', "allow create: if isOwner(senderUid) && notBanned()\n        && isBotUser(botId)\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true", "allow create: if isOwner(senderUid) && notBanned()\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 

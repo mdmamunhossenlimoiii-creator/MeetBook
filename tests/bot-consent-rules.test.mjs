@@ -24,7 +24,7 @@ const now = new Date();
 const post = (uid, text, more = {}) => ({ uid, authorName: uid, text, image: '', videoUrl: '', visibility: 'public', audience: [], groupId: null, reactions: {}, commentCount: 0, shareCount: 0, createdAt: now, ...more });
 const seed = () => {
   const s = {};
-  BOTS.forEach((b) => { s[`users/${b.id}`] = { name: b.name, isBot: true, banned: false }; });
+  BOTS.forEach((b) => { s[`users/${b.id}`] = { name: b.name, isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, banned: false }; });
   return {
     ...s,
     'botRunners/runner1': { enabled: true, botIds: BOTS.map((bot) => bot.id) },

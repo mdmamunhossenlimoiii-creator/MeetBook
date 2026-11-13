@@ -39,7 +39,7 @@ const post = (uid, extra = {}) => ({ uid, authorName: uid, text: 'hello', image:
 const newPost = (uid, extra = {}) => ({ ...post(uid), createdAt: { $srv: 1 }, ...extra });
 
 export const SEED = {
-  'users/u1': user({ name: 'User One', nameLower: 'user one', settings: { allowBotEngagement: false, allowBotMemory: false, profileVisibility: 'everyone' } }),
+  'users/u1': user({ name: 'User One', nameLower: 'user one', active: true, chatEnabled: true, settings: { allowBotEngagement: false, allowBotMemory: false, profileVisibility: 'everyone' } }),
   'users/u2': user({ name: 'User Two', nameLower: 'user two', settings: { allowBotEngagement: true, allowBotMemory: true, allowMessages: 'friends', profileVisibility: 'friends' } }),
   'users/u3': user({ name: 'User Three', nameLower: 'user three', settings: { allowMessages: 'friends', profileVisibility: 'friends', allowBotMemory: false } }),
   'users/u4': user({ name: 'User Four', nameLower: 'user four' }),
@@ -60,11 +60,11 @@ export const SEED = {
   'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3) }),
   'users/mod': user({ name: 'Mod Person' }), 'users/adm': user({ name: 'Admin Person' }), 'users/adm2': user({ name: 'Second Admin' }),
   'users/sup': user({ name: 'Super Person' }), 'users/leg': user({ name: 'Legacy Admin' }), 'users/bad': user({ name: 'Badrole Admin' }),
-  'users/bot_01': user({ name: 'TechTip Nova', isBot: true, bio: 'I am an AI bot.' }),
-  'users/bot_02': user({ name: 'Pixel Pal', isBot: true, bio: 'I am an AI bot.' }),
-  'users/bot_03': user({ name: 'Chef Byte', isBot: true, bio: 'I am an AI bot.' }),
-  'users/bot_04': user({ name: 'Joke Jar', isBot: true, bio: 'I am an AI bot.' }),
-  'users/bot_05': user({ name: 'Nature Nook', isBot: true, bio: 'I am an AI bot.' }),
+  'users/bot_01': user({ name: 'TechTip Nova', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, bio: 'I am an AI bot.' }),
+  'users/bot_02': user({ name: 'Pixel Pal', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, bio: 'I am an AI bot.' }),
+  'users/bot_03': user({ name: 'Chef Byte', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, bio: 'I am an AI bot.' }),
+  'users/bot_04': user({ name: 'Joke Jar', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, bio: 'I am an AI bot.' }),
+  'users/bot_05': user({ name: 'Nature Nook', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, bio: 'I am an AI bot.' }),
   'users/runoff': user({ name: 'Disabled Runner' }),
   'admins/mod': { role: 'moderator' }, 'admins/adm': { role: 'admin' }, 'admins/adm2': { role: 'admin' }, 'admins/sup': { role: 'super_admin' },
   'admins/leg': { enabled: true }, 'admins/bad': { role: 'owner' },
