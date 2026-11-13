@@ -19,6 +19,17 @@ const SECTIONS = [
   { id: 'server', label: 'Server jobs', ic: 'globe', min: 'super_admin', load: () => import('./server.js') }
 ];
 
+let publicProfileBackfill = null;
+async function ensurePublicProfileBackfill() {
+  if (!['admin', 'super_admin'].includes(state.adminRole)) return;
+  if (!publicProfileBackfill) {
+    publicProfileBackfill = import('./public-profile-migration.js')
+      .then((m) => m.backfillPublicProfiles())
+      .catch((e) => { publicProfileBackfill = null; throw e; });
+  }
+  return publicProfileBackfill;
+}
+
 export async function render(view, section) {
   if (!state.isAdmin) {
     view.innerHTML = emptyState('Admins only', 'Your account is not listed as staff.');
@@ -37,6 +48,7 @@ export async function render(view, section) {
   </div>`;
   const body = $('[data-body]', view);
   try {
+    await ensurePublicProfileBackfill().catch((e) => console.warn('Public profile migration did not finish:', e));
     const mod = await current.load();
     await mod.render(body);
   } catch (e) {
