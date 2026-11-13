@@ -1,4 +1,4 @@
-// Scheduled job (GitHub Actions): runs the AI bots. Everything is template based (js/bots-brain.js), no LLM.
+// Scheduled job (GitHub Actions): first three bots use server-side Gemini with safe template fallback; remaining bots use templates.
 //
 // Security model
 //  * No Admin SDK / service-account key. The job signs in as a normal Firebase Auth user (the
@@ -7,7 +7,7 @@
 //    comments, a reaction under a bot's own key, chat replies). It cannot touch real users' data.
 //
 // What it does each run (all limits are enforced here AND configurable from the Admin panel):
-//  1. Global switch  settings/global.botsEnabled (default on). Off = the job exits immediately.
+//  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
 //                    Settings -> "Allow AI bots to react and comment" (botEngagement/{uid}.allowBotEngagement only).
@@ -226,7 +226,7 @@ async function main() {
       if (fromBot ? global.botToBotComments !== true : !(await optedIn(post.uid))) continue; // consent / default-off rules
       const ranked = shuffle(bots.filter((b) => b.id !== post.uid && b.autoComment !== false && canAct(st, b) && !st.commented.includes(`${post.id}:${b.id}`)))
         .map((b) => ({ b, score: relevance(b, post.text) }))
-        .filter((x) => x.score > 0 || (fromBot && !post.text === false))
+        .filter((x) => x.score > 0 || (fromBot && Boolean(post.text)))
         .sort((a, c) => c.score - a.score);
       if (!ranked.length) continue;
       const bot = ranked[0].b;
