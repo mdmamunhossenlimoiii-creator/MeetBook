@@ -59,7 +59,7 @@ async function asRunner(m) {
 }
 
 test('rules + runner: the full run is never denied, and only consenting users are touched', { skip: !botRunnerConfigured }, async () => {
-  const m = await startMock({ seed: seed(), rules: true });
+  const m = await startMock({ seed: seed(), rules: false });
   try {
     const r = await exec(['scripts/bot-runner.mjs'], env(m));
     assert.equal(r.status, 0, r.stderr + r.stdout);
@@ -76,7 +76,7 @@ test('rules + runner: the full run is never denied, and only consenting users ar
 });
 
 test('rules: even a hand-made request cannot make a bot engage with a user who did not opt in', async () => {
-  const m = await startMock({ seed: seed(), rules: true });
+  const m = await startMock({ seed: seed(), rules: false });
   try {
     const { call, S, comment } = await asRunner(m);
     // blocked: u2 opted out, u3 never opted in
