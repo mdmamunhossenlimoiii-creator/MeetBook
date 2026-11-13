@@ -26,6 +26,9 @@ test('uses the selected model and keeps the API key in a header', async () => {
   assert.equal(captured.options.headers['x-goog-api-key'], 'secret-test-key');
   assert.equal(captured.url.includes('secret-test-key'), false);
   assert.match(JSON.parse(captured.options.body).systemInstruction.parts[0].text, /Pixel Pal/);
+  const generationConfig = JSON.parse(captured.options.body).generationConfig;
+  assert.deepEqual(generationConfig, { maxOutputTokens: 220 });
+  assert.equal('temperature' in generationConfig, false);
 });
 test('API errors and malformed responses use fallback without throwing', async () => {
   const args = { bot: bot(), kind: 'post', source: 'topic', fallback: 'safe fallback', apiKey: 'x' };
