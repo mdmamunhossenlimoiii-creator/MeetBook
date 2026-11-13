@@ -48,3 +48,11 @@ test('runner inbox and private chat access are limited to assigned bots', () => 
 test('Admin bot panel does not provide manual posting or commenting as a bot', () => {
   assert.doesNotMatch(adminBots, /Post as a bot|Comment as a bot|data-do="post"|data-do="comment"|postAsBot|commentAsBot/);
 });
+
+test('dry runs never call Gemini or print private reply text', () => {
+  assert.match(runner, /const postText = DRY \? pick\.text : await generateSmartBotText/);
+  assert.match(runner, /text: DRY \? baseComment\.text : await generateSmartBotText/);
+  assert.match(runner, /const replyText = DRY \? reply\.text : await generateSmartBotText/);
+  assert.match(runner, /private text and Gemini calls suppressed/);
+  assert.doesNotMatch(runner, /\[dry\] chat reply as .*replyText/);
+});
