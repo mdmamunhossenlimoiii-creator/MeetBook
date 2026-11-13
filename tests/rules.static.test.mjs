@@ -122,7 +122,7 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
 test('comments can be switched off by staff and are enforced for everybody', () => {
   const posts = block('posts');
   assert.match(fn('userMayComment'), /commentsDisabled', false\) == false/);
-  assert.match(fn('botMayComment'), /commentsDisabled', false\) == false/);
+  assert.match(fn('runnerMayComment'), /commentsDisabled', false\) == false/);
   assert.match(posts, /hasOnly\(\['hidden', 'commentsDisabled'\]\)/);
 });
 
