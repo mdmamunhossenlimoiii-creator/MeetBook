@@ -38,6 +38,8 @@ const MODE = process.env.BOT_RUNNER_MODE || 'all';
 const RUNNER_BOT_ID = process.env.BOT_RUNNER_BOT_ID || '';
 const CHAT_MAX_REPLIES = 1;
 const BOT_TO_BOT_MAX_TURNS = 2;
+const GLOBAL_DAILY_ACTION_LIMIT = 60;
+const GEMINI_DAILY_REQUEST_LIMIT = 60;
 const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID || `local_${process.pid}_${Date.now()}`)
   .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
 const safeDocPart = (value) => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
@@ -227,10 +229,32 @@ const spend = (st, bot) => { st.daily.counts[bot.id] = usedToday(st, bot) + 1; }
 // A reserved slot is intentionally not refunded after a failed action (fail-closed behavior).
 async function reserveBotAction(bot, kind = 'botDaily') {
   if (DRY) return true;
-  return fs.reserveQuota(`botRateLimits/${bot.id}`, {
+  const botSlot = await fs.reserveQuota(`botRateLimits/${bot.id}`, {
     max: limitOf(bot),
     data: { botId: bot.id, kind }
   });
+  if (!botSlot) return false;
+  // A second transaction enforces a shared daily cap across every bot and runner.
+  // If the global cap is exhausted, the per-bot slot is intentionally not refunded.
+  return fs.reserveQuota('botGlobalRateLimits/global', {
+    max: GLOBAL_DAILY_ACTION_LIMIT,
+    data: { kind: 'globalDaily' }
+  });
+}
+async function reserveGeminiRequest() {
+  if (DRY || !process.env.GEMINI_API_KEY) return true;
+  return fs.reserveQuota('botGeminiRateLimits/global', {
+    max: GEMINI_DAILY_REQUEST_LIMIT,
+    data: { kind: 'geminiDaily' }
+  });
+}
+async function generateText(options) {
+  if (DRY || !process.env.GEMINI_API_KEY) return options.fallback;
+  if (!(await reserveGeminiRequest())) {
+    console.warn('Gemini daily request budget reached; using safe template fallback.');
+    return options.fallback;
+  }
+  return generateSmartBotText(options);
 }
 async function reserveChatReply(bot, uid) {
   if (DRY) return true;
@@ -279,7 +303,7 @@ async function main() {
     const postId = `post_${bot.id}_${RUN_ID}`;
     if (!pick) continue;
     if (!(await reserveBotAction(bot))) continue;
-    const postText = DRY ? pick.text : await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    const postText = DRY ? pick.text : await generateText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
     const id = await createPost(bot, postText, postId);
     if (!id) continue;
     spend(st, bot); stats.posts++;
@@ -328,7 +352,7 @@ async function main() {
       if (!baseComment) continue;
       if (!DRY && await fs.get(`posts/${post.id}/comments/${bot.id}`)) continue;
       if (!(await reserveBotAction(bot))) continue;
-      const c = { ...baseComment, text: DRY ? baseComment.text : await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
+      const c = { ...baseComment, text: DRY ? baseComment.text : await generateText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
       const created = await createComment(bot, post.id, c.text);
       if (!created) continue;
       spend(st, bot); stats.comments++; engaged++;
@@ -384,7 +408,7 @@ async function main() {
     const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
     const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
-    const replyText = DRY ? reply.text : await generateSmartBotText({
+    const replyText = DRY ? reply.text : await generateText({
       bot, kind: 'chat', source: m.text,
       history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
       memoryContext: savedMemory?.summary || '',
@@ -404,18 +428,20 @@ async function main() {
       // Persist only a bounded, non-sensitive summary after an explicit user opt-in.
       // Other bots/users cannot read this document; the raw transcript is never copied here.
       if (memoryEnabled && process.env.GEMINI_API_KEY && ['bot_01', 'bot_02', 'bot_03'].includes(bot.id)) {
-        const summary = await updateSmartBotMemory({
-          bot, existingSummary: savedMemory?.summary || '',
-          messages: [...hist, { uid: bot.id, text: storedReplyText }]
-        });
-        if (summary || savedMemory) {
-          const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
-          if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
-          else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
-            // Another scheduled run may have created it concurrently; update the same isolated record.
-            await fs.patch(`botMemories/${memoryId}`, memoryData);
+        if (await reserveGeminiRequest()) {
+          const summary = await updateSmartBotMemory({
+            bot, existingSummary: savedMemory?.summary || '',
+            messages: [...hist, { uid: bot.id, text: storedReplyText }]
           });
-        }
+          if (summary || savedMemory) {
+            const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
+            if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
+            else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
+              // Another scheduled run may have created it concurrently; update the same isolated record.
+              await fs.patch(`botMemories/${memoryId}`, memoryData);
+            });
+          }
+        } else console.warn('Gemini daily request budget reached; memory update skipped.');
       }
       // Never put private conversation text in audit logs.
       await log(bot, 'chat', m.chatId, reply.intent);
