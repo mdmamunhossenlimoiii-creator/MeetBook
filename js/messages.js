@@ -203,13 +203,6 @@ export async function render(view, a, b) {
           });
           batch.update(chatRef, { lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp() });
           await batch.commit();
-            tx.set(messageRef, { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
-            tx.set(inboxRef, {
-              fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500),
-              handled: false, createdAt: serverTimestamp()
-            });
-            tx.update(chatRef, { lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp() });
-          });
         } else {
           await addDoc(collection(db, 'chats', id, 'messages'), { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
           await updateDoc(chatRef, {
