@@ -34,7 +34,18 @@ const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
 const AUTH_URL = process.env.AUTH_URL || 'https://identitytoolkit.googleapis.com';
 const FS_URL = process.env.FS_URL || 'https://firestore.googleapis.com';
 const DRY = process.env.DRY_RUN === '1';
+const MODE = process.env.BOT_RUNNER_MODE || 'all';
+const CHAT_BOT_ID = process.env.BOT_CHAT_BOT_ID || '';
+const CHAT_MAX_REPLIES = num(process.env.BOT_CHAT_MAX_REPLIES, 1, 1);
 
+if (!['all', 'post', 'chat'].includes(MODE)) {
+  console.error('BOT_RUNNER_MODE must be all, post, or chat.');
+  process.exit(1);
+}
+if (MODE === 'chat' && !SMART_BOT_IDS.has(CHAT_BOT_ID)) {
+  console.error('Chat-only mode requires BOT_CHAT_BOT_ID to be one of the first three Gemini bots.');
+  process.exit(1);
+}
 if (!EMAIL || !PASSWORD) {
   console.log('Bot runner is not configured (BOT_RUNNER_EMAIL / BOT_RUNNER_PASSWORD secrets are missing). Nothing to do.');
   process.exit(0);
@@ -195,12 +206,15 @@ async function main() {
   }
 
   const allowedBotIds = new Set(runner.botIds.filter((id) => isBotId(id)));
-  const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id));
+  const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id)
+    && (!CHAT_BOT_ID || bot.id === CHAT_BOT_ID));
   if (!bots.length) { console.log('No assigned bot profiles found for this runner. Nothing to do.'); return; }
   const botMap = new Map(bots.map((b) => [b.id, b]));
   const st = await loadState();
   const stats = { posts: 0, comments: 0, reactions: 0, chats: 0 };
 
+  // Mode isolation: post mode never processes engagement or private chats; chat mode never posts/comments/reacts.
+  if (MODE !== 'chat') {
   // 2. auto posts
   for (const bot of shuffle(bots.filter((b) => b.autoPost !== false && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
@@ -214,7 +228,7 @@ async function main() {
 
   // 3/4. engagement on recent public posts
   let engaged = 0;
-  if (nEngage > 0) {
+  if (MODE === 'all' && nEngage > 0) {
     const recent = await fs.query({
       from: [{ collectionId: 'posts' }],
       where: eq('visibility', 'public'),
@@ -267,13 +281,15 @@ async function main() {
     }
   }
 
+  }
+  if (MODE !== 'post') {
   // 5. chat replies
   const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled !== false).map((bot) =>
     fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
   ));
   const inbox = inboxByBot.flat()
     .sort((a, b) => (a.createdAt?.getTime?.() || 0) - (b.createdAt?.getTime?.() || 0))
-    .slice(0, 25);
+    .slice(0, CHAT_MAX_REPLIES);
   for (const m of inbox) {
     const bot = botMap.get(m.botId);
     const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
@@ -328,6 +344,7 @@ async function main() {
     console.log(`Chat reply as ${bot.name} (${reply.intent}/${reply.lang})`);
   }
 
+  }
   if (!DRY) await saveState(st);
   console.log(`Done: ${stats.posts} post(s), ${stats.comments} comment(s), ${stats.reactions} reaction(s), ${stats.chats} chat repl${stats.chats === 1 ? 'y' : 'ies'}.`);
 }
