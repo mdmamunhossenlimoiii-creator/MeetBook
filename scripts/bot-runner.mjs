@@ -24,6 +24,7 @@ import { makeComment, pickReaction, chatReply, nextPostText, relevance, normaliz
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and } from './lib/firestore-rest.mjs';
 import { generateSmartBotText } from './lib/gemini.mjs';
+import { assertExpectedProjectId } from './lib/project-guard.mjs';
 
 const EMAIL = process.env.BOT_RUNNER_EMAIL;
 const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
@@ -37,6 +38,15 @@ if (!EMAIL || !PASSWORD) {
 }
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   console.error('js/firebase-config.js is missing apiKey or projectId.');
+  process.exit(1);
+}
+try {
+  assertExpectedProjectId({
+    actualProjectId: firebaseConfig.projectId,
+    expectedProjectId: process.env.BOT_RUNNER_EXPECTED_PROJECT_ID
+  });
+} catch (error) {
+  console.error(error.message);
   process.exit(1);
 }
 
