@@ -118,12 +118,13 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerMayComment'), /engagementOk\(p\.uid\)/, 'bot comments need consent');
   assert.match(fn('runnerMayComment'), /visibility == 'public'/);
   assert.match(fn('runnerMayComment'), /botToBotComments/);
-  const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)/;
-  assert.match(posts, runnerReaction, 'bot reactions need consent and a public post');
+  const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)\s*&& request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\.size\(\) == 1\s*&& runnerMayActAs\(request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\[0\]\)/;
+  assert.match(posts, runnerReaction, 'bot reactions require consent and exactly one assigned, active bot key');
+  assert.match(posts, /request\.resource\.data\.commentCount == resource\.data\.commentCount \+ 1/, 'Runner may only increment commentCount');
   assert.match(fn('canPublishBot'), /runnerMayActAs\(botUid\)/, 'only an assigned active Runner can publish as a bot');
   assert.doesNotMatch(fn('canPublishBot'), /isAdmin/);
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
-  assert.match(posts, /hasOnly\(get\(.*botRunners.*botIds/s, 'the runner may only set reactions for its assigned bot IDs');
+  assert.match(posts, /runnerMayActAs\(request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\[0\]\)/, 'reaction key must be an assigned active bot');
   // the runner is not allowed to write anything but bot content
   assert.match(block('botState'), /runnerEnabled\(\)/);
   assert.match(block('botInbox'), /runnerHasBot\(resource\.data\.botId\)/);
