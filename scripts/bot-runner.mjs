@@ -27,6 +27,7 @@ import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib
 import { hasBotEngagementConsent } from './lib/bot-consent.mjs';
 import { hasBotMemoryConsent } from './lib/bot-memory-consent.mjs';
 import { botMemoryDocId } from './lib/bot-memory.mjs';
+import { assertExpectedProjectId } from './lib/project-guard.mjs';
 
 const EMAIL = process.env.BOT_RUNNER_EMAIL;
 const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
@@ -40,6 +41,15 @@ if (!EMAIL || !PASSWORD) {
 }
 if (!firebaseConfig.apiKey || !firebaseConfig.projectId) {
   console.error('js/firebase-config.js is missing apiKey or projectId.');
+  process.exit(1);
+}
+try {
+  assertExpectedProjectId({
+    actualProjectId: firebaseConfig.projectId,
+    expectedProjectId: process.env.BOT_RUNNER_EXPECTED_PROJECT_ID
+  });
+} catch (error) {
+  console.error(error.message);
   process.exit(1);
 }
 
