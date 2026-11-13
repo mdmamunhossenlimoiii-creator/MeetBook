@@ -236,8 +236,8 @@ cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'b
 cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/run/bots/bot_01/days/2026-11-10', { count: 2, lastAt: T(1000) }, ['runner']);
 cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/run/bots/bot_01/days/2026-11-10', { count: 12, lastAt: T(1000) }, []);
 cap('AI bots', 'Runner reserves a per-user chat quota', 'create', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-11', { runnerUid: 'run', botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, lastAt: { $srv: 1 } }, ['runner']);
-cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10', { count: 2, lastAt: T(-30000) }, []);
-cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10', { count: 2, lastAt: T(60000) }, ['runner']);
+cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10', { count: 2, lastAt: T(-90000) }, []);
+cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/run/bots/bot_01/users/u1/days/2026-11-10', { count: 2, lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Read the runner state', 'get', 'botState/run', null, ['runner']);
 cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runoff', null, []);
 cap('AI bots', 'Only an enabled runner can publish as an assigned bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
