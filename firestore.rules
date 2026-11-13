@@ -145,6 +145,14 @@ service cloud.firestore {
       let p = get(/databases/$(database)/documents/posts/$(postId)).data;
       return p.get('commentsDisabled', false) == false && p.visibility == 'public' && engagementOk(p.uid);
     }
+    function runnerMayComment(postId) {
+      let p = get(/databases/$(database)/documents/posts/$(postId)).data;
+      return p.get('commentsDisabled', false) == false
+        && p.visibility == 'public'
+        && (isBotUser(p.uid)
+          ? get(/databases/$(database)/documents/settings/global).data.get('botToBotComments', false) == true
+          : engagementOk(p.uid));
+    }
     function botIds() {
       return ['bot_01', 'bot_02', 'bot_03', 'bot_04', 'bot_05', 'bot_06', 'bot_07', 'bot_08', 'bot_09', 'bot_10',
               'bot_11', 'bot_12', 'bot_13', 'bot_14', 'bot_15', 'bot_16', 'bot_17', 'bot_18', 'bot_19', 'bot_20',
@@ -398,7 +406,7 @@ service cloud.firestore {
           || (runnerMayActAs(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true
             && textOk(request.resource.data.text, 2000)
-            && botMayComment(postId));
+            && runnerMayComment(postId));
         allow delete: if isOwner(resource.data.uid)
           || isOwner(get(/databases/$(database)/documents/posts/$(postId)).data.uid)
           || isStaff();
