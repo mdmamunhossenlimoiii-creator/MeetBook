@@ -95,9 +95,13 @@ test('bot runner: global OFF, per-bot OFF and daily limit stop everything', { sk
   for (const [name, seed] of [
     ['global document missing', { ...seedBots() }],
     ['global off', { ...seedBots(), 'settings/overall': { botsEnabled: false } }],
+    ['global missing botsEnabled', { ...seedBots(), 'settings/overall': {} }],
     ['global string true', { ...seedBots(), 'settings/overall': { botsEnabled: 'true' } }],
+    ['global string false', { ...seedBots(), 'settings/overall': { botsEnabled: 'false' } }],
     ['global fake string', { ...seedBots(), 'settings/overall': { botsEnabled: 'fake' } }],
+    ['runner false', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: false, botIds: ['bot_01'] } }],
     ['runner string true', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'true', botIds: ['bot_01'] } }],
+    ['runner string false', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'false', botIds: ['bot_01'] } }],
     ['runner fake string', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'fake', botIds: ['bot_01'] } }],
     ['runner missing enabled', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { botIds: ['bot_01'] } }],
     ['bots inactive', { ...seedBots({ active: false }), 'settings/overall': { botsEnabled: true } }],
