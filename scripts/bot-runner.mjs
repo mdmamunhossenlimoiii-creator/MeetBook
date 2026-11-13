@@ -37,6 +37,10 @@ const DRY = process.env.DRY_RUN === '1';
 const MODE = process.env.BOT_RUNNER_MODE || 'all';
 const RUNNER_BOT_ID = process.env.BOT_RUNNER_BOT_ID || '';
 const CHAT_MAX_REPLIES = 1;
+const BOT_TO_BOT_MAX_TURNS = 2;
+const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID || `local_${process.pid}_${Date.now()}`)
+  .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
+const safeDocPart = (value) => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
 
 if (!['all', 'post', 'chat'].includes(MODE)) {
   console.error('BOT_RUNNER_MODE must be all, post, or chat.');
@@ -112,42 +116,68 @@ async function saveState(st) {
 // ------------------------------------------------------------ write helpers (all honour DRY_RUN)
 async function log(bot, kind, targetId, text) {
   if (DRY) return;
+  const id = `log_${RUN_ID}_${bot.id}_${kind}_${safeDocPart(targetId)}`;
   try {
-    await fs.create('botLogs', { botId: bot.id, botName: bot.name, kind, targetId: targetId || '', text: String(text || '').slice(0, 200), source: 'runner', createdAt: new Date() });
-  } catch (e) { console.warn('log failed:', e.message); }
+    await fs.create('botLogs', { botId: bot.id, botName: bot.name, kind, targetId: targetId || '', text: String(text || '').slice(0, 200), source: 'runner', createdAt: new Date() }, id);
+  } catch (e) {
+    if (!(await fs.get(`botLogs/${id}`))) console.warn('log failed:', e.message);
+  }
 }
 
-async function createPost(bot, text) {
+async function createPost(bot, text, id) {
   if (DRY) { console.log(`[dry] post as ${bot.name}: ${text}`); return 'dry'; }
-  return fs.create('posts', {
-    uid: bot.id, authorName: bot.name, text, image: '',
-    videoUrl: '', // bots never post video (rules enforce this too)
-    visibility: 'public', audience: [], groupId: null, sharedFrom: null,
-    reactions: {}, commentCount: 0, shareCount: 0, createdAt: new Date()
-  });
+  const docId = id || `post_${bot.id}_${RUN_ID}`;
+  try {
+    return await fs.create('posts', {
+      uid: bot.id, authorName: bot.name, text, image: '',
+      videoUrl: '', // bots never post video (rules enforce this too)
+      visibility: 'public', audience: [], groupId: null, sharedFrom: null,
+      reactions: {}, commentCount: 0, shareCount: 0, createdAt: new Date()
+    }, docId);
+  } catch (error) {
+    if (await fs.get(`posts/${docId}`)) {
+      console.log(`Duplicate post prevented for ${bot.name} (workflow ${RUN_ID}).`);
+      return null;
+    }
+    throw error;
+  }
 }
 
 async function createComment(bot, postId, text) {
-  if (DRY) { console.log(`[dry] comment as ${bot.name} on ${postId}: ${text}`); return; }
-  const post = await fs.get(`posts/${postId}`);
-  if (!post || !post.updateTime) throw new Error('Cannot safely count a bot comment: post updateTime is missing.');
-  // One atomic commit: create the deterministic bot comment and increment the parent counter.
-  // Firestore Rules require both writes and validate the comment through getAfter().
-  await fs.call(`${fs.base}:commit`, { method: 'POST', body: { writes: [
-    {
-      update: { name: `${fs.docs}/posts/${postId}/comments/${bot.id}`, fields: toFields({
-        uid: bot.id, authorName: bot.name, text, ai: true, createdAt: new Date()
-      }) },
-      currentDocument: { exists: false }
-    },
-    {
-      update: { name: `${fs.docs}/posts/${postId}`, fields: toFields({
-        commentCount: (Number(post.commentCount) || 0) + 1, lastBotCommentBy: bot.id
-      }) },
-      updateMask: { fieldPaths: ['commentCount', 'lastBotCommentBy'] },
-      currentDocument: { updateTime: post.updateTime }
+  if (DRY) { console.log(`[dry] comment as ${bot.name} on ${postId}: ${text}`); return true; }
+  const commentPath = `posts/${postId}/comments/${bot.id}`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (await fs.get(commentPath)) {
+      console.log(`Duplicate comment prevented for ${bot.name} on ${postId}.`);
+      return false;
     }
-  ] } });
+    const post = await fs.get(`posts/${postId}`);
+    if (!post || !post.updateTime) throw new Error('Cannot safely count a bot comment: post updateTime is missing.');
+    // One atomic commit: create the deterministic bot comment and increment the parent counter.
+    // Firestore Rules require both writes and validate the comment through getAfter().
+    try {
+      await fs.call(`${fs.base}:commit`, { method: 'POST', body: { writes: [
+        {
+          update: { name: `${fs.docs}/posts/${postId}/comments/${bot.id}`, fields: toFields({
+            uid: bot.id, authorName: bot.name, text, ai: true, createdAt: new Date()
+          }) },
+          currentDocument: { exists: false }
+        },
+        {
+          update: { name: `${fs.docs}/posts/${postId}`, fields: toFields({
+            commentCount: (Number(post.commentCount) || 0) + 1, lastBotCommentBy: bot.id
+          }) },
+          updateMask: { fieldPaths: ['commentCount', 'lastBotCommentBy'] },
+          currentDocument: { updateTime: post.updateTime }
+        }
+      ] } });
+      return true;
+    } catch (error) {
+      if (await fs.get(commentPath)) return false;
+      if (!/409|ABORTED|FAILED_PRECONDITION/i.test(String(error.message || error)) || attempt === 2) throw error;
+    }
+  }
+  return false;
 }
 
 async function react(bot, postId, type) {
@@ -159,9 +189,12 @@ async function react(bot, postId, type) {
 
 async function tell(bot, toUid, type, postId, extra) {
   if (DRY) return;
+  const id = `notice_${RUN_ID}_${bot.id}_${type}_${safeDocPart(postId)}_${safeDocPart(toUid)}`;
   try {
-    await fs.create('notifications', { to: toUid, type, from: bot.id, fromName: bot.name, postId, extra: extra || null, read: false, createdAt: new Date() });
-  } catch (e) { console.warn('notification failed:', e.message); }
+    await fs.create('notifications', { to: toUid, type, from: bot.id, fromName: bot.name, postId, extra: extra || null, read: false, createdAt: new Date() }, id);
+  } catch (e) {
+    if (!(await fs.get(`notifications/${id}`))) console.warn('notification failed:', e.message);
+  }
 }
 
 // ------------------------------------------------------------ bots + limits
@@ -195,7 +228,7 @@ const spend = (st, bot) => { st.daily.counts[bot.id] = usedToday(st, bot) + 1; }
 async function reserveBotAction(bot, kind = 'botDaily') {
   if (DRY) return true;
   return fs.reserveQuota(`botRateLimits/${bot.id}`, {
-    max: 12,
+    max: limitOf(bot),
     data: { botId: bot.id, kind }
   });
 }
@@ -245,7 +278,8 @@ async function main() {
     const pick = nextPostText(bot, st.used);
     if (!pick || !(await reserveBotAction(bot))) continue;
     const postText = DRY ? pick.text : await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
-    const id = await createPost(bot, postText);
+    const id = await createPost(bot, postText, `post_${bot.id}_${RUN_ID}`);
+    if (!id) continue;
     spend(st, bot); stats.posts++;
     await log(bot, 'post', id, pick.text);
     console.log(`Posted as ${bot.name} (${id}): ${pick.text.slice(0, 70)}`);
@@ -274,8 +308,13 @@ async function main() {
       if (post.groupId || post.hidden || post.commentsDisabled || post.sharedFrom) continue;
       if (post.createdAt && post.createdAt.getTime() < cutoff) continue;
       const fromBot = isBotId(post.uid);
-      if (st.engaged.includes(post.id)) continue;
+      if (!fromBot && st.engaged.includes(post.id)) continue;
       if (fromBot ? global.botToBotComments !== true : !(await optedIn(post.uid))) continue; // consent / default-off rules
+      if (fromBot) {
+        const existingComments = await fs.query({ from: [{ collectionId: 'comments' }], limit: 100 }, `posts/${post.id}`);
+        const botTurns = existingComments.filter((comment) => comment.ai === true && isBotId(comment.uid)).length;
+        if (botTurns >= BOT_TO_BOT_MAX_TURNS) continue;
+      }
       const ranked = shuffle(bots.filter((b) => b.id !== post.uid && b.autoComment === true && canAct(st, b) && !st.commented.includes(`${post.id}:${b.id}`)))
         .map((b) => ({ b, score: relevance(b, post.text) }))
         .filter((x) => x.score > 0 || (fromBot && Boolean(post.text)))
@@ -287,9 +326,10 @@ async function main() {
       if (!baseComment) continue;
       if (!(await reserveBotAction(bot))) continue;
       const c = { ...baseComment, text: DRY ? baseComment.text : await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
-      await createComment(bot, post.id, c.text);
+      const created = await createComment(bot, post.id, c.text);
+      if (!created) continue;
       spend(st, bot); stats.comments++; engaged++;
-      st.commented.push(`${post.id}:${bot.id}`); st.engaged.push(post.id);
+      st.commented.push(`${post.id}:${bot.id}`); st.engaged.push(fromBot ? `${post.id}:${bot.id}` : post.id);
       st.usedComments[bot.id] = [...usedTexts, normalize(c.text)].slice(-60);
       await log(bot, 'comment', post.id, c.text);
       if (!fromBot) await tell(bot, post.uid, 'comment', post.id);
@@ -319,9 +359,18 @@ async function main() {
     const bot = botMap.get(m.botId);
     const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
     if (!bot || bot.active !== true || bot.chatEnabled !== true) { await mark('chat-disabled'); continue; }
-    if (!(await reserveBotAction(bot)) || !(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
     const chat = await fs.get(`chats/${m.chatId}`);
     if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) { await mark('no-chat'); continue; }
+    const replyMessageId = `reply_${safeDocPart(bot.id)}_${safeDocPart(m.id)}`;
+    const replyPath = `chats/${m.chatId}/messages/${replyMessageId}`;
+    const previousReply = DRY ? null : await fs.get(replyPath);
+    if (previousReply) {
+      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: previousReply.text, uid: bot.id }, lastAt: new Date() });
+      await mark();
+      console.log(`Existing reply recovered for ${bot.name}; duplicate reply prevented.`);
+      continue;
+    }
+    if (!(await reserveBotAction(bot)) || !(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
     const hist = (await fs.query({
       from: [{ collectionId: 'messages' }],
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
@@ -340,14 +389,21 @@ async function main() {
     });
     if (DRY) console.log(`[dry] chat reply prepared as ${bot.name} (${reply.intent}); private text and Gemini calls suppressed.`);
     else {
-      await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() });
-      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: replyText, uid: bot.id }, lastAt: new Date() });
+      let storedReplyText = replyText;
+      try {
+        await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() }, replyMessageId);
+      } catch (error) {
+        const existing = await fs.get(replyPath);
+        if (!existing) throw error;
+        storedReplyText = existing.text;
+      }
+      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: storedReplyText, uid: bot.id }, lastAt: new Date() });
       // Persist only a bounded, non-sensitive summary after an explicit user opt-in.
       // Other bots/users cannot read this document; the raw transcript is never copied here.
       if (memoryEnabled && process.env.GEMINI_API_KEY && ['bot_01', 'bot_02', 'bot_03'].includes(bot.id)) {
         const summary = await updateSmartBotMemory({
           bot, existingSummary: savedMemory?.summary || '',
-          messages: [...hist, { uid: bot.id, text: replyText }]
+          messages: [...hist, { uid: bot.id, text: storedReplyText }]
         });
         if (summary || savedMemory) {
           const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
