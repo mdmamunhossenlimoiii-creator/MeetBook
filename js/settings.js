@@ -88,7 +88,7 @@ export async function render(view) {
         updatedAt: serverTimestamp()
       }, { merge: true });
       // Turning memory off revokes Runner access and deletes the user's stored summaries.
-      if (s.allowBotMemory === true && next.allowBotMemory === false) {
+      if (next.allowBotMemory === false) {
         const memories = await getDocs(query(collection(db, 'botMemories'), where('ownerUid', '==', state.user.uid)));
         memories.docs.forEach((memory) => batch.delete(memory.ref));
       }
