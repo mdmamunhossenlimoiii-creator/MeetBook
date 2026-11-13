@@ -122,8 +122,9 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     const db = isolated.authenticatedContext('inactiveRunner').firestore();
     await denied(getDoc(doc(db, 'chats/bot_02_u2')),
       'inactive assigned bot must not authorize private-chat access');
-    await denied(updateDoc(doc(db, 'posts/p2'), { 'reactions.bot_02': 'love' }),
-      'inactive assigned bot must not authorize a reaction');
+    await denied(setDoc(doc(db, 'posts/p2/comments/new'), {
+      uid: 'bot_02', ai: true, text: 'hello', createdAt: serverTimestamp()
+    }), 'inactive assigned bot must not publish a comment');
   });
 
   await isolatedRunnerCase('demo-meetbook-global-stop', {
