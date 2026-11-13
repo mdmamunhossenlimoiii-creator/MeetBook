@@ -107,15 +107,22 @@ export function createClient({ projectId, fsUrl = 'https://firestore.googleapis.
         if (!transaction) throw new Error('Firestore did not create a quota transaction.');
         const current = await call(`${base}/${path}?transaction=${encodeURIComponent(transaction)}`, { allow404: true });
         const old = current && current.fields ? fromFields(current.fields) : null;
-        const count = old && Number.isInteger(old.count) ? old.count : 0;
         const now = Date.now();
         const lastAt = old && old.lastAt instanceof Date ? old.lastAt.getTime() : 0;
+        const windowAt = old && old.windowStartedAt instanceof Date ? old.windowStartedAt.getTime() : 0;
+        const expired = !old || now - windowAt >= 86_400_000;
+        const count = expired ? 0 : (old && Number.isInteger(old.count) ? old.count : 0);
         if (count >= max || (cooldownMs > 0 && now - lastAt < cooldownMs)) {
           // Abort the read-only transaction explicitly.
           await call(`${base}:rollback`, { method: 'POST', body: { transaction } }).catch(() => {});
           return false;
         }
-        const next = { ...data, count: count + 1, lastAt: new Date(Math.max(now, lastAt + 1)) };
+        const next = {
+          ...data,
+          count: count + 1,
+          windowStartedAt: expired ? new Date(now) : old.windowStartedAt,
+          lastAt: new Date(Math.max(now, lastAt + 1))
+        };
         const update = { name: `${docs}/${path}`, fields: toFields(next) };
         const write = {
           update,
