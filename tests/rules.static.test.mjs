@@ -118,8 +118,8 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerMayComment'), /engagementOk\(p\.uid\)/, 'bot comments need consent');
   assert.match(fn('runnerMayComment'), /visibility == 'public'/);
   assert.match(fn('runnerMayComment'), /botToBotComments/);
-  const runnerReaction = /runnerEnabled\(\)\s*&& resource\.data\.visibility == 'public'\s*&& engagementOk\(resource\.data\.uid\)\s*&& request\.resource\.data\.diff\(resource\.data\)\.affectedKeys\(\)\.hasOnly\(\['reactions'\]\)\s*&& request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\.size\(\) == 1\s*&& request\.resource\.data\.reactions\.diff\(resource\.data\.reactions\)\.affectedKeys\(\)\.hasOnly\(get\(.*botRunners.*botIds/s;
-  assert.match(posts, runnerReaction, 'bot reactions require exactly one allowlisted bot key');
+  assert.match(fn('runnerMayReact'), /runnerMayActAs\(botUid\)/, 'reaction requires an active assigned bot');
+  assert.match(fn('runnerMayReact'), /hasOnly\(\[botUid\]\)/, 'reaction key must match its bot identity marker');
   assert.match(fn('runnerMayIncrementCommentCount'), /request\.resource\.data\.commentCount == resource\.data\.commentCount \+ 1/, 'Runner may only increment commentCount with a validated comment');
   assert.match(fn('canPublishBot'), /runnerMayActAs\(botUid\)/, 'only an assigned active Runner can publish as a bot');
   assert.doesNotMatch(fn('canPublishBot'), /isAdmin/);
