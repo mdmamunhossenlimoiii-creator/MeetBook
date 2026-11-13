@@ -15,7 +15,7 @@
 - The 12/day, 15/day, and 60-second limits are runner-side defense-in-depth. They are not an atomic server-side quota system; a transactional rate limiter remains a release blocker before enabling automation for real users.
 - `profileVisibility` currently means “who can see my posts on my profile page” in the app UI. It does not hide profile metadata from signed-in users, and it does not hide public posts from feeds. The Settings screen already discloses this. A stronger private-profile feature needs a separate data-model and query migration; changing the user-document read rule alone would break existing feed/profile lookups.
 - Firestore Admin SDK / service-account operations bypass Firestore Rules. Any future service account must remain least-privilege and be reviewed separately.
-- The archived Bot Runner workflows remain disabled. No secrets, Firebase production rules, project settings, or live data were changed.
+- The Admin bot panel is limited to bot creation/configuration, enable/disable, deletion and activity review; manual post/comment-as-bot controls were removed. The archived Bot Runner workflows remain disabled. No secrets, Firebase production rules, project settings, or live data were changed.
 
 ## Required verification before release
 
