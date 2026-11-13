@@ -42,6 +42,8 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
     'settings/global': { botsEnabled: true, botToBotComments: false },
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
     'users/u2': { name: 'Sam', banned: false, settings: { allowBotEngagement: false } },
+    'botEngagement/u1': { allowBotEngagement: true },
+    'botEngagement/u2': { allowBotEngagement: false },
     'posts/p1': post('u1', "Went to Cox's Bazar with friends, the sea was amazing! Best trip ever."),
     'posts/p2': post('u2', 'Lovely travel photo from my trip to the beach'),
     'posts/p3': post('u1', 'My grandfather passed away today'),
