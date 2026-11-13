@@ -10,7 +10,7 @@
 //  1. Global switch  settings/global.botsEnabled (default on). Off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
-//                    Settings -> "Allow AI bots to react and comment" (users/{uid}.settings.allowBotEngagement).
+//                    Settings -> "Allow AI bots to react and comment" (botEngagement/{uid}.allowBotEngagement only).
 //                    At most one bot per post, a relevant comment + a reaction, always shown as AI.
 //  4. Bot-to-bot comments: only if settings/global.botToBotComments is on (default OFF, to avoid
 //                    staged conversations that look like real popularity).
@@ -209,8 +209,8 @@ async function main() {
     const authorOk = new Map();
     const optedIn = async (uid) => {
       if (!authorOk.has(uid)) {
-        const u = await fs.get(`users/${uid}`);
-        authorOk.set(uid, !!(u && !u.banned && u.settings && u.settings.allowBotEngagement === true));
+        const consent = await fs.get(`botEngagement/${uid}`);
+        authorOk.set(uid, !!(consent && consent.allowBotEngagement === true));
       }
       return authorOk.get(uid);
     };
