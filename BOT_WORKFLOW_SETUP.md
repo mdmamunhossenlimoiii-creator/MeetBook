@@ -38,7 +38,7 @@ It does not use MySocial credentials or a second Firebase project.
    ```
    Keep `enabled=false` during setup. The document is owner-created; Firestore Rules deny client writes to it.
 4. Verify that only the first three bot profiles exist and are correctly identified as bots. Keep bots 04–23 inactive and outside the runner allowlist.
-5. Keep `settings/global.botsEnabled=false` and `botToBotComments=false` until the release checklist is complete.
+5. Keep `settings/overall.botsEnabled=false` and `botToBotComments=false` until the release checklist is complete.
 6. Do not create or edit any user consent documents on behalf of users. Users must opt in themselves.
 
 ## Controlled test order
