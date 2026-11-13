@@ -299,7 +299,7 @@ async function main() {
           bot, existingSummary: savedMemory?.summary || '',
           messages: [...hist, { uid: bot.id, text: replyText }]
         });
-        if (summary) {
+        if (summary || savedMemory) {
           const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
           if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
           else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
