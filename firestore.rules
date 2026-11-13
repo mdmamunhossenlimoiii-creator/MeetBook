@@ -101,6 +101,13 @@ service cloud.firestore {
     function pairId(a, b) {
       return a < b ? a + '_' + b : b + '_' + a;
     }
+    function isFriend(uid) {
+      return signedIn() && exists(/databases/$(database)/documents/friendships/$(pairId(request.auth.uid, uid)));
+    }
+    function botMemoryConsent(uid) {
+      return exists(/databases/$(database)/documents/botEngagement/$(uid))
+        && get(/databases/$(database)/documents/botEngagement/$(uid)).data.get('allowBotMemory', false) == true;
+    }
 
     // Enforce the recipient's private-message preference in Firestore, not only in the UI.
     function canSendPrivateMessage(chat) {
@@ -173,7 +180,8 @@ service cloud.firestore {
         && s.get('profileVisibility', 'everyone') in ['everyone', 'friends']
         && s.get('allowMessages', 'everyone') in ['everyone', 'friends']
         && s.get('defaultVisibility', 'public') in ['public', 'friends', 'me']
-        && s.get('allowBotEngagement', false) is bool;
+        && s.get('allowBotEngagement', false) is bool
+        && s.get('allowBotMemory', false) is bool;
     }
 
     // ---------- staff ----------
@@ -361,6 +369,39 @@ service cloud.firestore {
     }
 
     // A user's message to a bot is mirrored here so the scheduled job can answer it.
+ 
+    // Per-user, per-bot long-term memory. Only a short summary is persisted; raw transcripts are not.
+    // The Runner can access one exact record only while the owner has explicitly opted in.
+    match /botMemories/{memoryId} {
+      function validMemory(d) {
+        return d.keys().hasOnly(['ownerUid', 'botId', 'chatId', 'summary', 'createdAt', 'updatedAt'])
+          && d.ownerUid is string
+          && d.botId in botIds()
+          && memoryId == d.botId + '_' + d.ownerUid
+          && d.chatId == pairId(d.ownerUid, d.botId)
+          && d.summary is string && d.summary.size() <= 1200
+          && d.createdAt is timestamp && d.updatedAt is timestamp
+          && exists(/databases/$(database)/documents/chats/$(d.chatId))
+          && get(/databases/$(database)/documents/chats/$(d.chatId)).data.type == 'private'
+          && get(/databases/$(database)/documents/chats/$(d.chatId)).data.members.hasAll([d.ownerUid, d.botId]);
+      }
+      allow get: if signedIn()
+        && (isOwner(resource.data.ownerUid) || isStaff()
+          || (runnerHasBot(resource.data.botId) && botMemoryConsent(resource.data.ownerUid)));
+      allow list: if signedIn() && (isOwner(resource.data.ownerUid) || isStaff());
+      allow create: if runnerHasBot(request.resource.data.botId)
+        && botMemoryConsent(request.resource.data.ownerUid)
+        && validMemory(request.resource.data);
+      allow update: if runnerHasBot(resource.data.botId)
+        && botMemoryConsent(resource.data.ownerUid)
+        && resource.data.ownerUid == request.resource.data.ownerUid
+        && resource.data.botId == request.resource.data.botId
+        && resource.data.chatId == request.resource.data.chatId
+        && request.resource.data.createdAt == resource.data.createdAt
+        && validMemory(request.resource.data);
+      allow delete: if isOwner(resource.data.ownerUid) || isAdmin();
+    }
+
     match /botInbox/{id} {
       function inboxQuotaOk() {
         let quotaPath = /databases/$(database)/documents/botInboxRateLimits/$(request.auth.uid)/bots/$(request.resource.data.botId);
@@ -428,17 +469,36 @@ service cloud.firestore {
           && d.profileVisibility in ['everyone', 'friends']
           && d.createdAt is timestamp;
       }
-      allow read: if signedIn();
+      // Detailed profile metadata is private unless the owner chose everyone or the viewer is a friend.
+      // Bot profiles remain public. Firestore Rules enforce this even for direct SDK/API reads.
+      allow read: if signedIn()
+        && (isOwner(uid) || isStaff() || resource.data.get('isBot', false) == true
+          || resource.data.get('profileVisibility', 'everyone') == 'everyone'
+          || isFriend(uid));
       allow create, update: if (isOwner(uid) || isAdmin()) && validPublicProfile(request.resource.data);
       allow delete: if isOwner(uid) || isAdmin();
     }
 
-    // Minimal consent projection: the Runner can read only this boolean, not full user documents.
+    // Minimal discoverability projection. No bio, cover, private settings, or full profile fields.
+    match /publicDirectory/{uid} {
+      function validDirectory(d) {
+        return d.keys().hasOnly(['name', 'nameLower', 'isBot', 'roleEmoji', 'verified'])
+          && d.name is string && d.name.size() >= 2 && d.name.size() <= 60
+          && d.nameLower is string && d.isBot is bool
+          && d.roleEmoji is string && d.verified is bool;
+      }
+      allow read: if signedIn();
+      allow create, update: if (isOwner(uid) || isAdmin()) && validDirectory(request.resource.data);
+      allow delete: if isOwner(uid) || isAdmin();
+    }
+
+    // Minimal consent projection: the Runner can read only these explicit booleans, not user documents.
     match /botEngagement/{uid} {
       allow read: if isOwner(uid) || isStaff() || runnerEnabled();
       allow create, update: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['allowBotEngagement', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['allowBotEngagement', 'allowBotMemory', 'updatedAt'])
         && request.resource.data.allowBotEngagement is bool
+        && request.resource.data.get('allowBotMemory', false) is bool
         && request.resource.data.updatedAt == request.time;
       allow delete: if false;
     }
