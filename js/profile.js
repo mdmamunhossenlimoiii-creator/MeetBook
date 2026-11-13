@@ -1,6 +1,6 @@
 // Profile page: header, relationship buttons, posts tab, about, edit profile.
 import {
-  db, doc, getDoc, updateDoc, collection, query, where, orderBy, limit, getCountFromServer, updateProfile
+  db, doc, getDoc, writeBatch, collection, query, where, orderBy, limit, getCountFromServer, updateProfile
 } from './firebase.js';
 import { state, subscribe, onCleanup } from './state.js';
 import {
@@ -37,11 +37,11 @@ function actionButtons(uid, rel) {
 export async function render(view, uid) {
   const me = state.user.uid;
   const isMe = uid === me;
-  const snap = await getDoc(doc(db, 'users', uid));
+  const snap = await getDoc(doc(db, 'publicProfiles', uid));
   if (!snap.exists()) { view.innerHTML = emptyState('Profile not found'); return; }
   const u = { uid, ...snap.data() };
   const rel = isMe ? 'me' : u.isBot ? 'bot' : await relationship(uid);
-  const visibleToMe = isMe || (u.settings?.profileVisibility || 'everyone') === 'everyone' || rel === 'friends' || state.isAdmin;
+  const visibleToMe = isMe || (u.profileVisibility || 'everyone') === 'everyone' || rel === 'friends' || state.isAdmin;
 
   const [followers, following] = await Promise.all([
     getCountFromServer(query(collection(db, 'follows'), where('followed', '==', uid))).then((s) => s.data().count).catch(() => 0),
@@ -175,7 +175,12 @@ function openEdit(u, done) {
     try {
       const photoUrl = photo.startsWith('data:') ? await uploadImageToCloudinary(photo) : photo;
       const coverUrl = cover.startsWith('data:') ? await uploadImageToCloudinary(cover) : cover;
-      await updateDoc(doc(db, 'users', state.user.uid), { name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl });
+      const batch = writeBatch(db);
+      batch.update(doc(db, 'users', state.user.uid), { name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl });
+      batch.set(doc(db, 'publicProfiles', state.user.uid), {
+        name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl
+      }, { merge: true });
+      await batch.commit();
       try { await updateProfile(state.user, { displayName: name }); } catch { /* not critical */ }
       invalidateUser(state.user.uid);
       closeModal();
