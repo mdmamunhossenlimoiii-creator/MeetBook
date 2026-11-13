@@ -95,3 +95,19 @@ test('bot workflows are manual-only, default to dry-run, and require an explicit
   assert.match(chatWorkflow, /BOT_RUNNER_MODE: chat/);
   assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
 });
+
+
+test('Admin, Runner, and Firestore Rules treat missing bot switches as OFF', () => {
+  assert.match(adminBots, /const botsOn = site\.botsEnabled === true/);
+  assert.match(adminBots, /const next = site\.botsEnabled !== true/);
+  assert.match(adminBots, /b\[k\] === true \? 'on' : 'off'/);
+  assert.match(adminBots, /v\[k\] === true \? 'checked' : ''/);
+  assert.match(runner, /bot\.active === true/);
+  assert.match(runner, /b\.autoPost === true/);
+  assert.match(runner, /b\.autoComment === true/);
+  assert.match(runner, /b\.autoReaction === true/);
+  assert.match(runner, /b\.chatEnabled === true/);
+  assert.match(runner, /Activation blocked: settings\/global document is missing/);
+  assert.match(rules, /bot\.get\('active', false\) == true/);
+  assert.match(rules, /get\('chatEnabled', false\) == true/);
+});

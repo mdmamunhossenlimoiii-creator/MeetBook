@@ -16,7 +16,7 @@ export async function render(body) {
     try {
       [bots, site] = await Promise.all([listBots(), getDoc(doc(db, 'settings', 'global')).then((s) => (s.exists() ? s.data() : {}))]);
     } catch (e) { body.innerHTML = errorBox(e); return; }
-    const botsOn = site.botsEnabled !== false;
+    const botsOn = site.botsEnabled === true;
     body.innerHTML = `<h2 class="page-title">AI Bots</h2>
     <section class="card pad">
       <div class="row between wrap gap"><div><h3>Global switch: ${botsOn ? tagHtml('ON') : tagHtml('OFF', 'danger')}</h3>
@@ -30,7 +30,7 @@ export async function render(body) {
     <div data-cards>${bots.length ? bots.map((b) => `<div class="card pad bot-card" data-id="${esc(b.id)}"><div class="row gap wrap">
       ${avatarHtml(b.name, b.photo, 48)}<div class="grow"><b>${esc(b.name)}</b>${botBadge(b)} <span class="muted small">@${esc(b.username || b.id)} · ${esc(b.id)}</span>
         <div class="small">${esc(PERSONALITIES[b.personality]?.label || b.personality || '—')} · ${esc(LANGUAGES[b.lang] || 'Both')} · limit ${b.dailyLimit ?? 6}/day</div>
-        <div class="small">${b.active === false ? tagHtml('Inactive', 'danger') : tagHtml('Active')} ${[['autoPost', 'Posts'], ['autoComment', 'Comments'], ['autoReaction', 'Reactions'], ['chatEnabled', 'Chat']].map(([k, l]) => tagHtml(`${l} ${b[k] === false ? 'off' : 'on'}`, b[k] === false ? 'danger' : '')).join(' ')}</div></div>
+        <div class="small">${b.active === true ? tagHtml('Active') : tagHtml('Inactive', 'danger')} ${[['autoPost', 'Posts'], ['autoComment', 'Comments'], ['autoReaction', 'Reactions'], ['chatEnabled', 'Chat']].map(([k, l]) => tagHtml(`${l} ${b[k] === true ? 'on' : 'off'}`, b[k] === true ? '' : 'danger')).join(' ')}</div></div>
       <div class="row gap wrap"><button class="btn" data-do="logs">Activity</button><button class="btn btn-primary" data-do="edit">Edit</button></div></div></div>`).join('') : emptyState('No bots yet', 'Use "Create missing built-in bots" to start.')}</div>
     <section class="card pad"><h3>Latest bot activity (all bots)</h3><div data-log>${loading()}</div></section>`;
     loadLogs();
@@ -51,7 +51,7 @@ export async function render(body) {
     const bot = card && bots.find((x) => x.id === card.dataset.id);
     switch (b.dataset.do) {
       case 'global': {
-        const next = site.botsEnabled === false;
+        const next = site.botsEnabled !== true;
         if (await act(b, () => setDoc(doc(db, 'settings', 'global'), { botsEnabled: next, updatedBy: state.user.uid, updatedAt: serverTimestamp() }, { merge: true }), { ok: next ? 'Bots are ON' : 'Bots are OFF', log: ['bots global switch', 'settings/global', next ? 'on' : 'off'] })) draw();
         break;
       }
@@ -79,7 +79,7 @@ export async function render(body) {
   function editBot(bot) {
     const isNew = !bot;
     const v = bot || { name: '', username: '', bio: '', roleEmoji: '✨', personality: 'friendly', lang: 'both', interests: [], dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
-    const tog = (k, label) => `<label class="row gap small"><input type="checkbox" data-k="${k}" ${v[k] === false ? '' : 'checked'}> ${label}</label>`;
+    const tog = (k, label) => `<label class="row gap small"><input type="checkbox" data-k="${k}" ${v[k] === true ? 'checked' : ''}> ${label}</label>`;
     const m = modal(`<h3>${isNew ? 'New AI bot' : `Edit ${esc(v.name)}`}</h3>
       <div class="field"><label for="b-name">Name</label><input id="b-name" maxlength="60" value="${esc(v.name)}"></div>
       <div class="field"><label for="b-user">Username</label><input id="b-user" maxlength="30" value="${esc(v.username || '')}" placeholder="e.g. travel_buddy"></div>

@@ -187,7 +187,7 @@ async function loadBots() {
 }
 const limitOf = (bot) => Math.min(12, Math.max(0, Number.isFinite(bot.dailyLimit) ? bot.dailyLimit : 6));
 const usedToday = (st, bot) => st.daily.counts[bot.id] || 0;
-const canAct = (st, bot) => bot.active !== false && usedToday(st, bot) < limitOf(bot);
+const canAct = (st, bot) => bot.active === true && usedToday(st, bot) < limitOf(bot);
 const spend = (st, bot) => { st.daily.counts[bot.id] = usedToday(st, bot) + 1; };
 
 // Durable quota reservations are enforced by Firestore Rules and serialized by REST transactions.
@@ -216,18 +216,24 @@ async function main() {
   if (!process.env.GEMINI_API_KEY) console.log('GEMINI_API_KEY is missing; the first three bots will use their safe template fallback.');
 
   await signIn();
-  const global = (await fs.get('settings/global')) || {};
-  if (global.botsEnabled !== true) { console.log('Bots are OFF or not explicitly enabled. Nothing to do.'); return; }
+  console.log(`Activation check: DRY_RUN=${DRY ? '1 (no writes)' : '0 (live writes)'}, mode=${MODE}, project=${firebaseConfig.projectId}.`);
+  const global = await fs.get('settings/global');
+  if (!global) { console.error('Activation blocked: settings/global document is missing.'); return; }
+  if (global.botsEnabled !== true) { console.error(`Activation blocked: settings/global.botsEnabled is ${String(global.botsEnabled)}; expected boolean true.`); return; }
   const runner = await fs.get(`botRunners/${runnerUid}`);
-  if (!runner || runner.enabled !== true || !Array.isArray(runner.botIds) || runner.botIds.length === 0) {
-    console.log('This runner is disabled or has no explicit botIds allowlist. Nothing to do.');
-    return;
-  }
+  if (!runner) { console.error('Activation blocked: botRunners registration document is missing for the authenticated runner.'); return; }
+  if (runner.enabled !== true) { console.error(`Activation blocked: botRunners/{runnerUid}.enabled is ${String(runner.enabled)}; expected boolean true.`); return; }
+  if (!Array.isArray(runner.botIds) || runner.botIds.length === 0) { console.error('Activation blocked: runner botIds allowlist is missing, invalid, or empty.'); return; }
 
   const allowedBotIds = new Set(runner.botIds.filter((id) => isBotId(id)));
+  if (allowedBotIds.size === 0) { console.error('Activation blocked: runner allowlist contains no valid MeetBook bot IDs.'); return; }
+  console.log(`Activation gates passed: global switch ON; runner enabled; ${allowedBotIds.size} valid bot ID(s) allowlisted.`);
   const bots = (await loadBots()).filter((bot) => allowedBotIds.has(bot.id)
     && (!RUNNER_BOT_ID || bot.id === RUNNER_BOT_ID));
-  if (!bots.length) { console.log('No assigned bot profiles found for this runner. Nothing to do.'); return; }
+  if (!bots.length) { console.error(`Activation passed, but no bot profile matched the allowlist${RUNNER_BOT_ID ? ` and selected bot ${RUNNER_BOT_ID}` : ''}. Check users/{botId}.isBot and runner.botIds.`); return; }
+  const eligible = bots.filter((bot) => bot.active === true);
+  console.log(`Loaded ${bots.length} assigned bot profile(s); ${eligible.length} have active === true.`);
+  if (!eligible.length) { console.error('No assigned bot is explicitly active. Set users/{botId}.active=true in the Admin panel.'); return; }
   const botMap = new Map(bots.map((b) => [b.id, b]));
   const st = await loadState();
   const stats = { posts: 0, comments: 0, reactions: 0, chats: 0 };
@@ -235,7 +241,7 @@ async function main() {
   // Mode isolation: post mode never processes engagement or private chats; chat mode never posts/comments/reacts.
   if (MODE !== 'chat') {
   // 2. auto posts
-  for (const bot of shuffle(bots.filter((b) => b.autoPost !== false && canAct(st, b))).slice(0, nPosts)) {
+  for (const bot of shuffle(bots.filter((b) => b.autoPost === true && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
     if (!pick || !(await reserveBotAction(bot))) continue;
     const postText = DRY ? pick.text : await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
@@ -270,7 +276,7 @@ async function main() {
       const fromBot = isBotId(post.uid);
       if (st.engaged.includes(post.id)) continue;
       if (fromBot ? global.botToBotComments !== true : !(await optedIn(post.uid))) continue; // consent / default-off rules
-      const ranked = shuffle(bots.filter((b) => b.id !== post.uid && b.autoComment !== false && canAct(st, b) && !st.commented.includes(`${post.id}:${b.id}`)))
+      const ranked = shuffle(bots.filter((b) => b.id !== post.uid && b.autoComment === true && canAct(st, b) && !st.commented.includes(`${post.id}:${b.id}`)))
         .map((b) => ({ b, score: relevance(b, post.text) }))
         .filter((x) => x.score > 0 || (fromBot && Boolean(post.text)))
         .sort((a, c) => c.score - a.score);
@@ -288,7 +294,7 @@ async function main() {
       await log(bot, 'comment', post.id, c.text);
       if (!fromBot) await tell(bot, post.uid, 'comment', post.id);
       console.log(`Commented as ${bot.name} on post ${post.id} (${c.topic}/${c.lang}): ${c.text.slice(0, 60)}`);
-      if (bot.autoReaction !== false && canAct(st, bot)) {
+      if (bot.autoReaction === true && canAct(st, bot)) {
         const r = pickReaction({ bot, post });
         if (r && await reserveBotAction(bot)) {
           await react(bot, post.id, r);
@@ -303,7 +309,7 @@ async function main() {
   }
   if (MODE !== 'post') {
   // 5. chat replies
-  const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled !== false).map((bot) =>
+  const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled === true).map((bot) =>
     fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
   ));
   const inbox = inboxByBot.flat()
@@ -312,7 +318,7 @@ async function main() {
   for (const m of inbox) {
     const bot = botMap.get(m.botId);
     const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
-    if (!bot || bot.active === false || bot.chatEnabled === false) { await mark('chat-disabled'); continue; }
+    if (!bot || bot.active !== true || bot.chatEnabled !== true) { await mark('chat-disabled'); continue; }
     if (!(await reserveBotAction(bot)) || !(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
     const chat = await fs.get(`chats/${m.chatId}`);
     if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) { await mark('no-chat'); continue; }

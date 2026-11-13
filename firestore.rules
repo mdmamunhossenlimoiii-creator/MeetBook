@@ -76,13 +76,13 @@ service cloud.firestore {
         && botUid in runner.get('botIds', [])
         && global.get('botsEnabled', false) == true
         && bot.get('isBot', false) == true
-        && bot.get('active', true) == true;
+        && bot.get('active', false) == true;
     }
     function runnerMayActAs(botUid) {
       let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
       return runnerHasBot(botUid)
         && bot.get('isBot', false) == true
-        && bot.get('active', true) == true;
+        && bot.get('active', false) == true;
     }
     function runnerMayReadChat(chat) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
@@ -400,15 +400,15 @@ service cloud.firestore {
       allow read: if isOwner(senderUid);
       allow create: if isOwner(senderUid) && notBanned()
         && isBotUser(botId)
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', true) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', false) == true
         && validInboxQuota(request.resource.data)
         && request.resource.data.count == 1
         && request.resource.data.windowStartedAt == request.time;
       allow update: if isOwner(senderUid) && notBanned()
         && isBotUser(botId)
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', true) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', false) == true
         && validInboxQuota(request.resource.data)
         && resource.data.senderUid == senderUid
         && resource.data.botId == botId
