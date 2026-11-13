@@ -2,7 +2,7 @@
 
 MeetBook is an independent social platform built from the existing application code in this repository. Its Firebase project, authentication, Firestore data, administrator identities, GitHub Actions configuration, backups, and GitHub Pages identity must be separate from MySocial.
 
-**Important:** The repository is being prepared for the owner's own Firebase project. The Firebase web configuration intentionally contains empty placeholders. MeetBook is not production-connected or published merely because this repository contains the application code.
+**Important:** The current branch contains public Firebase Web App configuration for the MeetBook project `meetbook-65d30`. This client configuration is not a service-account secret, but the owner must verify that it is the intended independent MeetBook project before any live use. MeetBook is not production-ready or published merely because this repository contains the application code.
 
 ## Platform separation rules
 
@@ -11,7 +11,7 @@ MeetBook is an independent social platform built from the existing application c
 - Never reuse MySocial Firebase project IDs, credentials, user accounts, administrator identities, backup files, or backup secrets.
 - The owner performs all Firebase Console operations. Repository code and documentation are prepared here; the agent must not log in to or deploy Firebase.
 - Never publish the site, deploy Firebase rules, run a production backup/restore, or activate bot automation without explicit authorization.
-- AI bot implementation is out of scope. Existing bot code is retained but its scheduled workflows are disabled.
+- AI bot implementation is present, including separate bot identities and a server-side Gemini adapter for the first three bots. Bot Runner and Bot Chat workflows remain archived/disabled; no live bot activity is authorized by code or CI.
 
 ## Existing application features
 
@@ -40,7 +40,7 @@ Feature presence in source code is not proof of production readiness. See [FEATU
 3. Enable the sign-in providers you intend to support (Email/Password and, optionally, Google).
 4. Create the MeetBook Firestore database in Production mode.
 5. Add the GitHub Pages domain to Authentication's authorized domains after Pages is configured.
-6. Copy the new Web App configuration into `js/firebase-config.js`. The file currently contains empty placeholders.
+6. Verify that `js/firebase-config.js` points only to the intended MeetBook Web App (`meetbook-65d30` in the current branch); replace it with the owner's newly created MeetBook Web App configuration if that project is not the approved target.
 7. Review and publish `firestore.rules` and `firestore.indexes.json) yourself from the Firebase Console or Firebase CLI after confirming the target project ID.
 8. Configure the Super Admin using the instructions in [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
 9. Configure GitHub Actions secrets only after checking that each credential belongs to the new MeetBook project.

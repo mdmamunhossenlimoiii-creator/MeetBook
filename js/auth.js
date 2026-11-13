@@ -1,6 +1,6 @@
 // Sign in / sign up / password reset screens and profile bootstrap.
 import {
-  auth, db, doc, getDoc, setDoc, serverTimestamp,
+  auth, db, doc, getDoc, setDoc, writeBatch, serverTimestamp,
   createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail,
   updateProfile, GoogleAuthProvider, signInWithPopup
 } from './firebase.js';
@@ -42,13 +42,15 @@ function publicProfileData(data) {
 }
 
 async function ensureProfileProjections(uid, data) {
-  await Promise.all([
-    setDoc(doc(db, 'publicProfiles', uid), publicProfileData(data), { merge: true }),
-    setDoc(doc(db, 'botEngagement', uid), {
-      allowBotEngagement: data.settings?.allowBotEngagement === true,
-      updatedAt: serverTimestamp()
-    }, { merge: true })
-  ]);
+  // Keep the public profile and minimal bot-consent projection in one atomic write.
+  // The Runner must never read the full users/{uid} document.
+  const batch = writeBatch(db);
+  batch.set(doc(db, 'publicProfiles', uid), publicProfileData(data), { merge: true });
+  batch.set(doc(db, 'botEngagement', uid), {
+    allowBotEngagement: data.settings?.allowBotEngagement === true,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  await batch.commit();
 }
 
 async function createProfileIfMissing(user, fallbackName) {
