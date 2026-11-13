@@ -151,7 +151,7 @@ cap('Users', 'Suspend another staff member', 'update', 'users/adm2', { suspended
 cap('Users', 'Edit another staff member\'s bio', 'update', 'users/adm2', { bio: 'x' }, ['super']);
 cap('Users', 'Edit an AI bot profile', 'update', 'users/bot_01', { bio: 'I am an AI bot. New text.' }, ADM);
 cap('Users', 'Turn an AI bot into a normal user', 'update', 'users/bot_01', { isBot: false }, []);
-cap('Users', 'Create an AI bot profile', 'create', 'users/bot_05', { name: 'Bot Five', nameLower: 'bot five', bio: 'I am an AI bot.', banned: false, isBot: true }, ADM);
+cap('Users', 'Create an AI bot profile', 'create', 'users/bot_06', { name: 'Bot Six', nameLower: 'bot five', bio: 'I am an AI bot.', banned: false, isBot: true }, ADM);
 cap('Users', 'Create a non-bot profile for someone else', 'create', 'users/u7', { name: 'Seven', bio: '', banned: false }, []);
 cap('Users', 'Delete an AI bot profile', 'delete', 'users/bot_01', null, ADM);
 cap('Users', 'Delete a normal user profile from the client', 'delete', 'users/u2', null, []);
