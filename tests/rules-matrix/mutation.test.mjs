@@ -49,6 +49,7 @@ const MUTATIONS = [
   ['bot comments bypass autoComment switch', "return runnerMayActAs(botUid) && bot.get('autoComment', false) == true;", "return runnerMayActAs(botUid);"],
   ['bot reactions bypass autoReaction switch', "return runnerMayActAs(botUid) && bot.get('autoReaction', false) == true;", "return runnerMayActAs(botUid);"],
   ['bot chats bypass chatEnabled switch', "return runnerMayActAs(botUid) && bot.get('chatEnabled', false) == true;", "return runnerMayActAs(botUid);"],
+  ['bot daily quota ignores configured dailyLimit', "return configured is int && configured >= 0 && configured <= 12 ? configured : 0;", "return 12;"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 

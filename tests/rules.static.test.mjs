@@ -115,6 +115,9 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerMayChatAs'), /chatEnabled', false\) == true/);
   assert.match(block('botInbox'), /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(block('botMemories'), /runnerMayChatAs\(resource\.data\.botId\)/);
+  assert.match(block('botRateLimits'), /function botDailyLimit\(\)/);
+  assert.match(block('botRateLimits'), /d\.count <= botDailyLimit\(\)/);
+  assert.match(block('botRateLimits'), /resource\.data\.count < botDailyLimit\(\)/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   const posts = block('posts');

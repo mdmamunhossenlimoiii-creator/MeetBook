@@ -70,16 +70,18 @@ export const SEED = {
   'users/bot_25': user({ name: 'No Auto Comment', isBot: true, active: true, autoPost: true, autoComment: false, autoReaction: true, chatEnabled: true }),
   'users/bot_26': user({ name: 'No Auto Reaction', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: false, chatEnabled: true }),
   'users/bot_27': user({ name: 'Chat Disabled', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: false }),
+  'users/bot_28': user({ name: 'Low Daily Limit', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: 2 }),
   'users/runoff': user({ name: 'Disabled Runner' }),
   'admins/mod': { role: 'moderator' }, 'admins/adm': { role: 'admin' }, 'admins/adm2': { role: 'admin' }, 'admins/sup': { role: 'super_admin' },
   'admins/leg': { enabled: true }, 'admins/bad': { role: 'owner' },
-  'botRunners/run': { enabled: true, botIds: ['bot_01', 'bot_03', 'bot_04', 'bot_05', 'bot_24', 'bot_25', 'bot_26', 'bot_27'] },
+  'botRunners/run': { enabled: true, botIds: ['bot_01', 'bot_03', 'bot_04', 'bot_05', 'bot_24', 'bot_25', 'bot_26', 'bot_27', 'bot_28'] },
   'botRunners/runoff': { enabled: false, botIds: ['bot_01'] },
   'botState/run': { used: '{}' },
   'botState/runoff': { used: '{}' },
   'botRateLimits/bot_01': { botId: 'bot_01', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/bot_03': { botId: 'bot_03', kind: 'botDaily', count: 12, windowStartedAt: T(-90000000), lastAt: T(-90000000) },
   'botRateLimits/bot_05': { botId: 'bot_05', kind: 'botDaily', count: 12, windowStartedAt: T(-120000), lastAt: T(-120000) },
+  'botRateLimits/bot_28': { botId: 'bot_28', kind: 'botDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/bot_05/users/u1': { botId: 'bot_05', actorUid: 'u1', kind: 'chatDaily', count: 15, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botRateLimits/bot_01/users/u1': { botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
@@ -287,6 +289,8 @@ cap('AI bots', 'Delete a bot activity log', 'delete', 'botLogs/bl1', null, ADM);
 cap('AI bots', 'Runner reserves its assigned bot daily quota', 'create', 'botRateLimits/bot_04', { botId: 'bot_04', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, ['runner']);
 cap('AI bots', 'Runner cannot reserve quota for an unassigned bot', 'create', 'botRateLimits/bot_02', { runnerUid: 'run', botId: 'bot_02', kind: 'botDaily', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
 cap('AI bots', 'Runner increments bot quota by exactly one', 'update', 'botRateLimits/bot_01', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner increments quota up to the configured daily limit', 'update', 'botRateLimits/bot_28', { count: 2, lastAt: T(0) }, ['runner']);
+cap('AI bots', 'Runner cannot exceed the configured daily limit', 'update', 'botRateLimits/bot_28', { count: 3, lastAt: T(0) }, []);
 cap('AI bots', 'Runner cannot jump bot quota count', 'update', 'botRateLimits/bot_01', { count: 12, lastAt: T(0) }, []);
 cap('AI bots', 'Runner resets bot quota after full 24-hour window', 'update', 'botRateLimits/bot_03', { count: 1, windowStartedAt: T(0), lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Runner cannot reset bot quota before 24 hours', 'update', 'botRateLimits/bot_03', { count: 1, windowStartedAt: T(-30000000), lastAt: T(0) }, []);

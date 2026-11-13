@@ -88,7 +88,7 @@ export async function render(body) {
       <div class="row gap wrap">
         <div class="field grow"><label for="b-pers">Personality</label><select id="b-pers">${Object.entries(PERSONALITIES).map(([k, p]) => `<option value="${k}" ${v.personality === k ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
         <div class="field grow"><label for="b-lang">Language</label><select id="b-lang">${Object.entries(LANGUAGES).map(([k, l]) => `<option value="${k}" ${v.lang === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
-        <div class="field"><label for="b-lim">Daily limit</label><input id="b-lim" type="number" min="0" max="50" value="${v.dailyLimit ?? 6}" style="width:90px"></div></div>
+        <div class="field"><label for="b-lim">Daily limit</label><input id="b-lim" type="number" min="0" max="12" value="${v.dailyLimit ?? 6}" style="width:90px"></div></div>
       <div class="field"><label>Interests</label><div class="row gap wrap">${TOPICS.map((t) => `<label class="small row gap"><input type="checkbox" data-int="${t}" ${(v.interests || []).includes(t) ? 'checked' : ''}> ${t}</label>`).join('')}</div></div>
       <div class="row gap wrap">${tog('active', 'Active')}${tog('autoPost', 'Auto post')}${tog('autoComment', 'Auto comment')}${tog('autoReaction', 'Auto reaction')}${tog('chatEnabled', 'Chat')}</div>
       <div class="field"><label for="b-ideas">Post ideas, English (one per line; used by auto post)</label><textarea id="b-ideas" rows="3">${esc((v.ideas || []).join('\n'))}</textarea></div>
@@ -118,7 +118,7 @@ export async function render(body) {
       if (name.length < 2) { toast('Name needs at least 2 characters', 'error'); return; }
       const data = {
         name, username: $('#b-user', m).value.trim().replace(/[^\w.]/g, '').slice(0, 30) || (bot ? bot.id : ''), bio: $('#b-bio', m).value.trim().slice(0, 300),
-        roleEmoji: $('#b-emoji', m).value, personality: $('#b-pers', m).value, lang: $('#b-lang', m).value, dailyLimit: Math.max(0, Math.min(50, Number($('#b-lim', m).value) || 0)),
+        roleEmoji: $('#b-emoji', m).value, personality: $('#b-pers', m).value, lang: $('#b-lang', m).value, dailyLimit: Math.max(0, Math.min(12, Number($('#b-lim', m).value) || 0)),
         interests: $$('[data-int]', m).filter((c) => c.checked).map((c) => c.dataset.int),
         ideas: lines($('#b-ideas', m).value), ideasBn: lines($('#b-ideasbn', m).value), ...imgs
       };

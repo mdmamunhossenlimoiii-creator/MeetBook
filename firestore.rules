@@ -333,12 +333,17 @@ service cloud.firestore {
     // Each bot gets 12 actions per rolling 24h; each user gets 15 chat replies per bot per rolling 24h + 60s cooldown.
     // Shared per-bot quota path: multiple assigned Runners consume the same global budget.
     match /botRateLimits/{botId} {
+      function botDailyLimit() {
+        let bot = get(/databases/$(database)/documents/users/$(botId)).data;
+        let configured = bot.get('dailyLimit', 6);
+        return configured is int && configured >= 0 && configured <= 12 ? configured : 0;
+      }
       function validBotQuota(d) {
         return d.keys().hasOnly(['botId', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.botId == botId
           && d.kind == 'botDaily'
           && d.count is int
-          && d.count >= 1 && d.count <= 12
+          && d.count >= 1 && d.count <= botDailyLimit()
           && d.windowStartedAt is timestamp
           && d.lastAt is timestamp
           && d.windowStartedAt <= request.time
@@ -349,6 +354,7 @@ service cloud.firestore {
       allow create: if runnerHasBot(botId)
         && validBotQuota(request.resource.data)
         && request.resource.data.count == 1
+        && botDailyLimit() >= 1
         && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
       allow update: if runnerHasBot(botId)
         && validBotQuota(request.resource.data)
@@ -356,7 +362,7 @@ service cloud.firestore {
         && resource.data.kind == 'botDaily'
         && request.resource.data.lastAt > resource.data.lastAt
         && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
-          ? resource.data.count < 12
+          ? resource.data.count < botDailyLimit()
             && request.resource.data.count == resource.data.count + 1
             && request.resource.data.windowStartedAt == resource.data.windowStartedAt
           : request.resource.data.count == 1
