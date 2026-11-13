@@ -117,9 +117,9 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(block('botInbox'), /hasOnly\(\['handled', 'handledAt', 'skipped'\]\)/);
   assert.match(block('botInbox'), /members\.hasAll\(\[request\.auth\.uid, request\.resource\.data\.botId\]\)/);
   assert.match(block('botInbox'), /inboxQuotaOk\(\)/, 'inbox writes require a transaction-backed quota');
-  assert.match(rules, /match \/botInboxRateLimits\/\{senderUid\}\/bots\/\{botId\}\/days\/\{day\}/);
+  assert.match(rules, /match \/botInboxRateLimits\/\{senderUid\}\/bots\/\{botId\}/);
   assert.match(rules, /duration\.value\(10, 's'\)/, 'inbox cooldown is enforced by Rules');
-  assert.match(block('botInbox'), /keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'text', 'handled', 'createdAt', 'quotaDay'\]\)/);
+  assert.match(block('botInbox'), /keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'text', 'handled', 'createdAt'\]\)/);
 });
 
 test('comments can be switched off by staff and are enforced for everybody', () => {
