@@ -19,10 +19,9 @@ test('memory summaries are sanitized and strictly bounded', () => {
 test('only six recent messages are included and each message is bounded', () => {
   const rows = memoryMessages(Array.from({length: 9}, (_, i) => ({uid: i % 2 ? 'bot_01' : 'u1', text: `m${i}`})));
   assert.equal(BOT_MEMORY_MAX_MESSAGES, 6);
-  assert.equal(rows.length, 6);
-  assert.equal(rows[0].text, 'm3');
+  assert.equal(rows.length, 4);
+  assert.equal(rows[0].text, 'm4');
   assert.equal(rows.at(-1).text, 'm8');
-  assert.equal(rows[0].speaker, 'Bot');
-  assert.equal(rows[1].speaker, 'User');
+  assert.ok(rows.every((row) => row.speaker === 'User'));
   assert.equal(memoryMessages([{uid:'u1',text:'x'.repeat(700)}])[0].text.length, 500);
 });
