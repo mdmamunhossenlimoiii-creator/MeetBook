@@ -24,7 +24,7 @@ export async function render(view) {
 
   <section class="card pad">
     <h3>Privacy</h3>
-    <div class="field"><label for="st-profile">Who can see my posts on my profile</label>
+    <div class="field"><label for="st-profile">Who can see my profile details</label>
       <select id="st-profile">
         <option value="everyone" ${s.profileVisibility === 'everyone' ? 'selected' : ''}>Everyone</option>
         <option value="friends" ${s.profileVisibility === 'friends' ? 'selected' : ''}>Friends only</option></select></div>
