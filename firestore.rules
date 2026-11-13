@@ -265,7 +265,7 @@ service cloud.firestore {
       allow create: if isOwner(runnerUid) && runnerHasBot(botId)
         && validBotQuota(request.resource.data)
         && request.resource.data.count == 1
-        && request.resource.data.windowStartedAt == request.time;
+        && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
       allow update: if isOwner(runnerUid) && runnerHasBot(botId)
         && validBotQuota(request.resource.data)
         && resource.data.runnerUid == runnerUid
@@ -277,7 +277,7 @@ service cloud.firestore {
             && request.resource.data.count == resource.data.count + 1
             && request.resource.data.windowStartedAt == resource.data.windowStartedAt
           : request.resource.data.count == 1
-            && request.resource.data.windowStartedAt == request.time);
+            && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time);
       allow delete: if false;
     }
 
