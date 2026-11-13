@@ -43,7 +43,7 @@ It does not use MySocial credentials or a second Firebase project.
 
 ## Controlled test order
 
-1. Run the Chat workflow with `dry_run=true` first. It should not reply or write data.
+1. Run either workflow with `dry_run=true` first. It validates the MeetBook project guard and exits safely while the global bot switch or runner registration is OFF; it must not reply or write data.
 2. Inspect the workflow logs for project guard success, global switch status, runner allowlist, and the absence of secrets/private message bodies.
 3. Before a real chat reply, confirm the selected bot is enabled, the sender initiated the private chat, the sender has not opted out, the privacy disclosure is visible, and the global kill switch/runner allowlist are intentionally enabled.
 4. Use a single owner-controlled test account and one pending chat request. Then use `confirm_live=true` only after the GitHub Environment approval and separate owner release flag are configured.
