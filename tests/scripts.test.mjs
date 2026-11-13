@@ -120,7 +120,7 @@ test('bot runner: a wrong password fails loudly, missing secrets do nothing', as
 test('account deletion: purges data + auth user, refuses staff and bots', async () => {
   const m = await startMock({ authUsers: ['del1', 'adm1'], seed: {
     'admins/boss': { role: 'super_admin' }, 'admins/ex': { role: 'admin' },
-    'users/del1': { name: 'Del' }, 'publicProfiles/del1': { name: 'Del', nameLower: 'del' }, 'botEngagement/del1': { allowBotEngagement: false }, 'botInboxRateLimits/del1/bots/bot_01': { senderUid: 'del1', botId: 'bot_01', count: 1 },
+    'users/del1': { name: 'Del' }, 'publicProfiles/del1': { name: 'Del', nameLower: 'del' }, 'publicDirectory/del1': { name: 'Del', nameLower: 'del', isBot: false, roleEmoji: '', verified: false }, 'botEngagement/del1': { allowBotEngagement: false }, 'botMemories/bot_01_del1': { ownerUid: 'del1', botId: 'bot_01', summary: 'Likes photography' }, 'botInboxRateLimits/del1/bots/bot_01': { senderUid: 'del1', botId: 'bot_01', count: 1 },
     'botRunners/runner1': { enabled: true, botIds: ['bot_01'] },
     'botRateLimits/runner1/bots/bot_01': { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily', count: 1 },
     'botRateLimits/runner1/bots/bot_01/users/del1': { runnerUid: 'runner1', botId: 'bot_01', actorUid: 'del1', kind: 'chatDaily', count: 1 },
@@ -140,7 +140,7 @@ test('account deletion: purges data + auth user, refuses staff and bots', async 
   try {
     const r = await run('scripts/account-deletion.mjs', env);
     assert.equal(r.status, 0, r.stderr + r.stdout);
-    for (const p of ['users/del1', 'publicProfiles/del1', 'botEngagement/del1', 'botInboxRateLimits/del1/bots/bot_01', 'botRateLimits/runner1/bots/bot_01/users/del1', 'users/del1/saved/x', 'posts/a', 'posts/a/comments/c1', 'friendships/del1_keep', 'follows/keep_del1', 'chats/del1_keep', 'chats/del1_keep/messages/m1', 'groups/solo', 'notifications/n1'])
+    for (const p of ['users/del1', 'publicProfiles/del1', 'publicDirectory/del1', 'botEngagement/del1', 'botMemories/bot_01_del1', 'botInboxRateLimits/del1/bots/bot_01', 'botRateLimits/runner1/bots/bot_01/users/del1', 'users/del1/saved/x', 'posts/a', 'posts/a/comments/c1', 'friendships/del1_keep', 'follows/keep_del1', 'chats/del1_keep', 'chats/del1_keep/messages/m1', 'groups/solo', 'notifications/n1'])
       assert.equal(m.get(p), null, `${p} should be deleted`);
     for (const p of ['users/keep', 'botRateLimits/runner1/bots/bot_01/users/keep', 'botRateLimits/runner1/bots/bot_01', 'posts/b', 'groups/shared', 'users/adm1', 'chats/g1']) assert.notEqual(m.get(p), null, `${p} should stay`);
     assert.deepEqual(m.get('groups/shared').members, ['keep']);
