@@ -53,10 +53,10 @@ service cloud.firestore {
     // enable flag are true. Each runner is restricted to an explicit list of bot IDs.
     function runnerEnabled() {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
-      let global = get(/databases/$(database)/documents/settings/global).data;
+      let global = get(/databases/$(database)/documents/settings/overall).data;
       return signedIn()
         && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid))
-        && exists(/databases/$(database)/documents/settings/global)
+        && exists(/databases/$(database)/documents/settings/overall)
         && runner.get('enabled', false) == true
         && runner.get('botIds', []) is list
         && runner.get('botIds', []).size() > 0
@@ -64,12 +64,12 @@ service cloud.firestore {
     }
     function runnerHasBot(botUid) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
-      let global = get(/databases/$(database)/documents/settings/global).data;
+      let global = get(/databases/$(database)/documents/settings/overall).data;
       let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
       return signedIn()
         && botUid is string
         && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid))
-        && exists(/databases/$(database)/documents/settings/global)
+        && exists(/databases/$(database)/documents/settings/overall)
         && exists(/databases/$(database)/documents/users/$(botUid))
         && runner.get('enabled', false) == true
         && runner.get('botIds', []) is list
@@ -86,10 +86,10 @@ service cloud.firestore {
     }
     function runnerMayReadChat(chat) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
-      let global = get(/databases/$(database)/documents/settings/global).data;
+      let global = get(/databases/$(database)/documents/settings/overall).data;
       return signedIn()
         && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid))
-        && exists(/databases/$(database)/documents/settings/global)
+        && exists(/databases/$(database)/documents/settings/overall)
         && runner.get('enabled', false) == true
         && runner.get('botIds', []) is list
         && runner.get('botIds', []).size() > 0
@@ -210,7 +210,7 @@ service cloud.firestore {
       return p.get('commentsDisabled', false) == false
         && p.visibility == 'public'
         && (isBotUser(p.uid)
-          ? get(/databases/$(database)/documents/settings/global).data.get('botToBotComments', false) == true
+          ? get(/databases/$(database)/documents/settings/overall).data.get('botToBotComments', false) == true
           : engagementOk(p.uid));
     }
     function botIds() {
@@ -274,7 +274,7 @@ service cloud.firestore {
     // ---------- site settings & announcements ----------
     match /settings/{id} {
       allow read: if true; // maintenance flag / registration flag must be readable before login
-      allow write: if isAdmin() && id == 'global'
+      allow write: if isAdmin() && id == 'overall'
         && request.resource.data.keys().hasOnly(['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'])
         && request.resource.data.get('maintenance', false) is bool
         && request.resource.data.get('registrationOpen', true) is bool

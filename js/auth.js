@@ -166,7 +166,7 @@ export function renderAuth(root, { bannedMessage } = {}) {
     try {
       if (mode === 'register') {
         // Admin can close sign-ups. Enforced by this interface only (Firebase Auth sign-up is client-side).
-        const site = await getDoc(doc(db, 'settings', 'global')).then((s) => (s.exists() ? s.data() : {})).catch(() => ({}));
+        const site = await getDoc(doc(db, 'settings', 'overall')).then((s) => (s.exists() ? s.data() : {})).catch(() => ({}));
         if (site.registrationOpen === false) throw Object.assign(new Error('closed'), { code: 'app/registration-closed' });
         reg.name = name;
         const cred = await createUserWithEmailAndPassword(auth, email, pass);

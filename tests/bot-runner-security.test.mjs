@@ -7,6 +7,9 @@ import { readFileSync } from 'node:fs';
 const runner = readFileSync(new URL('../scripts/bot-runner.mjs', import.meta.url), 'utf8');
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const adminBots = readFileSync(new URL('../js/admin/bots.js', import.meta.url), 'utf8');
+const adminSettings = readFileSync(new URL('../js/admin/settings.js', import.meta.url), 'utf8');
+const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+const auth = readFileSync(new URL('../js/auth.js', import.meta.url), 'utf8');
 const rest = readFileSync(new URL('../scripts/lib/firestore-rest.mjs', import.meta.url), 'utf8');
 
 test('runner fails closed unless global botsEnabled and its own allowlist are explicit', () => {
@@ -16,6 +19,23 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
   assert.match(runner, /new Set\(runner\.botIds\.filter\(\(id\) => isBotId\(id\)\)\)/);
   assert.match(rules, /function runnerEnabled\(\)/);
   assert.match(rules, /function runnerMayActAs\(botUid\)/);
+});
+
+test('Runner, Rules, and Admin use settings/overall and strict Boolean gates', () => {
+  assert.ok(runner.includes("fs.get('settings/overall')"));
+  assert.ok(!runner.includes('settings/global'));
+  assert.ok(runner.includes('global.botsEnabled !== true'));
+  assert.ok(runner.includes('runner.enabled !== true'));
+  assert.ok(rules.includes('/documents/settings/overall'));
+  assert.ok(!rules.includes('/documents/settings/global'));
+  assert.ok(adminBots.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(!adminBots.includes('settings/global'));
+  assert.ok(adminSettings.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(adminSettings.includes('s.botsEnabled === true'));
+  assert.ok(app.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(auth.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(!app.includes("doc(db, 'settings', 'global')"));
+  assert.ok(!auth.includes("doc(db, 'settings', 'global')"));
 });
 
 test('runner applies conservative per-bot and per-user limits', () => {

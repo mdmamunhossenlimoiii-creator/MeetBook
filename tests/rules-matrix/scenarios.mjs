@@ -89,7 +89,7 @@ export const SEED = {
   'posts/pf/comments/c1': { uid: 'u1', text: 'private' },
   'reports/r1': { kind: 'post', targetId: 'p1', targetUid: 'u1', reporterUid: 'u2', reason: 'Spam', details: '', status: 'open' },
   'adminLogs/l1': { actorUid: 'adm', actorName: 'Admin Person', role: 'admin', action: 'x', target: '', details: '' },
-  'settings/global': { botsEnabled: true },
+  'settings/overall': { botsEnabled: true },
   'chats/u1_u2': { type: 'private', members: ['u1', 'u2'] },
   'chats/bot_01_u1': { type: 'private', members: ['bot_01', 'u1'] },
   'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] },
@@ -185,10 +185,10 @@ cap('Logs', 'Log under the super admin\'s uid', 'create', 'adminLogs/new', (a) =
 cap('Logs', 'Read the activity log', 'get', 'adminLogs/l1', null, ADM);
 cap('Logs', 'Edit a log entry', 'update', 'adminLogs/l1', { action: 'nothing happened' }, []);
 cap('Logs', 'Delete a log entry', 'delete', 'adminLogs/l1', null, []);
-cap('Settings', 'Read global settings (needed before login)', 'get', 'settings/global', null, ALL);
-cap('Settings', 'Turn on maintenance mode', 'update', 'settings/global', (a) => ({ maintenance: true, updatedBy: a.uid, updatedAt: { $srv: 1 } }), ADM);
-cap('Settings', 'Write a non-boolean maintenance flag', 'update', 'settings/global', { maintenance: 'yes' }, []);
-cap('Settings', 'Write an unknown settings field', 'update', 'settings/global', { hacked: 1 }, []);
+cap('Settings', 'Read global settings (needed before login)', 'get', 'settings/overall', null, ALL);
+cap('Settings', 'Turn on maintenance mode', 'update', 'settings/overall', (a) => ({ maintenance: true, updatedBy: a.uid, updatedAt: { $srv: 1 } }), ADM);
+cap('Settings', 'Write a non-boolean maintenance flag', 'update', 'settings/overall', { maintenance: 'yes' }, []);
+cap('Settings', 'Write an unknown settings field', 'update', 'settings/overall', { hacked: 1 }, []);
 cap('Settings', 'Create another settings document', 'create', 'settings/other', { maintenance: false }, []);
 cap('Announcements', 'Read announcements', 'get', 'announcements/a1', null, SIGNED);
 cap('Announcements', 'Publish an announcement', 'create', 'announcements/a2', { text: 'Hi all', level: 'info', active: true, createdAt: { $srv: 1 }, expiresAt: null }, ADM);

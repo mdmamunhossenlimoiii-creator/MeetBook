@@ -28,7 +28,7 @@ const seed = () => {
   return {
     ...s,
     'botRunners/runner1': { enabled: true, botIds: BOTS.map((bot) => bot.id) },
-    'settings/global': { botsEnabled: true, botToBotComments: false },
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
     'users/runner1': { name: 'Runner account', banned: false },
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
     'users/u2': { name: 'Sam', banned: false, settings: { allowBotEngagement: false } },
@@ -124,7 +124,7 @@ test('rules: runner allowlist and global emergency stop are enforced server-side
       'runner cannot comment on another bot while botToBotComments is OFF');
     assert.equal(await call('GET', 'botInbox/i1'), 403,
       'runner cannot read inbox entries for a bot outside its allowlist');
-    m.put('settings/global', { botsEnabled: false, botToBotComments: false });
+    m.put('settings/overall', { botsEnabled: false, botToBotComments: false });
     assert.equal(await call('POST', 'posts/p1/comments?documentId=stopped', comment('bot_01')), 403,
       'global emergency stop blocks bot writes in Firestore Rules');
     assert.equal(await call('GET', 'botState/runner1'), 403,

@@ -14,9 +14,9 @@ export async function render(body) {
   let bots = [], site = {};
   const draw = async () => {
     try {
-      [bots, site] = await Promise.all([listBots(), getDoc(doc(db, 'settings', 'global')).then((s) => (s.exists() ? s.data() : {}))]);
+      [bots, site] = await Promise.all([listBots(), getDoc(doc(db, 'settings', 'overall')).then((s) => (s.exists() ? s.data() : {}))]);
     } catch (e) { body.innerHTML = errorBox(e); return; }
-    const botsOn = site.botsEnabled !== false;
+    const botsOn = site.botsEnabled === true;
     body.innerHTML = `<h2 class="page-title">AI Bots</h2>
     <section class="card pad">
       <div class="row between wrap gap"><div><h3>Global switch: ${botsOn ? tagHtml('ON') : tagHtml('OFF', 'danger')}</h3>
@@ -51,8 +51,8 @@ export async function render(body) {
     const bot = card && bots.find((x) => x.id === card.dataset.id);
     switch (b.dataset.do) {
       case 'global': {
-        const next = site.botsEnabled === false;
-        if (await act(b, () => setDoc(doc(db, 'settings', 'global'), { botsEnabled: next, updatedBy: state.user.uid, updatedAt: serverTimestamp() }, { merge: true }), { ok: next ? 'Bots are ON' : 'Bots are OFF', log: ['bots global switch', 'settings/global', next ? 'on' : 'off'] })) draw();
+        const next = site.botsEnabled !== true;
+        if (await act(b, () => setDoc(doc(db, 'settings', 'overall'), { botsEnabled: next, updatedBy: state.user.uid, updatedAt: serverTimestamp() }, { merge: true }), { ok: next ? 'Bots are ON' : 'Bots are OFF', log: ['bots global switch', 'settings/overall', next ? 'on' : 'off'] })) draw();
         break;
       }
       case 'seed': if (await act(b, async () => { const r = await seedBots(); toast(`${r.created} created, ${r.existing} already existed`, 'success'); }, { ok: '', log: ['built-in bots created', '', ''] })) draw(); break;

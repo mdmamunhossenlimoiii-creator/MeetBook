@@ -89,7 +89,7 @@ def seed(role, extra=None):
         'adminLogs/l1': dict(actorUid='me', actorName='Test User', role='super_admin', action='post hidden', target='p2', details='x', createdAt=t(now - 100)),
         'botLogs/b1': dict(botId='bot_01', botName='TechTip Nova', kind='post', targetId='p9', text='Tech tip: restart', createdAt=t(now - 100)),
         'announcements/a1': dict(text='Welcome to the new MySocial', level='info', active=True, createdAt=t(now - 100), expiresAt=None),
-        'settings/global': dict(botsEnabled=True),
+        'settings/overall': dict(botsEnabled=True),
         'deletionRequests/u3': dict(status='pending', name='Mina Khan', requestedBy='me', createdAt=t(now)),
         'system/backups': dict(status='ok', lastRunAt=t(now - 1000), lastFile='b.enc', sizeBytes=2048, counts={'users': 3}),
         **({'admins/me': dict(role=role)} if role else {}),
@@ -170,7 +170,7 @@ async def main():
         # settings: maintenance
         await go(pg, '#/admin/settings'); await pg.check('#gs-maint'); await pg.fill('#gs-msg', 'Back soon'); await pg.click('#gs-save'); await pg.wait_for_timeout(300)
         log = await pg.evaluate('window.__log')
-        check('settings save writes maintenance + bot switches', any(l[0] == 'setDoc' and l[1] == 'settings/global' and l[2]['maintenance'] is True and l[2]['botsEnabled'] is True and l[2]['botToBotComments'] is False for l in log))
+        check('settings save writes maintenance + bot switches', any(l[0] == 'setDoc' and l[1] == 'settings/overall' and l[2]['maintenance'] is True and l[2]['botsEnabled'] is True and l[2]['botToBotComments'] is False for l in log))
         # staff
         await go(pg, '#/admin/staff'); await pg.fill('#st-uid', 'u3'); await pg.select_option('#st-role', 'moderator'); await pg.click('#st-add'); await pg.wait_for_timeout(400)
         log = await pg.evaluate('window.__log')
@@ -191,7 +191,7 @@ async def main():
         check('bot bio always says it is an AI bot', bool(up) and 'AI' in up[-1]['bio'])
         await pg.click('[data-do="global"]'); await pg.wait_for_timeout(300)
         log = await pg.evaluate('window.__log')
-        check('global bot switch writes botsEnabled=false', any(l[0] == 'setDoc' and l[1] == 'settings/global' and l[2].get('botsEnabled') is False for l in log))
+        check('global bot switch writes botsEnabled=false', any(l[0] == 'setDoc' and l[1] == 'settings/overall' and l[2].get('botsEnabled') is False for l in log))
         check('no JS errors in the admin run', not errors, '; '.join(errors[:3]))
         await b.close()
 
@@ -253,10 +253,10 @@ async def main():
         await b.close()
 
         # ---------- maintenance + suspension
-        b, pg, errors = await page(p, None, {'settings/global': dict(maintenance=True, maintenanceMessage='Upgrading the database')})
+        b, pg, errors = await page(p, None, {'settings/overall': dict(maintenance=True, maintenanceMessage='Upgrading the database')})
         check('maintenance screen blocks a normal user', 'Upgrading the database' in await pg.inner_text('body') and await pg.locator('.topbar').count() == 0)
         await b.close()
-        b, pg, errors = await page(p, 'admin', {'settings/global': dict(maintenance=True)})
+        b, pg, errors = await page(p, 'admin', {'settings/overall': dict(maintenance=True)})
         check('staff can still use the site during maintenance', await pg.locator('.topbar').count() == 1)
         await b.close()
         # ---------- mobile layout of the admin panel
