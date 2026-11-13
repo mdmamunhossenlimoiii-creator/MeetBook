@@ -16,9 +16,11 @@ export function sanitizeBotMemory(value) {
 }
 
 export function memoryMessages(messages) {
-  return (Array.isArray(messages) ? messages : []).slice(-BOT_MEMORY_MAX_MESSAGES)
+  return (Array.isArray(messages) ? messages : [])
+    .filter((m) => !/^bot_\\d{2}$/.test(String(m?.uid || '')))
+    .slice(-BOT_MEMORY_MAX_MESSAGES)
     .map((m) => ({
-      speaker: m?.uid && /^bot_\\d{2}$/.test(m.uid) ? 'Bot' : 'User',
+      speaker: 'User',
       text: typeof m?.text === 'string' ? m.text.replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F\\u007F]/g, '').slice(0, 500) : ''
     })).filter((m) => m.text);
 }
