@@ -194,17 +194,17 @@ const spend = (st, bot) => { st.daily.counts[bot.id] = usedToday(st, bot) + 1; }
 // A reserved slot is intentionally not refunded after a failed action (fail-closed behavior).
 async function reserveBotAction(bot, kind = 'botDaily') {
   if (DRY) return true;
-  return fs.reserveQuota(`botRateLimits/${runnerUid}/bots/${bot.id}`, {
+  return fs.reserveQuota(`botRateLimits/bots/${bot.id}`, {
     max: 12,
-    data: { runnerUid, botId: bot.id, kind }
+    data: { botId: bot.id, kind }
   });
 }
 async function reserveChatReply(bot, uid) {
   if (DRY) return true;
-  return fs.reserveQuota(`botRateLimits/${runnerUid}/bots/${bot.id}/users/${uid}`, {
+  return fs.reserveQuota(`botRateLimits/bots/${bot.id}/users/${uid}`, {
     max: 15,
     cooldownMs: 60_000,
-    data: { runnerUid, botId: bot.id, actorUid: uid, kind: 'chatDaily' }
+    data: { botId: bot.id, actorUid: uid, kind: 'chatDaily' }
   });
 }
 
