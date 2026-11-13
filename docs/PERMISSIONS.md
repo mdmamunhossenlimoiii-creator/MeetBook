@@ -24,7 +24,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | No role / Unknown role | admin document without `role` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in `/botRunners` |
 
-175 capabilities × 13 actors = 2275 cases are executed on every test run.
+178 capabilities × 13 actors = 2314 cases are executed on every test run.
 
 
 ## Users
@@ -213,6 +213,9 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | Runner cannot reserve quota for an unassigned bot | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner increments bot quota by exactly one | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Runner cannot jump bot quota count | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Runner resets bot quota after full 24-hour window | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Runner cannot reset bot quota before 24 hours | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Runner cannot exceed 12 actions per rolling 24 hours | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner reserves a per-user chat quota | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Runner cannot bypass the 60-second chat cooldown | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner may reserve chat quota after cooldown | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
