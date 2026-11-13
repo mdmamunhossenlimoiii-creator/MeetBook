@@ -348,7 +348,7 @@ service cloud.firestore {
           && validPost(request.resource.data)
           && (request.resource.data.groupId == null
               || request.auth.uid in groupDoc(request.resource.data.groupId).members))
-        // staff or the bot-runner posting as an AI bot: public, text/photo only, never a video
+        // Only the assigned Runner may publish AI bot content: public, text/photo only, never a video
         || (canPublishBot(request.resource.data.uid)
           && validPost(request.resource.data)
           && request.resource.data.visibility == 'public'
