@@ -1,6 +1,6 @@
 // Private and group messaging (Firestore realtime).
 import {
-  db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp, runTransaction
+  db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp, writeBatch
 } from './firebase.js';
 import { state, subscribe, onCleanup, navigate } from './state.js';
 import {
@@ -181,21 +181,28 @@ export async function render(view, a, b) {
           // without the matching quota increment, so parallel tabs cannot bypass the throttle.
           const quotaRef = doc(db, 'botInboxRateLimits', me, 'bots', otherUid);
           const inboxRef = doc(collection(db, 'botInbox'));
-          await runTransaction(db, async (tx) => {
-            const quotaSnap = await tx.get(quotaRef);
-            const quota = quotaSnap.exists() ? quotaSnap.data() : null;
-            const now = Date.now();
-            const lastAt = quota?.lastAt?.toMillis?.() || 0;
-            const windowAt = quota?.windowStartedAt?.toMillis?.() || 0;
-            const expired = !quota || now - windowAt >= 86_400_000;
-            const count = expired ? 0 : (quota?.count || 0);
-            if (count >= 20) throw new Error('You have reached the 24-hour message limit for this AI bot.');
-            if (now - lastAt < 10_000) throw new Error('Please wait a few seconds before messaging this AI bot again.');
-            tx.set(quotaRef, {
-              senderUid: me, botId: otherUid, count: count + 1,
-              windowStartedAt: expired ? serverTimestamp() : quota.windowStartedAt,
-              lastAt: serverTimestamp()
-            });
+          const quotaSnap = await getDoc(quotaRef);
+          const quota = quotaSnap.exists() ? quotaSnap.data() : null;
+          const now = Date.now();
+          const lastAt = quota?.lastAt?.toMillis?.() || 0;
+          const windowAt = quota?.windowStartedAt?.toMillis?.() || 0;
+          const expired = !quota || now - windowAt >= 86_400_000;
+          const count = expired ? 0 : (quota?.count || 0);
+          if (count >= 20) throw new Error('You have reached the 24-hour message limit for this AI bot.');
+          if (now - lastAt < 10_000) throw new Error('Please wait a few seconds before messaging this AI bot again.');
+          const batch = writeBatch(db);
+          batch.set(quotaRef, {
+            senderUid: me, botId: otherUid, count: count + 1,
+            windowStartedAt: expired ? serverTimestamp() : quota.windowStartedAt,
+            lastAt: serverTimestamp()
+          });
+          batch.set(messageRef, { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
+          batch.set(inboxRef, {
+            fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500),
+            handled: false, createdAt: serverTimestamp()
+          });
+          batch.update(chatRef, { lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp() });
+          await batch.commit();
             tx.set(messageRef, { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
             tx.set(inboxRef, {
               fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500),
