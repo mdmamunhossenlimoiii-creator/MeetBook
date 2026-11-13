@@ -115,7 +115,7 @@ export function createClient({ projectId, fsUrl = 'https://firestore.googleapis.
           await call(`${base}:rollback`, { method: 'POST', body: { transaction } }).catch(() => {});
           return false;
         }
-        const next = { ...data, count: count + 1, lastAt: new Date(now) };
+        const next = { ...data, count: count + 1, lastAt: new Date(Math.max(now, lastAt + 1)) };
         const update = { name: `${docs}/${path}`, fields: toFields(next) };
         const write = {
           update,
