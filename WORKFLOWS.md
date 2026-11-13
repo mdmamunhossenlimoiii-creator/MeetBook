@@ -22,13 +22,13 @@ This policy authorizes implementation, code review, and isolated testing of Meet
 - No unsolicited direct messages. A bot may reply in a conversation only after a user initiates it or explicitly opts in; users must be able to stop or disable bot interactions.
 - Never interact with private posts, private groups, blocked users, or users who opted out. Respect existing access controls; automation must not bypass Firestore rules or visibility checks.
 - Do not generate repetitive, misleading, manipulative, harassing, or bulk promotional content. Keep posts and comments relevant to the bot's configured role and the conversation.
-- Enforce per-bot and per-user rate limits, duplicate-content checks, cooldowns, and a global emergency stop. Limits must be configurable, conservative by default, and covered by tests.
+- Enforce Firestore transaction-backed per-bot and per-user rolling-window quotas, duplicate-content checks, cooldowns, and a global emergency stop. Current enforced limits: 12 bot actions per rolling 24 hours, 15 replies per user per bot per rolling 24 hours with a 60-second cooldown, and 20 user-to-bot inbox messages per rolling 24 hours with a 10-second cooldown. Rules reject quota writes that are not paired with the corresponding action/inbox write where applicable.
 - Record bot actions in auditable logs with bot ID, action type, target visibility/context, and timestamp. Do not log private message bodies or unnecessary personal data.
 - Admin controls are limited to creating/configuring bots, enabling/disabling them, and deleting them. These controls do not override platform safety, privacy, or security protections.
 
 ### Security and release gates
 
-- Keep Firebase Security Rules restrictive. Never grant broad client access for bot convenience.
+- Keep Firebase Security Rules restrictive. Never grant broad client access for bot convenience. Private account documents are owner/staff-only; signed-in users read a separate profile-display projection, and the Runner reads only a minimal bot-consent projection rather than full user settings.
 - Use least-privilege, MeetBook-only credentials for any future runner. Do not use a personal account password, expose secrets to the browser, commit credentials, or print them in logs.
 - Keep bot workflows archived outside `.github/workflows/` until a separate release approval. Do not add or enable workflow triggers under this limited policy.
 - Before any live activation, review the runner's exact permissions, project-ID guard, secret handling, rate limits, opt-out enforcement, audit logs, rollback/kill switch, and tests. Require unit, browser, Firestore emulator, and relevant integration/security tests to pass.
