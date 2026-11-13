@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, query, where, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
 const PROJECT = 'demo-meetbook';
@@ -133,6 +133,12 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   await profileBatch.commit();
   await assert.doesNotReject(getDoc(doc(env.authenticatedContext('u4').firestore(), 'publicProfiles/u3')));
   console.log('profile visibility and bot-memory consent require canonical atomic settings updates');
+
+  const memoryOwnerDb = env.authenticatedContext('u2').firestore();
+  const ownMemories = await getDocs(query(collection(memoryOwnerDb, 'botMemories'), where('ownerUid', '==', 'u2')));
+  if (ownMemories.size !== 1) throw new Error('memory owner could not list their own saved summaries');
+  await assert.rejects(getDocs(query(collection(env.authenticatedContext('u4').firestore(), 'botMemories'), where('ownerUid', '==', 'u2'))));
+  console.log('bot-memory list queries are restricted to the owning user');
 }
 }
 await env.cleanup();
