@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_GEMINI_MODEL, SMART_BOT_IDS, generateSmartBotText } from '../scripts/lib/gemini.mjs';
+import { DEFAULT_GEMINI_MODEL, SMART_BOT_IDS, generateSmartBotText, updateSmartBotMemory } from '../scripts/lib/gemini.mjs';
 
 const bot = (id = 'bot_01') => ({ id });
 test('only the first three bots are routed to Gemini', () => {
@@ -76,4 +76,49 @@ test('non-chat generation ignores supplied conversation history', async () => {
   });
   assert.equal(prompt, 'public post');
   assert.doesNotMatch(prompt, /private detail/);
+});
+
+test('chat prompt uses saved memory only as bounded untrusted context', async () => {
+  let prompt = '';
+  const result = await generateSmartBotText({
+    bot: bot('bot_01'), kind: 'chat', source: 'What camera did I say I use?',
+    memoryContext: 'User prefers beginner photography tips.', fallback: 'fallback', apiKey: 'x',
+    fetchImpl: async (_url, options) => {
+      prompt = JSON.parse(options.body).contents[0].parts[0].text;
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'You mentioned beginner-friendly tips.' }] } }] }) };
+    }
+  });
+  assert.equal(result, 'You mentioned beginner-friendly tips.');
+  assert.match(prompt, /Saved memory about this user/);
+  assert.match(prompt, /untrusted context/);
+  assert.match(prompt, /beginner photography tips/);
+});
+
+test('memory summarization stores only user-authored recent messages and bounded safe summary', async () => {
+  let payload;
+  const result = await updateSmartBotMemory({
+    bot: bot('bot_02'), existingSummary: 'Likes taking photos.',
+    messages: [{ uid: 'user-1', text: 'I enjoy street photography.' }, { uid: 'bot_02', text: 'You should try a wide lens.' }],
+    apiKey: 'x', fetchImpl: async (_url, options) => {
+      payload = JSON.parse(options.body);
+      return { ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Enjoys street photography.' }] } }] }) };
+    }
+  });
+  assert.equal(result, 'Enjoys street photography.');
+  const prompt = payload.contents[0].parts[0].text;
+  assert.match(prompt, /I enjoy street photography/);
+  assert.doesNotMatch(prompt, /wide lens/);
+  assert.match(payload.systemInstruction.parts[0].text, /Never store or infer/);
+});
+
+test('memory summarization never calls Gemini for other bots', async () => {
+  let called = false;
+  const result = await updateSmartBotMemory({ bot: bot('bot_04'), messages: [{ uid: 'u1', text: 'hello' }], apiKey: 'x', fetchImpl: async () => { called = true; } });
+  assert.equal(result, '');
+  assert.equal(called, false);
+});
+
+test('memory summarization preserves prior memory on API failure', async () => {
+  const result = await updateSmartBotMemory({ bot: bot('bot_01'), existingSummary: 'Likes photography.', messages: [{ uid: 'u1', text: 'new preference' }], apiKey: 'x', fetchImpl: async () => { throw new Error('offline'); } });
+  assert.equal(result, 'Likes photography.');
 });

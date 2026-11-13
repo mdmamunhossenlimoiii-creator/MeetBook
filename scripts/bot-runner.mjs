@@ -23,8 +23,10 @@ import { BOTS, isBotId } from '../js/bots-data.js';
 import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and } from './lib/firestore-rest.mjs';
-import { generateSmartBotText } from './lib/gemini.mjs';
+import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib/gemini.mjs';
 import { hasBotEngagementConsent } from './lib/bot-consent.mjs';
+import { hasBotMemoryConsent } from './lib/bot-memory-consent.mjs';
+import { botMemoryDocId } from './lib/bot-memory.mjs';
 
 const EMAIL = process.env.BOT_RUNNER_EMAIL;
 const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
@@ -274,15 +276,37 @@ async function main() {
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
     }, `chats/${m.chatId}`)).reverse();
     const reply = chatReply({ bot, text: m.text, history: hist });
+    // Long-term memory is isolated by bot + user and is completely disabled without explicit opt-in.
+    const memoryConsent = await fs.get(`botEngagement/${m.fromUid}`);
+    const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
+    const memoryId = botMemoryDocId(bot.id, m.fromUid);
+    const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
     const replyText = await generateSmartBotText({
       bot, kind: 'chat', source: m.text,
       history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
+      memoryContext: savedMemory?.summary || '',
       fallback: reply.text
     });
     if (DRY) console.log(`[dry] chat reply as ${bot.name}: ${replyText}`);
     else {
       await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() });
       await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: replyText, uid: bot.id }, lastAt: new Date() });
+      // Persist only a bounded, non-sensitive summary after an explicit user opt-in.
+      // Other bots/users cannot read this document; the raw transcript is never copied here.
+      if (memoryEnabled && process.env.GEMINI_API_KEY && ['bot_01', 'bot_02', 'bot_03'].includes(bot.id)) {
+        const summary = await updateSmartBotMemory({
+          bot, existingSummary: savedMemory?.summary || '',
+          messages: [...hist, { uid: bot.id, text: replyText }]
+        });
+        if (summary || savedMemory) {
+          const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
+          if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
+          else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
+            // Another scheduled run may have created it concurrently; update the same isolated record.
+            await fs.patch(`botMemories/${memoryId}`, memoryData);
+          });
+        }
+      }
       // Never put private conversation text in audit logs.
       await log(bot, 'chat', m.chatId, reply.intent);
     }

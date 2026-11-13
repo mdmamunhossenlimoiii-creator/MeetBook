@@ -84,8 +84,12 @@ const userCache = new Map();
 export async function getUser(uid) {
   if (!uid) return null;
   if (userCache.has(uid)) return userCache.get(uid);
-  const p = getDoc(doc(db, 'publicProfiles', uid)).then((s) => (s.exists() ? { uid, ...s.data() } : { uid, name: 'Unknown user' }))
-    .catch(() => ({ uid, name: 'Unknown user' }));
+  const p = getDoc(doc(db, 'publicDirectory', uid)).then(async (directory) => {
+    if (directory.exists()) return { uid, ...directory.data() };
+    // Compatibility fallback for bot profiles and accounts not yet migrated to the directory projection.
+    const profile = await getDoc(doc(db, 'publicProfiles', uid));
+    return profile.exists() ? { uid, ...profile.data() } : { uid, name: 'Unknown user' };
+  }).catch(() => ({ uid, name: 'Unknown user' }));
   userCache.set(uid, p);
   const u = await p;
   userCache.set(uid, Promise.resolve(u));

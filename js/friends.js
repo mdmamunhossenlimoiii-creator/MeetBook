@@ -117,14 +117,18 @@ export async function render(view) {
       const q = input.value.trim().toLowerCase();
       results.innerHTML = '<div class="loading">Searching…</div>';
       try {
-        const base = collection(db, 'publicProfiles');
-        const snap = q.length >= 2
+        const base = collection(db, 'publicDirectory');
+        const directorySnap = q.length >= 2
           ? await getDocs(query(base, where('nameLower', '>=', q), where('nameLower', '<=', q + ''), limit(20)))
           : await getDocs(query(base, orderBy('nameLower'), limit(20)));
+        const botSnap = await getDocs(query(collection(db, 'publicProfiles'), where('isBot', '==', true), limit(30)));
+        const byUid = new Map(directorySnap.docs.map((d) => [d.id, { uid: d.id, ...d.data() }]));
+        botSnap.docs.forEach((d) => byUid.set(d.id, { uid: d.id, ...d.data() }));
+        const snapUsers = [...byUid.values()].filter((u) => !q || String(u.nameLower || '').includes(q)).slice(0, 20);
         const outgoing = await getDocs(query(collection(db, 'friendRequests'), where('from', '==', me)));
         const sent = new Set(outgoing.docs.map((d) => d.data().to));
         const incoming = new Set(state.incomingRequests.map((r) => r.from));
-        const users = snap.docs.filter((d) => d.id !== me).map((d) => ({ uid: d.id, ...d.data() }));
+        const users = snapUsers.filter((u) => u.uid !== me);
         results.innerHTML = users.length ? users.map((u) => {
           let btn;
           if (u.isBot) btn = `<a class="btn" href="#/profile/${esc(u.uid)}">View profile</a>`;

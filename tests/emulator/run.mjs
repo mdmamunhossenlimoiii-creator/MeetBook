@@ -12,6 +12,7 @@ import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
 const PROJECT = 'demo-meetbook';
 if (!process.env.FIRESTORE_EMULATOR_HOST) { console.error('Run this through `firebase emulators:exec` so FIRESTORE_EMULATOR_HOST is set.'); process.exit(2); }
+const realFirestore = process.env.FIRESTORE_EMULATOR_HOST === 'fake:0' ? null : await import('firebase/firestore');
 
 const conv = (v) => {
   if (Array.isArray(v)) return v.map(conv);
@@ -114,6 +115,47 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   const reset = await getDoc(quotaRef);
   if (reset.data().count !== 1) throw new Error('expired quota window did not reset to one');
   console.log('rolling 24-hour quota resets after expiry');
+
+  // Profile metadata visibility and consent projections must match canonical user settings atomically.
+  const ownerDb = env.authenticatedContext('u3').firestore();
+  await assert.rejects(updateDoc(doc(ownerDb, 'publicProfiles/u3'), { profileVisibility: 'everyone' }));
+  await assert.rejects(updateDoc(doc(ownerDb, 'botEngagement/u3'), { allowBotMemory: true, updatedAt: serverTimestamp() }));
+  const profileBatch = writeBatch(ownerDb);
+  profileBatch.update(doc(ownerDb, 'users/u3'), {
+    settings: {
+      allowMessages: 'friends', profileVisibility: 'everyone', defaultVisibility: 'public',
+      allowBotEngagement: false, allowBotMemory: true
+    }
+  });
+  profileBatch.set(doc(ownerDb, 'publicProfiles/u3'), { profileVisibility: 'everyone' }, { merge: true });
+  profileBatch.set(doc(ownerDb, 'botEngagement/u3'), {
+    allowBotEngagement: false, allowBotMemory: true, updatedAt: serverTimestamp()
+  }, { merge: true });
+  await profileBatch.commit();
+  await assert.doesNotReject(getDoc(doc(env.authenticatedContext('u4').firestore(), 'publicProfiles/u3')));
+  console.log('profile visibility and bot-memory consent require canonical atomic settings updates');
+
+  const memoryOwnerDb = env.authenticatedContext('u2').firestore();
+  const ownMemories = await realFirestore.getDocs(realFirestore.query(realFirestore.collection(memoryOwnerDb, 'botMemories'), realFirestore.where('ownerUid', '==', 'u2')));
+  if (ownMemories.size !== 1) throw new Error('memory owner could not list their own saved summaries');
+  await assert.rejects(realFirestore.getDocs(realFirestore.query(realFirestore.collection(env.authenticatedContext('u4').firestore(), 'botMemories'), realFirestore.where('ownerUid', '==', 'u2'))));
+  console.log('bot-memory list queries are restricted to the owning user');
+
+  const disableMemoryBatch = writeBatch(memoryOwnerDb);
+  disableMemoryBatch.update(doc(memoryOwnerDb, 'users/u2'), {
+    settings: {
+      allowMessages: 'friends', profileVisibility: 'friends', defaultVisibility: 'public',
+      allowBotEngagement: true, allowBotMemory: false
+    }
+  });
+  disableMemoryBatch.set(doc(memoryOwnerDb, 'botEngagement/u2'), {
+    allowBotEngagement: true, allowBotMemory: false, updatedAt: serverTimestamp()
+  }, { merge: true });
+  ownMemories.docs.forEach((memory) => disableMemoryBatch.delete(memory.ref));
+  await disableMemoryBatch.commit();
+  const afterDisable = await realFirestore.getDocs(realFirestore.query(realFirestore.collection(memoryOwnerDb, 'botMemories'), realFirestore.where('ownerUid', '==', 'u2')));
+  if (!afterDisable.empty) throw new Error('turning memory off did not delete saved summaries');
+  console.log('turning memory off atomically revokes consent and deletes saved summaries');
 }
 }
 await env.cleanup();

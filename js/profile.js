@@ -34,14 +34,58 @@ function actionButtons(uid, rel) {
   return `${main}${followBtn}${msg}${reportBtn}`;
 }
 
+function privateProfileActions(uid, rel) {
+  const report = `<button class="btn" data-act="report" title="Report this profile">${icon('flag', 16)}Report</button>`;
+  if (rel === 'incoming') return `<button class="btn btn-primary" data-act="accept">Confirm request</button><button class="btn" data-act="decline">Delete</button>${report}`;
+  if (rel === 'outgoing') return `<button class="btn" data-act="cancel">Cancel request</button>${report}`;
+  return `<button class="btn btn-primary" data-act="add">${icon('plus', 16)}Add friend</button>${report}`;
+}
+
 export async function render(view, uid) {
   const me = state.user.uid;
   const isMe = uid === me;
-  const snap = await getDoc(doc(db, 'publicProfiles', uid));
+  const directorySnap = await getDoc(doc(db, 'publicDirectory', uid)).catch(() => null);
+  let snap;
+  try {
+    snap = await getDoc(doc(db, 'publicProfiles', uid));
+  } catch (error) {
+    // A denied profile read is an intentional privacy outcome, not a missing profile.
+    if (!directorySnap?.exists()) throw error;
+    const directory = { uid, ...directorySnap.data() };
+    const rel = isMe ? 'me' : await relationship(uid);
+    view.innerHTML = `
+      <section class="card profile-head">
+        <div class="profile-row">
+          <div class="profile-avatar">${avatarHtml(directory.name, '', 96)}</div>
+          <div class="profile-info"><h2>${esc(directory.name)}${botBadge(directory)}</h2>
+            <p class="muted">This person shares profile details with friends only.</p></div>
+          <div class="profile-actions row gap wrap" data-actions>${privateProfileActions(uid, rel)}</div>
+        </div>
+      </section>
+      <div class="card pad center"><span class="lock-icon">${icon('lock', 32)}</span>
+        <h3>Profile details are private</h3>
+        <p class="muted">Send a friend request to see this person's profile details.</p>
+      </div>`;
+    $('[data-actions]', view).addEventListener('click', async (event) => {
+      const button = event.target.closest('[data-act]');
+      if (!button) return;
+      button.disabled = true;
+      try {
+        if (button.dataset.act === 'add') { await sendRequest(uid); toast('Friend request sent', 'success'); }
+        else if (button.dataset.act === 'accept') { await acceptRequest(uid); toast('You are now friends', 'success'); }
+        else if (button.dataset.act === 'cancel') await cancelRequest(uid);
+        else if (button.dataset.act === 'decline') await declineRequest(uid);
+        else if (button.dataset.act === 'report') { openReport('user', { id: uid, uid }); return; }
+        const updated = await relationship(uid);
+        if (updated === 'friends') await render(view, uid);
+        else $('[data-actions]', view).innerHTML = privateProfileActions(uid, updated);
+      } catch (e) { toast(errMsg(e), 'error'); button.disabled = false; }
+    });
+    return;
+  }
   if (!snap.exists()) { view.innerHTML = emptyState('Profile not found'); return; }
   const u = { uid, ...snap.data() };
   const rel = isMe ? 'me' : u.isBot ? 'bot' : await relationship(uid);
-  const visibleToMe = isMe || (u.profileVisibility || 'everyone') === 'everyone' || rel === 'friends' || state.isAdmin;
 
   const [followers, following] = await Promise.all([
     getCountFromServer(query(collection(db, 'follows'), where('followed', '==', uid))).then((s) => s.data().count).catch(() => 0),
@@ -87,10 +131,6 @@ export async function render(view, uid) {
       pane.innerHTML = list.length
         ? `<div class="grid-people">${list.map((f) => `<a class="card grid-person" href="#/profile/${esc(f.uid)}">${avatarHtml(f.name, f.photo, 72)}<b>${esc(f.name)}</b></a>`).join('')}</div>`
         : emptyState('No friends yet');
-      return;
-    }
-    if (!visibleToMe) {
-      pane.innerHTML = `<div class="card pad center">${icon('lock', 32)}<h3>This profile is private</h3><p class="muted">Only friends of ${esc(u.name)} can see their posts.</p></div>`;
       return;
     }
     pane.innerHTML = `${isMe ? composerHtml() : ''}<div data-list></div>`;
@@ -179,6 +219,9 @@ function openEdit(u, done) {
       batch.update(doc(db, 'users', state.user.uid), { name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl });
       batch.set(doc(db, 'publicProfiles', state.user.uid), {
         name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl
+      }, { merge: true });
+      batch.set(doc(db, 'publicDirectory', state.user.uid), {
+        name, nameLower: name.toLowerCase()
       }, { merge: true });
       await batch.commit();
       try { await updateProfile(state.user, { displayName: name }); } catch { /* not critical */ }
