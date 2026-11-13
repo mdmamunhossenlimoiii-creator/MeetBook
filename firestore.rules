@@ -307,16 +307,63 @@ service cloud.firestore {
     match /botState/{uid} {
       allow read, write: if isOwner(uid) && runnerEnabled();
     }
+    // User-to-bot inbox quota. The sender must increment this counter in the same
+    // Firestore transaction that creates the inbox item; Rules enforce 20/day + 10s cooldown.
+    match /botInboxRateLimits/{senderUid}/bots/{botId}/days/{day} {
+      function validInboxQuota(d) {
+        return d.keys().hasOnly(['senderUid', 'botId', 'count', 'lastAt'])
+          && d.senderUid == senderUid
+          && d.botId == botId
+          && d.count is int
+          && d.count >= 1 && d.count <= 20
+          && d.lastAt is timestamp
+          && d.lastAt == request.time
+          && day == request.time.date();
+      }
+      allow read: if isOwner(senderUid);
+      allow create: if isOwner(senderUid) && notBanned()
+        && isBotUser(botId)
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', true) == true
+        && validInboxQuota(request.resource.data)
+        && request.resource.data.count == 1;
+      allow update: if isOwner(senderUid) && notBanned()
+        && isBotUser(botId)
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', true) == true
+        && validInboxQuota(request.resource.data)
+        && resource.data.senderUid == senderUid
+        && resource.data.botId == botId
+        && resource.data.count < 20
+        && request.resource.data.count == resource.data.count + 1
+        && request.resource.data.lastAt >= resource.data.lastAt + duration.value(10, 's');
+      allow delete: if false;
+    }
+
     // A user's message to a bot is mirrored here so the scheduled job can answer it.
     match /botInbox/{id} {
+      function inboxQuotaOk() {
+        let quotaPath = /databases/$(database)/documents/botInboxRateLimits/$(request.auth.uid)/bots/$(request.resource.data.botId)/days/$(request.resource.data.quotaDay);
+        return request.resource.data.quotaDay is string
+          && request.resource.data.quotaDay == request.time.date()
+          && existsAfter(quotaPath)
+          && getAfter(quotaPath).data.senderUid == request.auth.uid
+          && getAfter(quotaPath).data.botId == request.resource.data.botId
+          && getAfter(quotaPath).data.lastAt == request.time
+          && (!exists(quotaPath)
+            ? getAfter(quotaPath).data.count == 1
+            : getAfter(quotaPath).data.count == get(quotaPath).data.count + 1
+              && getAfter(quotaPath).data.lastAt >= get(quotaPath).data.lastAt + duration.value(10, 's'));
+      }
       allow create: if notBanned()
+        && inboxQuotaOk()
         && request.resource.data.fromUid == request.auth.uid
         && isBotUser(request.resource.data.botId)
         && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('active', true) == true
         && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('chatEnabled', true) == true
         && textOk(request.resource.data.text, 500)
         && request.resource.data.handled == false
-        && request.resource.data.keys().hasOnly(['fromUid', 'botId', 'chatId', 'text', 'handled', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['fromUid', 'botId', 'chatId', 'text', 'handled', 'createdAt', 'quotaDay'])
         && request.resource.data.createdAt is timestamp
         && request.resource.data.chatId == pairId(request.auth.uid, request.resource.data.botId)
         && exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
