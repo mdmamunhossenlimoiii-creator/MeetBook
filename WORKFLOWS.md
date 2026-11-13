@@ -12,7 +12,7 @@ The emulator test uses the `demo-meetbook` project ID. It must remain isolated f
 
 ## Limited Bot Runner policy approval
 
-This policy authorizes implementation, code review, and isolated testing of MeetBook bot automation only. It does **not** authorize enabling a production workflow, adding credentials, running bots against live users, or deploying changes. Those actions require a separate release-readiness review and the owner's explicit approval.
+This policy authorizes implementation, code review, and isolated testing of MeetBook bot automation. The new workflows are manual-only and dry-run by default; this policy does **not** authorize live actions, adding production credentials, enabling the Firebase kill switch, or deploying changes. Each live action requires a separate release-readiness review and the owner's explicit approval.
 
 ### Permitted behavior after separate release approval
 
