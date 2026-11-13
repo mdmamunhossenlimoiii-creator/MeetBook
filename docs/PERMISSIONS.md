@@ -12,6 +12,9 @@
 | ❌ | denied (Firestore rules reject the request) |
 | ◐ | normal users are allowed **only for their own data** (or only for data of a specific owner, see the row text); the other normal user is denied |
 
+Roles come from `/admins/{uid}.role` (only a Super Admin can write that collection). **A missing or unknown role means no power at all.**
+Normal users cannot change their own role: `/admins` is not writable by them, and the `role` field on a profile document has no effect.
+
 | Column | Who |
 |---|---|
 | Normal user | signed in, has a profile, not blocked, not suspended |
