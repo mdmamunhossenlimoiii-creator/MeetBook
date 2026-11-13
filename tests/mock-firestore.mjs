@@ -12,10 +12,11 @@ export function startMock({ port = 0, seed = {}, authUsers = ['runner1'], runner
   const calls = [];
   let n = 0;
   let tx = 0;
+  let version = 0;
   // faults (test only): { authDelete: n } -> the next n Auth deletes answer 500; { commitAfter: k } -> after k good commits, ONE commit answers 500
   const fault = { authDelete: faults.authDelete || 0, commitAfter: faults.commitAfter ?? null };
   const gate = rules ? makeRulesGate(docs) : null;
-  const put = (path, obj) => docs.set(path, { fields: toFields(obj), updateTime: new Date().toISOString() });
+  const put = (path, obj) => docs.set(path, { fields: toFields(obj), updateTime: new Date(Date.now() + (++version)).toISOString() });
   Object.entries(seed).forEach(([p, o]) => put(p, o));
 
   const PRE = '/v1/projects/test-proj/databases/(default)/documents';
@@ -108,7 +109,7 @@ export function startMock({ port = 0, seed = {}, authUsers = ['runner1'], runner
             }
             const op = d ? 'update' : 'create';
             if (!ok(req, op, p, nf)) return forbid(res);
-            plan.push(() => docs.set(p, { fields: nf, updateTime: new Date().toISOString() }));
+            plan.push(() => docs.set(p, { fields: nf, updateTime: new Date(Date.now() + (++version)).toISOString() }));
           }
           plan.forEach((f) => f());
           return send(res, 200, { writeResults: [{}] });
