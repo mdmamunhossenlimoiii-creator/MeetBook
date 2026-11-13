@@ -86,7 +86,7 @@ service cloud.firestore {
         && chat.members.hasAny(runner.get('botIds', []));
     }
     function canPublishBot(botUid) {
-      return (isAdmin() && isBotUser(botUid)) || runnerMayActAs(botUid);
+      return runnerMayActAs(botUid);
     }
 
     // Not blocked and not under a temporary suspension.
@@ -140,10 +140,6 @@ service cloud.firestore {
     function userMayComment(postId) {
       let p = get(/databases/$(database)/documents/posts/$(postId)).data;
       return p.get('commentsDisabled', false) == false && canSeePost(p);
-    }
-    function botMayComment(postId) {
-      let p = get(/databases/$(database)/documents/posts/$(postId)).data;
-      return p.get('commentsDisabled', false) == false && p.visibility == 'public' && engagementOk(p.uid);
     }
     function runnerMayComment(postId) {
       let p = get(/databases/$(database)/documents/posts/$(postId)).data;
@@ -397,12 +393,7 @@ service cloud.firestore {
             && request.resource.data.uid == request.auth.uid
             && textOk(request.resource.data.text, 2000)
             && userMayComment(postId))
-          // staff or the bot-runner commenting as an AI bot (public posts with comments on)
-          || (isAdmin()
-            && isBotUser(request.resource.data.uid)
-            && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI
-            && textOk(request.resource.data.text, 2000)
-            && botMayComment(postId))
+          // Only the assigned Runner may comment as an AI bot; Admins do not impersonate bot accounts.
           || (runnerMayActAs(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true
             && textOk(request.resource.data.text, 2000)
