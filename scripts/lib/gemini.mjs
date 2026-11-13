@@ -69,12 +69,18 @@ export async function generateSmartBotText({
       }),
       signal: AbortSignal.timeout(20_000)
     });
-    if (!response?.ok) return safeFallback;
+    if (!response?.ok) {
+      if (strict) throw new Error(`Gemini request failed (${response?.status || 'unknown'}).`);
+      return safeFallback;
+    }
     const data = await response.json();
-    const raw = data?.candidates?.[0]?.content?.parts?.filter((p) => typeof p?.text === 'string').map((p) => p.text).join('\n');
-    return cleanOutput(raw, maxChars) || safeFallback;
+    const raw = data?.candidates?.[0]?.content?.parts?.filter((p) => typeof p?.text === 'string').map((p) => p.text).join('\\n');
+    const output = cleanOutput(raw, maxChars);
+    if (!output && strict) throw new Error('Gemini returned no usable text.');
+    return output || safeFallback;
   } catch {
     // Never log request text, response text, private messages, or the API key.
+    if (strict) throw new Error('Gemini generation failed; strict live mode does not use template fallback.');
     return safeFallback;
   }
 }
