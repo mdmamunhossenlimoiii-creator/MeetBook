@@ -313,10 +313,10 @@ service cloud.firestore {
     }
     // Durable runner quotas: fixed paths prevent resetting limits by changing a date/path.
     // Each bot gets 12 actions per rolling 24h; each user gets 15 chat replies per bot per rolling 24h + 60s cooldown.
-    match /botRateLimits/{runnerUid}/bots/{botId} {
+    // Shared per-bot quota path: multiple assigned Runners consume the same global budget.
+    match /botRateLimits/bots/{botId} {
       function validBotQuota(d) {
-        return d.keys().hasOnly(['runnerUid', 'botId', 'kind', 'count', 'windowStartedAt', 'lastAt'])
-          && d.runnerUid == runnerUid
+        return d.keys().hasOnly(['botId', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.botId == botId
           && d.kind == 'botDaily'
           && d.count is int
@@ -327,14 +327,13 @@ service cloud.firestore {
           && d.lastAt <= request.time
           && d.lastAt + duration.value(5, 's') >= request.time;
       }
-      allow read: if isOwner(runnerUid);
-      allow create: if isOwner(runnerUid) && runnerHasBot(botId)
+      allow read: if runnerHasBot(botId);
+      allow create: if runnerHasBot(botId)
         && validBotQuota(request.resource.data)
         && request.resource.data.count == 1
         && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
-      allow update: if isOwner(runnerUid) && runnerHasBot(botId)
+      allow update: if runnerHasBot(botId)
         && validBotQuota(request.resource.data)
-        && resource.data.runnerUid == runnerUid
         && resource.data.botId == botId
         && resource.data.kind == 'botDaily'
         && request.resource.data.lastAt > resource.data.lastAt
@@ -348,10 +347,9 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    match /botRateLimits/{runnerUid}/bots/{botId}/users/{actorUid} {
+    match /botRateLimits/bots/{botId}/users/{actorUid} {
       function validChatQuota(d) {
-        return d.keys().hasOnly(['runnerUid', 'botId', 'actorUid', 'kind', 'count', 'windowStartedAt', 'lastAt'])
-          && d.runnerUid == runnerUid
+        return d.keys().hasOnly(['botId', 'actorUid', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.botId == botId
           && d.actorUid == actorUid
           && d.kind == 'chatDaily'
@@ -362,14 +360,13 @@ service cloud.firestore {
           && d.windowStartedAt <= request.time
           && d.lastAt <= request.time;
       }
-      allow read: if isOwner(runnerUid);
-      allow create: if isOwner(runnerUid) && runnerHasBot(botId)
+      allow read: if runnerHasBot(botId);
+      allow create: if runnerHasBot(botId)
         && validChatQuota(request.resource.data)
         && request.resource.data.count == 1
         && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
-      allow update: if isOwner(runnerUid) && runnerHasBot(botId)
+      allow update: if runnerHasBot(botId)
         && validChatQuota(request.resource.data)
-        && resource.data.runnerUid == runnerUid
         && resource.data.botId == botId
         && resource.data.actorUid == actorUid
         && resource.data.kind == 'chatDaily'
