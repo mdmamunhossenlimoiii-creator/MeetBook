@@ -255,7 +255,7 @@ cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update'
 cap('AI bots', 'Bot reaction on a friends-only post', 'update', 'posts/pf', { 'reactions.bot_01': 'love' }, []);
 cap('AI bots', 'Bot reaction on a bot\'s post', 'update', 'posts/pb', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, ['runner']);
 cap('AI bots', 'Runner writes a reaction under a human\'s key (u2)', 'update', 'posts/p2', { 'reactions.u2': 'wow' }, ['other']);
-cap('AI bots', 'Runner cannot raise commentCount without a same-batch new comment', 'update', 'posts/p2', { commentCount: { $inc: 1 }, lastBotCommentBy: 'bot_01' }, N);
+cap('AI bots', 'Runner cannot raise commentCount without a same-batch new comment', 'update', 'posts/p2', { commentCount: { $inc: 1 }, lastBotCommentBy: 'bot_01' }, []);
 cap('AI bots', 'Runner raises commentCount on a non-consenting user\'s post', 'update', 'posts/p1', { commentCount: { $inc: 1 } }, N);
 cap('AI bots', 'Runner pretends to be a human in a comment', 'create', 'posts/p2/comments/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('AI bots', 'Read the bot inbox', 'get', 'botInbox/i1', null, [...STAFF, 'runner']);
