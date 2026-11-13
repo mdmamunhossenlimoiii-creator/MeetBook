@@ -10,12 +10,19 @@ import { act, hasRole, loading, tagHtml, when, short } from './common.js';
 const PAGE = 20;
 
 async function updateUserProfile(uid, patch) {
-  const publicPatch = Object.fromEntries(Object.entries(patch).filter(([key]) =>
-    ['name', 'nameLower', 'bio', 'photo', 'cover', 'verified'].includes(key)
-  ));
+  const current = await getDoc(doc(db, 'users', uid));
+  if (!current.exists()) throw new Error('User profile no longer exists.');
+  const next = { ...current.data(), ...patch };
+  const publicProfile = {
+    name: next.name, nameLower: String(next.name || '').toLowerCase(),
+    bio: String(next.bio || '').slice(0, 500), photo: next.photo || '', cover: next.cover || '',
+    isBot: next.isBot === true, roleEmoji: next.roleEmoji || '', verified: next.verified === true,
+    profileVisibility: next.settings?.profileVisibility === 'friends' ? 'friends' : 'everyone',
+    createdAt: next.createdAt || serverTimestamp()
+  };
   const batch = writeBatch(db);
   batch.update(doc(db, 'users', uid), patch);
-  if (Object.keys(publicPatch).length) batch.set(doc(db, 'publicProfiles', uid), publicPatch, { merge: true });
+  batch.set(doc(db, 'publicProfiles', uid), publicProfile, { merge: true });
   await batch.commit();
 }
 
