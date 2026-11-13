@@ -1,4 +1,4 @@
-// Scheduled job (GitHub Actions): first three bots use server-side Gemini with safe template fallback; remaining bots use templates.
+// Manual GitHub Actions job: the first three bots use server-side Gemini with safe template fallback; remaining bots retain template behavior.
 //
 // Security model
 //  * No Admin SDK / service-account key. The job signs in as a normal Firebase Auth user (the
