@@ -24,6 +24,6 @@ Environment variable required:
 
 The separate repository variable `BOT_LIVE_TEST_APPROVED` must remain unset until the owner approves a specific limited live test. A live run also requires `confirm_live=true` and the protected environment approval. Keep the Firestore runner document disabled and the global kill switch off until the release checklist is complete. The owner must create `botRunners/{runnerUid}` with a narrow `botIds: ["bot_01", "bot_02", "bot_03"]` allowlist; `enabled` remains false until the limited test is separately approved. Never use a personal account password, put private credentials in frontend code, repository files, ordinary unprotected variables, test fixtures, or logs, or reuse MySocial credentials. Do not paste secrets into chat.
 
-Do not add service-account JSON to source files, frontend configuration, repository variables, workflow logs, or commits. Store private credentials only in repository Actions Secrets when separately approved and required by a reviewed workflow.
+Do not add service-account JSON to source files, frontend configuration, repository variables, workflow logs, or commits. Store private runner credentials only as protected GitHub Environment secrets for `meetbook-bot-live`, after separate owner approval.
 
 The backup script refuses to run if the expected MeetBook project ID is missing or does not match the service account project. It also rejects the known legacy MySocial project ID.
