@@ -299,7 +299,7 @@ service cloud.firestore {
       allow create: if isOwner(runnerUid) && runnerHasBot(botId)
         && validChatQuota(request.resource.data)
         && request.resource.data.count == 1
-        && request.resource.data.windowStartedAt == request.time;
+        && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
       allow update: if isOwner(runnerUid) && runnerHasBot(botId)
         && validChatQuota(request.resource.data)
         && resource.data.runnerUid == runnerUid
