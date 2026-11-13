@@ -276,7 +276,7 @@ async function main() {
     const reply = chatReply({ bot, text: m.text, history: hist });
     const replyText = await generateSmartBotText({
       bot, kind: 'chat', source: m.text,
-      history: hist.map(({ uid, text }) => ({ uid, text })),
+      history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
       fallback: reply.text
     });
     if (DRY) console.log(`[dry] chat reply as ${bot.name}: ${replyText}`);
