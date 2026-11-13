@@ -7,6 +7,7 @@ import { readFileSync } from 'node:fs';
 const runner = readFileSync(new URL('../scripts/bot-runner.mjs', import.meta.url), 'utf8');
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const adminBots = readFileSync(new URL('../js/admin/bots.js', import.meta.url), 'utf8');
+const rest = readFileSync(new URL('../scripts/lib/firestore-rest.mjs', import.meta.url), 'utf8');
 
 test('runner fails closed unless global botsEnabled and its own allowlist are explicit', () => {
   assert.match(runner, /global\.botsEnabled !== true/);
@@ -19,9 +20,13 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
 
 test('runner applies conservative per-bot and per-user limits', () => {
   assert.match(runner, /Math\.min\(12,/);
-  assert.match(runner, /\|\| 0\) >= 15/);
-  assert.match(runner, /Date\.now\(\) - lastChatAt < 60_000/);
-  assert.match(runner, /st\.daily\.chatAt\[m\.fromUid\] = Date\.now\(\)/);
+  assert.match(runner, /reserveBotAction/);
+  assert.match(runner, /reserveChatReply/);
+  assert.match(runner, /cooldownMs: 60_000/);
+  assert.match(rest, /beginTransaction/);
+  assert.match(rest, /currentDocument: current \? \{ updateTime: current\.updateTime \} : \{ exists: false \}/);
+  assert.match(rules, /request\.resource\.data\.count == resource\.data\.count \+ 1/);
+  assert.match(rules, /duration\.value\(60, 's'\)/);
 });
 
 test('private chat message bodies are not copied into bot audit logs', () => {
