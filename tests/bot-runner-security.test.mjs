@@ -21,6 +21,11 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
 test('runner applies conservative per-bot and per-user limits', () => {
   assert.match(runner, /Math\.min\(12,/);
   assert.match(runner, /reserveBotAction/);
+  assert.match(runner, /GLOBAL_DAILY_ACTION_LIMIT = 60/);
+  assert.match(runner, /GEMINI_DAILY_REQUEST_LIMIT = 60/);
+  assert.match(runner, /reserveQuota\('botGlobalRateLimits\/global'/);
+  assert.match(runner, /reserveQuota\('botGeminiRateLimits\/global'/);
+  assert.match(runner, /Gemini daily request budget reached/);
   assert.match(runner, /reserveChatReply/);
   assert.match(runner, /cooldownMs: 60_000/);
   assert.match(rest, /beginTransaction/);
@@ -41,13 +46,14 @@ test('private chat message bodies are not copied into bot audit logs', () => {
 });
 
 test('runner inbox and private chat access are limited to assigned bots', () => {
-  assert.match(rules, /runnerHasBot\(resource\.data\.botId\)/);
+  assert.match(rules, /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
   assert.match(rules, /function runnerMayIncrementCommentCount\(postId\)/);
   assert.match(rules, /getAfter\(commentPath\)\.data\.get\('ai', false\) == true/);
   assert.match(rules, /function runnerMayReact\(\)/);
   assert.match(rules, /runnerMayActAs\(botUid\)/);
-  assert.match(rules, /runnerMayActAs\(request\.resource\.data\.uid\)/);
+  assert.match(rules, /runnerMayCommentAs\(request\.resource\.data\.uid\)/);
+  assert.match(rules, /runnerMayChatAs\(request\.resource\.data\.uid\)/);
 });
 
 
@@ -56,9 +62,9 @@ test('Admin bot panel does not provide manual posting or commenting as a bot', (
 });
 
 test('dry runs never call Gemini or print private reply text', () => {
-  assert.match(runner, /const postText = DRY \? pick\.text : await generateSmartBotText/);
-  assert.match(runner, /text: DRY \? baseComment\.text : await generateSmartBotText/);
-  assert.match(runner, /const replyText = DRY \? reply\.text : await generateSmartBotText/);
+  assert.match(runner, /const postText = DRY \? pick\.text : await generateText/);
+  assert.match(runner, /text: DRY \? baseComment\.text : await generateText/);
+  assert.match(runner, /const replyText = DRY \? reply\.text : await generateText/);
   assert.match(runner, /private text and Gemini calls suppressed/);
   assert.doesNotMatch(runner, /\[dry\] chat reply as .*replyText/);
 });
@@ -94,4 +100,56 @@ test('bot workflows are manual-only, default to dry-run, and require an explicit
   assert.match(runnerWorkflow, /BOT_COMMENTS: "0"/);
   assert.match(chatWorkflow, /BOT_RUNNER_MODE: chat/);
   assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
+});
+
+
+test('Admin, Runner, and Firestore Rules treat missing bot switches as OFF', () => {
+  assert.match(adminBots, /const botsOn = site\.botsEnabled === true/);
+  assert.match(adminBots, /const next = site\.botsEnabled !== true/);
+  assert.match(adminBots, /b\[k\] === true \? 'on' : 'off'/);
+  assert.match(adminBots, /v\[k\] === true \? 'checked' : ''/);
+  assert.match(runner, /bot\.active === true/);
+  assert.match(runner, /b\.autoPost === true/);
+  assert.match(runner, /b\.autoComment === true/);
+  assert.match(runner, /bot\.autoReaction === true/);
+  assert.match(runner, /b\.chatEnabled === true/);
+  assert.match(runner, /Activation blocked: settings\/global document is missing/);
+  assert.match(rules, /bot\.get\('active', false\) == true/);
+  assert.match(rules, /get\('chatEnabled', false\) == true/);
+  assert.match(rules, /get\('autoPost', false\) == true/);
+  assert.match(rules, /get\('autoComment', false\) == true/);
+  assert.match(rules, /get\('autoReaction', false\) == true/);
+});
+
+ 
+test('scheduled workflows exist but remain owner-gated and bounded', () => {
+  const social = readFileSync(new URL('../.github/workflows/bot-scheduled-social.yml', import.meta.url), 'utf8');
+  const chat = readFileSync(new URL('../.github/workflows/bot-scheduled-chat.yml', import.meta.url), 'utf8');
+  for (const workflow of [social, chat]) {
+    assert.match(workflow, /schedule:/);
+    assert.match(workflow, /vars\.BOT_SCHEDULE_LIVE_ENABLED == 'yes'/);
+    assert.match(workflow, /environment: meetbook-bot-scheduled/);
+    assert.match(workflow, /BOT_RUNNER_EXPECTED_PROJECT_ID/);
+    assert.match(workflow, /GEMINI_STRICT: "1"/);
+    assert.match(workflow, /DRY_RUN: "0"/);
+    assert.match(workflow, /group: meetbook-bot-automation/);
+    assert.match(workflow, /timeout-minutes: 5/);
+  }
+  assert.match(social, /cron: "17 \*\/6 \* \* \*"/);
+  assert.match(social, /BOT_POSTS: "1"/);
+  assert.match(social, /BOT_COMMENTS: "1"/);
+  assert.match(chat, /cron: "\*\/20 \* \* \* \*"/);
+  assert.match(chat, /BOT_POSTS: "0"/);
+  assert.match(chat, /BOT_COMMENTS: "0"/);
+});
+
+ 
+test('runner uses stable workflow IDs and bounds bot-to-bot discussion', () => {
+  assert.match(runner, /process\.env\.GITHUB_RUN_ID/);
+  assert.match(runner, /const BOT_TO_BOT_MAX_TURNS = 2/);
+  assert.match(runner, /replyMessageId = .*m\.id/);
+  assert.match(runner, /post_\$\{bot\.id\}_\$\{RUN_ID\}/);
+  assert.match(runner, /if \(await fs\.get\(commentPath\)\)/);
+  assert.match(runner, /duplicate reply prevented/i);
+  assert.match(runner, /existingComments\.filter\(\(comment\) => comment\.ai === true && isBotId\(comment\.uid\)\)/);
 });

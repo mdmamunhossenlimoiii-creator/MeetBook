@@ -76,13 +76,31 @@ service cloud.firestore {
         && botUid in runner.get('botIds', [])
         && global.get('botsEnabled', false) == true
         && bot.get('isBot', false) == true
-        && bot.get('active', true) == true;
+        && bot.get('active', false) == true;
     }
     function runnerMayActAs(botUid) {
       let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
       return runnerHasBot(botUid)
         && bot.get('isBot', false) == true
-        && bot.get('active', true) == true;
+        && bot.get('active', false) == true;
+    }
+    // Task-specific flags are enforced in Rules as well as in the Runner.
+    // Missing flags are OFF: a Runner cannot bypass an Admin's per-bot controls.
+    function runnerMayPost(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('autoPost', false) == true;
+    }
+    function runnerMayCommentAs(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('autoComment', false) == true;
+    }
+    function runnerMayReactAs(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('autoReaction', false) == true;
+    }
+    function runnerMayChatAs(botUid) {
+      let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
+      return runnerMayActAs(botUid) && bot.get('chatEnabled', false) == true;
     }
     function runnerMayReadChat(chat) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
@@ -98,12 +116,12 @@ service cloud.firestore {
         && chat.members is list
         && chat.members.size() == 2
         && ((chat.members[0] in runner.get('botIds', [])
-              && runnerMayActAs(chat.members[0]))
+              && runnerMayChatAs(chat.members[0]))
           || (chat.members[1] in runner.get('botIds', [])
-              && runnerMayActAs(chat.members[1])));
+              && runnerMayChatAs(chat.members[1])));
     }
     function canPublishBot(botUid) {
-      return runnerMayActAs(botUid);
+      return runnerMayPost(botUid);
     }
     // Bot comments and the parent counter must be committed atomically. The deterministic
     // comment ID (bot UID) plus the lastBotCommentBy marker prevents a Runner from fabricating counts.
@@ -112,7 +130,7 @@ service cloud.firestore {
       let commentPath = /databases/$(database)/documents/posts/$(postId)/comments/$(botUid);
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentCount', 'lastBotCommentBy'])
         && request.resource.data.commentCount == resource.data.commentCount + 1
-        && runnerMayActAs(botUid)
+        && runnerMayCommentAs(botUid)
         && existsAfter(commentPath)
         && !exists(commentPath)
         && getAfter(commentPath).data.uid == botUid
@@ -122,7 +140,7 @@ service cloud.firestore {
     // still active and assigned; an allowlist-only map-key check is not sufficient.
     function runnerMayReact() {
       let botUid = request.resource.data.lastBotReactionBy;
-      return runnerMayActAs(botUid)
+      return runnerMayReactAs(botUid)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions', 'lastBotReactionBy'])
         && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().size() == 1
         && request.resource.data.reactions.diff(resource.data.reactions).affectedKeys().hasOnly([botUid])
@@ -312,15 +330,20 @@ service cloud.firestore {
       allow write: if false; // create by hand in the Firebase console
     }
     // Durable runner quotas: fixed paths prevent resetting limits by changing a date/path.
-    // Each bot gets 12 actions per rolling 24h; each user gets 15 chat replies per bot per rolling 24h + 60s cooldown.
+    // Each bot gets its configured 0–12 actions per rolling 24h; each user gets 15 chat replies per bot per rolling 24h + 60s cooldown.
     // Shared per-bot quota path: multiple assigned Runners consume the same global budget.
     match /botRateLimits/{botId} {
+      function botDailyLimit() {
+        let bot = get(/databases/$(database)/documents/users/$(botId)).data;
+        let configured = bot.get('dailyLimit', 6);
+        return configured is int && configured >= 0 && configured <= 12 ? configured : 0;
+      }
       function validBotQuota(d) {
         return d.keys().hasOnly(['botId', 'kind', 'count', 'windowStartedAt', 'lastAt'])
           && d.botId == botId
           && d.kind == 'botDaily'
           && d.count is int
-          && d.count >= 1 && d.count <= 12
+          && d.count >= 1 && d.count <= botDailyLimit()
           && d.windowStartedAt is timestamp
           && d.lastAt is timestamp
           && d.windowStartedAt <= request.time
@@ -331,6 +354,7 @@ service cloud.firestore {
       allow create: if runnerHasBot(botId)
         && validBotQuota(request.resource.data)
         && request.resource.data.count == 1
+        && botDailyLimit() >= 1
         && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
       allow update: if runnerHasBot(botId)
         && validBotQuota(request.resource.data)
@@ -338,7 +362,7 @@ service cloud.firestore {
         && resource.data.kind == 'botDaily'
         && request.resource.data.lastAt > resource.data.lastAt
         && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
-          ? resource.data.count < 12
+          ? resource.data.count < botDailyLimit()
             && request.resource.data.count == resource.data.count + 1
             && request.resource.data.windowStartedAt == resource.data.windowStartedAt
           : request.resource.data.count == 1
@@ -380,6 +404,66 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Shared daily activity cap across every assigned bot and Runner.
+    match /botGlobalRateLimits/{scope} {
+      function validGlobalQuota(d) {
+        return scope == 'global'
+          && d.keys().hasOnly(['kind', 'count', 'windowStartedAt', 'lastAt'])
+          && d.kind == 'globalDaily'
+          && d.count is int && d.count >= 1 && d.count <= 60
+          && d.windowStartedAt is timestamp && d.lastAt is timestamp
+          && d.windowStartedAt <= request.time && d.lastAt <= request.time
+          && d.lastAt + duration.value(5, 's') >= request.time;
+      }
+      allow read: if scope == 'global' && runnerEnabled();
+      allow create: if scope == 'global' && runnerEnabled()
+        && validGlobalQuota(request.resource.data)
+        && request.resource.data.count == 1
+        && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
+      allow update: if scope == 'global' && runnerEnabled()
+        && validGlobalQuota(request.resource.data)
+        && resource.data.kind == 'globalDaily'
+        && request.resource.data.lastAt > resource.data.lastAt
+        && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
+          ? resource.data.count < 60
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.windowStartedAt == resource.data.windowStartedAt
+          : request.resource.data.count == 1
+            && request.resource.data.windowStartedAt >= resource.data.windowStartedAt + duration.value(1, 'd')
+            && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time);
+      allow delete: if false;
+    }
+
+    // Gemini request budget is separate from activity quotas and shared across all bots.
+    match /botGeminiRateLimits/{scope} {
+      function validGeminiQuota(d) {
+        return scope == 'global'
+          && d.keys().hasOnly(['kind', 'count', 'windowStartedAt', 'lastAt'])
+          && d.kind == 'geminiDaily'
+          && d.count is int && d.count >= 1 && d.count <= 60
+          && d.windowStartedAt is timestamp && d.lastAt is timestamp
+          && d.windowStartedAt <= request.time && d.lastAt <= request.time
+          && d.lastAt + duration.value(5, 's') >= request.time;
+      }
+      allow read: if scope == 'global' && runnerEnabled();
+      allow create: if scope == 'global' && runnerEnabled()
+        && validGeminiQuota(request.resource.data)
+        && request.resource.data.count == 1
+        && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time;
+      allow update: if scope == 'global' && runnerEnabled()
+        && validGeminiQuota(request.resource.data)
+        && resource.data.kind == 'geminiDaily'
+        && request.resource.data.lastAt > resource.data.lastAt
+        && (request.time < resource.data.windowStartedAt + duration.value(1, 'd')
+          ? resource.data.count < 60
+            && request.resource.data.count == resource.data.count + 1
+            && request.resource.data.windowStartedAt == resource.data.windowStartedAt
+          : request.resource.data.count == 1
+            && request.resource.data.windowStartedAt >= resource.data.windowStartedAt + duration.value(1, 'd')
+            && request.resource.data.windowStartedAt + duration.value(5, 's') >= request.time);
+      allow delete: if false;
+    }
+
     match /botState/{uid} {
       allow read, write: if isOwner(uid) && runnerEnabled();
     }
@@ -400,15 +484,15 @@ service cloud.firestore {
       allow read: if isOwner(senderUid);
       allow create: if isOwner(senderUid) && notBanned()
         && isBotUser(botId)
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', true) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', false) == true
         && validInboxQuota(request.resource.data)
         && request.resource.data.count == 1
         && request.resource.data.windowStartedAt == request.time;
       allow update: if isOwner(senderUid) && notBanned()
         && isBotUser(botId)
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true
-        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', true) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true
+        && get(/databases/$(database)/documents/users/$(botId)).data.get('chatEnabled', false) == true
         && validInboxQuota(request.resource.data)
         && resource.data.senderUid == senderUid
         && resource.data.botId == botId
@@ -441,12 +525,12 @@ service cloud.firestore {
       }
       allow get: if signedIn()
         && (isOwner(resource.data.ownerUid)
-          || (runnerHasBot(resource.data.botId) && botMemoryConsent(resource.data.ownerUid)));
+          || (runnerMayChatAs(resource.data.botId) && botMemoryConsent(resource.data.ownerUid)));
       allow list: if signedIn() && isOwner(resource.data.ownerUid);
-      allow create: if runnerHasBot(request.resource.data.botId)
+      allow create: if runnerMayChatAs(request.resource.data.botId)
         && botMemoryConsent(request.resource.data.ownerUid)
         && validMemory(request.resource.data);
-      allow update: if runnerHasBot(resource.data.botId)
+      allow update: if runnerMayChatAs(resource.data.botId)
         && botMemoryConsent(resource.data.ownerUid)
         && resource.data.ownerUid == request.resource.data.ownerUid
         && resource.data.botId == request.resource.data.botId
@@ -487,9 +571,9 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
         && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.type == 'private'
         && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.members.hasAll([request.auth.uid, request.resource.data.botId]);
-      allow read: if isStaff() || runnerHasBot(resource.data.botId);
+      allow read: if isStaff() || runnerMayChatAs(resource.data.botId);
       allow update: if isAdmin()
-        || (runnerHasBot(resource.data.botId)
+        || (runnerMayChatAs(resource.data.botId)
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
           && request.resource.data.handled == true
           && request.resource.data.handledAt is timestamp);
@@ -666,7 +750,7 @@ service cloud.firestore {
             && textOk(request.resource.data.text, 2000)
             && userMayComment(postId))
           // Only the assigned Runner may comment as an AI bot; Admins do not impersonate bot accounts.
-          || (runnerMayActAs(request.resource.data.uid)
+          || (runnerMayCommentAs(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true
             && textOk(request.resource.data.text, 2000)
             && runnerMayComment(postId));
@@ -771,7 +855,7 @@ service cloud.firestore {
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastMessage', 'lastAt'])
           && request.resource.data.lastMessage is map
           && request.resource.data.lastMessage.keys().hasOnly(['text', 'uid'])
-          && runnerMayActAs(request.resource.data.lastMessage.uid)
+          && runnerMayChatAs(request.resource.data.lastMessage.uid)
           && request.resource.data.lastMessage.uid in resource.data.members
           && textOk(request.resource.data.lastMessage.text, 120)
           && (request.resource.data.lastAt is timestamp));
@@ -789,7 +873,7 @@ service cloud.firestore {
             && (get(/databases/$(database)/documents/chats/$(chatId)).data.type == 'group'
               || canSendPrivateMessage(get(/databases/$(database)/documents/chats/$(chatId)).data)))
           // bot-runner answering a user's message as the bot that is a member of this chat
-          || (runnerMayActAs(request.resource.data.uid)
+          || (runnerMayChatAs(request.resource.data.uid)
             && isBotUser(request.resource.data.uid)
             && request.resource.data.get('ai', false) == true // bot content must always be flagged as AI
             && textOk(request.resource.data.text, 4000)
