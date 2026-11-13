@@ -26,7 +26,7 @@ test('runner applies conservative per-bot and per-user limits', () => {
   assert.match(rest, /beginTransaction/);
   assert.match(rest, /currentDocument: current \? \{ updateTime: current\.updateTime \} : \{ exists: false \}/);
   assert.match(rules, /request\.resource\.data\.count == resource\.data\.count \+ 1/);
-  assert.match(rules, /match \/botRateLimits\/bots\/\{botId\}/);
+  assert.match(rules, /match \/botRateLimits\/\{botId\}/);
   assert.doesNotMatch(rules, /match \/botRateLimits\/\{runnerUid\}/, 'bot quotas must not be partitioned by Runner UID');
   assert.match(rules, /duration\.value\(60, 's'\)/);
   assert.match(rest, /86_400_000/);
