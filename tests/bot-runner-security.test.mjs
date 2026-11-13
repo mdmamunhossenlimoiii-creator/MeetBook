@@ -6,6 +6,7 @@ import { readFileSync } from 'node:fs';
 
 const runner = readFileSync(new URL('../scripts/bot-runner.mjs', import.meta.url), 'utf8');
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+const adminBots = readFileSync(new URL('../js/admin/bots.js', import.meta.url), 'utf8');
 
 test('runner fails closed unless global botsEnabled and its own allowlist are explicit', () => {
   assert.match(runner, /global\.botsEnabled !== true/);
@@ -32,4 +33,9 @@ test('runner inbox and private chat access are limited to assigned bots', () => 
   assert.match(rules, /runnerHasBot\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
   assert.match(rules, /runnerMayActAs\(request\.resource\.data\.uid\)/);
+});
+
+
+test('Admin bot panel does not provide manual posting or commenting as a bot', () => {
+  assert.doesNotMatch(adminBots, /Post as a bot|Comment as a bot|data-do="post"|data-do="comment"|postAsBot|commentAsBot/);
 });
