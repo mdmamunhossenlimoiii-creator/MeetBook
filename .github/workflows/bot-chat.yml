@@ -51,6 +51,5 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           BOT_RUNNER_MODE: chat
           BOT_RUNNER_BOT_ID: ${{ inputs.bot_id }}
-          BOT_CHAT_MAX_REPLIES: "1"
           DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
         run: node scripts/bot-runner.mjs
