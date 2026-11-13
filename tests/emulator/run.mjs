@@ -70,6 +70,8 @@ for (const cap of CAPS) {
   }
 }
 // Prove a real user can create a bot inbox item only in the same transaction as its quota increment.
+// The lightweight harness fake does not model atomic multi-document write batches.
+if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
 {
   const db = env.authenticatedContext('u1').firestore();
   const day = new Date().toISOString().slice(0, 10);
@@ -91,6 +93,7 @@ for (const cap of CAPS) {
   console.log('atomic bot inbox + quota transaction allowed');
   await assert.rejects(submit());
   console.log('bot inbox cooldown enforced by real Firestore Rules');
+}
 }
 await env.cleanup();
 console.log(`${total} cases run against the real emulator, ${wrong.length} mismatches.`);
