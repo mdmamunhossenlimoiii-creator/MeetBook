@@ -179,23 +179,27 @@ export async function render(view, a, b) {
         if (other?.isBot && text) {
           // Message, inbox item and quota counter commit together. Rules reject direct inbox writes
           // without the matching quota increment, so parallel tabs cannot bypass the throttle.
-          const quotaDay = new Date().toISOString().slice(0, 10);
-          const quotaRef = doc(db, 'botInboxRateLimits', me, 'bots', otherUid, 'days', quotaDay);
+          const quotaRef = doc(db, 'botInboxRateLimits', me, 'bots', otherUid);
           const inboxRef = doc(collection(db, 'botInbox'));
           await runTransaction(db, async (tx) => {
             const quotaSnap = await tx.get(quotaRef);
             const quota = quotaSnap.exists() ? quotaSnap.data() : null;
             const now = Date.now();
             const lastAt = quota?.lastAt?.toMillis?.() || 0;
-            if ((quota?.count || 0) >= 20) throw new Error('You have reached today’s message limit for this AI bot.');
+            const windowAt = quota?.windowStartedAt?.toMillis?.() || 0;
+            const expired = !quota || now - windowAt >= 86_400_000;
+            const count = expired ? 0 : (quota?.count || 0);
+            if (count >= 20) throw new Error('You have reached the 24-hour message limit for this AI bot.');
             if (now - lastAt < 10_000) throw new Error('Please wait a few seconds before messaging this AI bot again.');
             tx.set(quotaRef, {
-              senderUid: me, botId: otherUid, count: (quota?.count || 0) + 1, lastAt: serverTimestamp()
+              senderUid: me, botId: otherUid, count: count + 1,
+              windowStartedAt: expired ? serverTimestamp() : quota.windowStartedAt,
+              lastAt: serverTimestamp()
             });
             tx.set(messageRef, { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
             tx.set(inboxRef, {
               fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500),
-              handled: false, createdAt: serverTimestamp(), quotaDay
+              handled: false, createdAt: serverTimestamp()
             });
             tx.update(chatRef, { lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp() });
           });
