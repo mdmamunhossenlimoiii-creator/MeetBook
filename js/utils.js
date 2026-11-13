@@ -84,7 +84,7 @@ const userCache = new Map();
 export async function getUser(uid) {
   if (!uid) return null;
   if (userCache.has(uid)) return userCache.get(uid);
-  const p = getDoc(doc(db, 'users', uid)).then((s) => (s.exists() ? { uid, ...s.data() } : { uid, name: 'Unknown user' }))
+  const p = getDoc(doc(db, 'publicProfiles', uid)).then((s) => (s.exists() ? { uid, ...s.data() } : { uid, name: 'Unknown user' }))
     .catch(() => ({ uid, name: 'Unknown user' }));
   userCache.set(uid, p);
   const u = await p;
