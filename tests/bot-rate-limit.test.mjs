@@ -7,7 +7,7 @@ test('transactional quota reservations serialize concurrent runners', async () =
   const mock = await startMock();
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
-    const path = 'botRateLimits/bots/bot_01';
+    const path = 'botRateLimits/bot_01';
     const data = { botId: 'bot_01', kind: 'botDaily' };
     const results = await Promise.all([
       fs.reserveQuota(path, { max: 1, data }),
@@ -24,7 +24,7 @@ test('quota transactions enforce a daily count and a cooldown', async () => {
   const mock = await startMock();
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
-    const path = 'botRateLimits/bots/bot_01/users/u1';
+    const path = 'botRateLimits/bot_01/users/u1';
     const data = { botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily' };
     assert.equal(await fs.reserveQuota(path, { max: 15, cooldownMs: 60_000, data }), true);
     assert.equal(await fs.reserveQuota(path, { max: 15, cooldownMs: 60_000, data }), false);
@@ -36,14 +36,14 @@ test('quota transactions enforce a daily count and a cooldown', async () => {
 
 test('expired runner quota windows reset atomically with server request time', async () => {
   const oldWindow = Date.now() - 25 * 60 * 60 * 1000;
-  const path = 'botRateLimits/runner1/bots/bot_01';
+  const path = 'botRateLimits/bot_01';
   const mock = await startMock({ seed: {
     [path]: { botId: 'bot_01', kind: 'botDaily', count: 12, windowStartedAt: new Date(oldWindow), lastAt: new Date(oldWindow) }
   } });
   try {
     const fs = createClient({ projectId: 'test-proj', fsUrl: mock.url, getToken: async () => 'USER_TOKEN' });
     assert.equal(await fs.reserveQuota(path, {
-      max: 12, data: { runnerUid: 'runner1', botId: 'bot_01', kind: 'botDaily' }
+      max: 12, data: { botId: 'bot_01', kind: 'botDaily' }
     }), true);
     const quota = mock.get(path);
     assert.equal(quota.count, 1);
