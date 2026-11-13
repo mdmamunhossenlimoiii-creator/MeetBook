@@ -23,6 +23,7 @@ import { BOTS, isBotId } from '../js/bots-data.js';
 import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and } from './lib/firestore-rest.mjs';
+import { generateSmartBotText } from './lib/gemini.mjs';
 
 const EMAIL = process.env.BOT_RUNNER_EMAIL;
 const PASSWORD = process.env.BOT_RUNNER_PASSWORD;
@@ -169,6 +170,7 @@ async function main() {
   const nPosts = num(process.env.BOT_POSTS, 1 + rand(2));
   const nEngage = num(process.env.BOT_COMMENTS, 1 + rand(3));
   console.log(`Plan: up to ${nPosts} post(s), ${nEngage} engagement(s)${DRY ? ' (dry run)' : ''}`);
+  if (!process.env.GEMINI_API_KEY) console.log('GEMINI_API_KEY is missing; the first three bots will use their safe template fallback.');
 
   await signIn();
   const global = (await fs.get('settings/global')) || {};
@@ -190,7 +192,8 @@ async function main() {
   for (const bot of shuffle(bots.filter((b) => b.autoPost !== false && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
     if (!pick || !(await reserveBotAction(bot))) continue;
-    const id = await createPost(bot, pick.text);
+    const postText = await generateSmartBotText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    const id = await createPost(bot, postText);
     spend(st, bot); stats.posts++;
     await log(bot, 'post', id, pick.text);
     console.log(`Posted as ${bot.name} (${id}): ${pick.text.slice(0, 70)}`);
@@ -228,9 +231,10 @@ async function main() {
       if (!ranked.length) continue;
       const bot = ranked[0].b;
       const usedTexts = [...(st.usedComments[bot.id] || [])];
-      const c = makeComment({ bot, post: { text: post.text, image: post.image, authorName: post.authorName }, used: usedTexts });
-      if (!c) continue;
+      const baseComment = makeComment({ bot, post: { text: post.text, image: post.image, authorName: post.authorName }, used: usedTexts });
+      if (!baseComment) continue;
       if (!(await reserveBotAction(bot))) continue;
+      const c = { ...baseComment, text: await generateSmartBotText({ bot, kind: 'comment', source: post.text, fallback: baseComment.text }) };
       await createComment(bot, post.id, c.text);
       spend(st, bot); stats.comments++; engaged++;
       st.commented.push(`${post.id}:${bot.id}`); st.engaged.push(post.id);
@@ -269,10 +273,11 @@ async function main() {
       orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
     }, `chats/${m.chatId}`)).reverse();
     const reply = chatReply({ bot, text: m.text, history: hist });
-    if (DRY) console.log(`[dry] chat reply as ${bot.name}: ${reply.text}`);
+    const replyText = await generateSmartBotText({ bot, kind: 'chat', source: m.text, fallback: reply.text });
+    if (DRY) console.log(`[dry] chat reply as ${bot.name}: ${replyText}`);
     else {
-      await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: reply.text, image: '', ai: true, createdAt: new Date() });
-      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: reply.text, uid: bot.id }, lastAt: new Date() });
+      await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() });
+      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: replyText, uid: bot.id }, lastAt: new Date() });
       // Never put private conversation text in audit logs.
       await log(bot, 'chat', m.chatId, reply.intent);
     }
