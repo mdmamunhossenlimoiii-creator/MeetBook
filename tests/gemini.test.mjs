@@ -122,3 +122,20 @@ test('memory summarization preserves prior memory on API failure', async () => {
   const result = await updateSmartBotMemory({ bot: bot('bot_01'), existingSummary: 'Likes photography.', messages: [{ uid: 'u1', text: 'new preference' }], apiKey: 'x', fetchImpl: async () => { throw new Error('offline'); } });
   assert.equal(result, 'Likes photography.');
 });
+
+
+test('strict live mode fails closed instead of silently using template fallback', async () => {
+  await assert.rejects(
+    generateSmartBotText({ bot: bot(), kind: 'chat', source: 'hello', fallback: 'template', apiKey: '', strict: true }),
+    /Strict Gemini mode requires/
+  );
+  await assert.rejects(
+    generateSmartBotText({ bot: bot(), kind: 'chat', source: 'hello', fallback: 'template', apiKey: 'x', strict: true, fetchImpl: async () => ({ ok: false, status: 429 }) }),
+    /Gemini generation failed/
+  );
+  const live = await generateSmartBotText({
+    bot: bot(), kind: 'chat', source: 'hello', fallback: 'template', apiKey: 'x', strict: true,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'Gemini response.' }] } }] }) })
+  });
+  assert.equal(live, 'Gemini response.');
+});
