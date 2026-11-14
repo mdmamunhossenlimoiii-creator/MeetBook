@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
     inputs:
       bot_id:
-        description: "Choose exactly one of the first three Gemini bots"
+        description: "Choose one MeetBook bot; the first three use Gemini, others use role templates"
         required: true
         type: choice
-        options: [bot_01, bot_02, bot_03]
+        options: [bot_01, bot_02, bot_03, bot_04, bot_05, bot_06, bot_07, bot_08, bot_09, bot_10, bot_11, bot_12, bot_13, bot_14, bot_15, bot_16, bot_17, bot_18, bot_19, bot_20, bot_21, bot_22, bot_23]
       dry_run:
         description: "Preflight only: verify runner authentication and project guard; exits safely if bots are OFF"
         required: true
