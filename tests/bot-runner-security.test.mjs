@@ -75,7 +75,8 @@ test('manual runner modes isolate one selected bot and prevent cross-mode action
   assert.match(runner, /\['all', 'post', 'engage', 'chat'\]\.includes\(MODE\)/);
   assert.match(runner, /MODE !== 'all' && !isBotId\(RUNNER_BOT_ID\)/);
   assert.match(runner, /bot\.id === RUNNER_BOT_ID/);
-  assert.match(runner, /if \(MODE !== 'chat' && MODE !== 'engage'\)/);
+  assert.match(runner, /if \(MODE !== 'chat'\)/);
+  assert.match(runner, /if \(MODE !== 'engage'\)/);
   assert.match(runner, /if \(\(MODE === 'all' \|\| MODE === 'engage'\) && nEngage > 0\)/);
   assert.match(runner, /if \(MODE !== 'post' && MODE !== 'engage'\)/);
   assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
