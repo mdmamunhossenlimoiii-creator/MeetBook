@@ -230,9 +230,9 @@ cap('Posts', 'Publish a post as someone else', 'create', 'posts/new', () => newP
 cap('Posts', 'Bot runner cannot publish as its own normal account', 'create', 'posts/new', () => newPost('run'), []);
 cap('Posts', 'Publish a post as an AI bot with explicit AI label', 'create', 'posts/new', () => newPost('bot_01', { ai: true }), ['runner']);
 cap('Posts', 'Reject a bot post without the AI label', 'create', 'posts/new', () => newPost('bot_01'), []);
-cap('Posts', 'Bot with autoPost OFF cannot publish', 'create', 'posts/new', () => newPost('bot_24'), []);
+cap('Posts', 'Bot with autoPost OFF cannot publish', 'create', 'posts/new', () => newPost('bot_24', { ai: true }), []);
 cap('Posts', 'Runner cannot publish as an unassigned bot', 'create', 'posts/new', () => newPost('bot_02'), []);
-cap('Posts', 'Publish an AI-bot post with a video', 'create', 'posts/new', () => newPost('bot_01', { videoUrl: 'https://x/y.mp4' }), []);
+cap('Posts', 'Publish an AI-bot post with a video', 'create', 'posts/new', () => newPost('bot_01', { ai: true, videoUrl: 'https://x/y.mp4' }), []);
 cap('Posts', 'Publish a friends-only AI-bot post', 'create', 'posts/new', () => newPost('bot_01', { visibility: 'friends', audience: ['bot_01'] }), []);
 cap('Posts', 'Publish a post as a real user via the admin/bot path', 'create', 'posts/new', () => newPost('u2'), ['other']);
 cap('Posts', 'Hide a post', 'update', 'posts/p1', { hidden: true }, STAFF);
