@@ -25,7 +25,7 @@ export async function render(body) {
         <div class="row gap wrap"><button class="btn ${botsOn ? 'btn-danger' : 'btn-primary'}" data-do="global">${botsOn ? 'Turn all bots OFF' : 'Turn all bots ON'}</button>
           <button class="btn" data-do="seed">Create missing built-in bots (${BOTS.length})</button>
           <button class="btn btn-primary" data-do="new" ${bots.length >= MAX_BOTS ? 'disabled' : ''}>New bot</button></div></div>
-      <p class="muted small">Bot workflows are manual-only and dry-run by default; no scheduled activity is enabled. The first three bots can use Gemini after owner-approved live configuration; other bots use role-specific templates.</p>
+      <p class="muted small">Bot workflows are manual-only and dry-run by default; post, engagement, and user-initiated chat are separate actions. The first three bots can use Gemini after owner-approved live configuration; other bots use role-specific templates.</p>
     </section>
     <div data-cards>${bots.length ? bots.map((b) => `<div class="card pad bot-card" data-id="${esc(b.id)}"><div class="row gap wrap">
       ${avatarHtml(b.name, b.photo, 48)}<div class="grow"><b>${esc(b.name)}</b>${botBadge(b)} <span class="muted small">@${esc(b.username || b.id)} · ${esc(b.id)}</span>
