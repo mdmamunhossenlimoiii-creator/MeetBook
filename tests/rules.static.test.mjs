@@ -183,7 +183,7 @@ test('bot-runner can read ONLY private chats that include an AI bot (it must rea
 
 test('bot IDs and Admin controls match the 23-bot allowlist', () => {
   assert.match(botModule, /export const MAX_BOTS = 23;/);
-  assert.match(botData, /\^bot_\(0\[1-9\]\|1\[0-9\]\|2\[0-3\]\)\$/);
+  assert.ok(botData.includes("/^bot_(0[1-9]|1[0-9]|2[0-3])$/"));
   assert.match(rules, /'bot_23'/);
   assert.doesNotMatch(rules, /'bot_24'/);
   assert.match(botAdmin, /data-do="toggle"/);
