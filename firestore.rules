@@ -44,7 +44,7 @@ service cloud.firestore {
       return signedIn() && roleOf() == 'moderator';
     }
 
-    // The automation account used by the scheduled GitHub Action: a normal Firebase Auth user whose
+    // The automation account used by the manual GitHub Actions Runner: a normal Firebase Auth user whose
     // uid has a document in /botRunners (created by hand). It can only act as AI bots (see below).
     function isBotRunner() {
       return signedIn() && exists(/databases/$(database)/documents/botRunners/$(request.auth.uid));
@@ -506,7 +506,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // A user's message to a bot is mirrored here so the scheduled job can answer it.
+    // A user's message to a bot is mirrored here so the manual Runner can answer it.
  
     // Per-user, per-bot long-term memory. Only a short summary is persisted; raw transcripts are not.
     // The Runner can access one exact record only while the owner has explicitly opted in.
@@ -561,8 +561,8 @@ service cloud.firestore {
         && inboxQuotaOk()
         && request.resource.data.fromUid == request.auth.uid
         && isBotUser(request.resource.data.botId)
-        && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('active', true) == true
-        && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('chatEnabled', true) == true
+        && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('active', false) == true
+        && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('chatEnabled', false) == true
         && textOk(request.resource.data.text, 500)
         && request.resource.data.handled == false
         && request.resource.data.keys().hasOnly(['fromUid', 'botId', 'chatId', 'text', 'handled', 'createdAt'])
