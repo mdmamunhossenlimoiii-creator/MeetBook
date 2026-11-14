@@ -2,7 +2,7 @@
 // These tests inspect the source; Firestore permission behavior is covered by the rules matrix + emulator.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const runner = readFileSync(new URL('../scripts/bot-runner.mjs', import.meta.url), 'utf8');
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
@@ -122,25 +122,13 @@ test('Admin, Runner, and Firestore Rules treat missing bot switches as OFF', () 
 });
 
  
-test('scheduled workflows exist but remain owner-gated and bounded', () => {
-  const social = readFileSync(new URL('../.github/workflows/bot-scheduled-social.yml', import.meta.url), 'utf8');
-  const chat = readFileSync(new URL('../.github/workflows/bot-scheduled-chat.yml', import.meta.url), 'utf8');
-  for (const workflow of [social, chat]) {
-    assert.match(workflow, /schedule:/);
-    assert.match(workflow, /vars\.BOT_SCHEDULE_LIVE_ENABLED == 'yes'/);
-    assert.match(workflow, /environment: meetbook-bot-scheduled/);
-    assert.match(workflow, /BOT_RUNNER_EXPECTED_PROJECT_ID/);
-    assert.match(workflow, /GEMINI_STRICT: "1"/);
-    assert.match(workflow, /DRY_RUN: "0"/);
-    assert.match(workflow, /group: meetbook-bot-automation/);
-    assert.match(workflow, /timeout-minutes: 5/);
-  }
-  assert.match(social, /cron: "17 \*\/6 \* \* \*"/);
-  assert.match(social, /BOT_POSTS: "1"/);
-  assert.match(social, /BOT_COMMENTS: "1"/);
-  assert.match(chat, /cron: "\*\/20 \* \* \* \*"/);
-  assert.match(chat, /BOT_POSTS: "0"/);
-  assert.match(chat, /BOT_COMMENTS: "0"/);
+test('bot workflows remain manual-only and no scheduled automation is present', () => {
+  const policy = readFileSync(new URL('../WORKFLOWS.md', import.meta.url), 'utf8');
+  const setup = readFileSync(new URL('../BOT_WORKFLOW_SETUP.md', import.meta.url), 'utf8');
+  assert.equal(existsSync(new URL('../.github/workflows/bot-scheduled-social.yml', import.meta.url)), false);
+  assert.equal(existsSync(new URL('../.github/workflows/bot-scheduled-chat.yml', import.meta.url)), false);
+  assert.match(policy, /bot workflows manual-only with no schedule, push, or pull-request trigger/i);
+  assert.match(setup, /No scheduled or unattended bot workflows are included/i);
 });
 
  
