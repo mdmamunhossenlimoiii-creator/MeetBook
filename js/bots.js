@@ -1,5 +1,5 @@
 // AI bot accounts: Firestore profiles (users/bot_NN, isBot: true). Bots have NO Firebase Auth login.
-// Only staff can create / edit / delete them or post as them; firestore.rules enforce that (and forbid video posts).
+// Admins can create, enable/disable, and delete bot profiles; automated content is Runner-only and Firestore Rules enforce it.
 // Automatic activity (posts, engagement, chat) is done by scripts/bot-runner.mjs in GitHub Actions. No credentials here.
 import {
   db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where, limit, getDocs, serverTimestamp, increment
