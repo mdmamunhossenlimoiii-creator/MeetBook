@@ -193,4 +193,11 @@ test('bot IDs and Admin controls match the 23-bot allowlist', () => {
   assert.doesNotMatch(botAdmin, /b-lim/);
   assert.doesNotMatch(botAdmin, /tog\('auto(?:Post|Comment|Reaction)'/);
   assert.doesNotMatch(botAdmin, /tog\('chatEnabled'/);
+  assert.ok(botData.includes("/^bot_(0[1-9]|1[0-9]|2[0-3])$/"));
+  assert.ok(rules.includes("uid.matches('bot_(0[1-9]|1[0-9]|2[0-3])')"));
+  assert.match(block('users'), /affectedKeys\(\)\.hasOnly\(\['active'\]\)/);
+  const profiles = block('publicProfiles');
+  assert.match(profiles, /allow create: if \(isOwner\(uid\) \|\| \(isAdmin\(\) && request\.resource\.data\.get\('isBot', false\) == true\)\)/);
+  assert.match(profiles, /allow update: if isOwner\(uid\)/);
+  assert.doesNotMatch(profiles, /allow update: if isAdmin\(\)/);
 });
