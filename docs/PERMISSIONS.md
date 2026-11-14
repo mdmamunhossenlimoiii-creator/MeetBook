@@ -27,6 +27,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 206 capabilities × 14 actors = 2884 cases are executed on every test run.
 
 
+
 ## Users
 
 | Capability | Normal user | Moderator | Admin | Super Admin | Not signed in | Blocked | Suspended | No role | Unknown role | Bot runner |
