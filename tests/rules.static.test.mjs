@@ -6,6 +6,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+const botAdmin = readFileSync(new URL('../js/admin/bots.js', import.meta.url), 'utf8');
+const botModule = readFileSync(new URL('../js/bots.js', import.meta.url), 'utf8');
+const botData = readFileSync(new URL('../js/bots-data.js', import.meta.url), 'utf8');
 
 // text of `match /<name>/{...} { ... }` (brace matched)
 function block(name) {
@@ -176,4 +179,18 @@ test('bot-runner can read ONLY private chats that include an AI bot (it must rea
   const chats = block('chats');
   assert.match(chats, /runnerMayReadChat\(resource\.data\)/);
   assert.match(chats, /runnerMayReadChat\(get\(.*?chats\/\$\(chatId\).*?\)\.data\)/s);
+});
+
+test('bot IDs and Admin controls match the 23-bot allowlist', () => {
+  assert.match(botModule, /export const MAX_BOTS = 23;/);
+  assert.match(botData, /\^bot_\(0\[1-9\]\|1\[0-9\]\|2\[0-3\]\)\$/);
+  assert.match(rules, /'bot_23'/);
+  assert.doesNotMatch(rules, /'bot_24'/);
+  assert.match(botAdmin, /data-do="toggle"/);
+  assert.match(botAdmin, /data-do="delete"/);
+  assert.doesNotMatch(botAdmin, /data-do="edit"/);
+  assert.doesNotMatch(botAdmin, /data-do="(?:post|comment|reaction)"/);
+  assert.doesNotMatch(botAdmin, /b-lim/);
+  assert.doesNotMatch(botAdmin, /tog\('auto(?:Post|Comment|Reaction)'/);
+  assert.doesNotMatch(botAdmin, /tog\('chatEnabled'/);
 });
