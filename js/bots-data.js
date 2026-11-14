@@ -197,7 +197,7 @@ export const BOT_COMMENTS = [
   'This is a good one.', 'Nice thought.', 'Well explained.', 'Saving this one.', 'Good point.', 'Happy to see this here.'
 ];
 
-export const isBotId = (uid) => typeof uid === 'string' && /^bot_\d\d$/.test(uid);
+export const isBotId = (uid) => typeof uid === 'string' && /^bot_(0[1-9]|1[0-9]|2[0-3])$/.test(uid);
 export const BOT_DEFAULTS = { active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: 6, lang: 'both', personality: 'friendly' };
 
 // ---------------------------------------------------------------- avatars (generated SVG, no hosting needed)
