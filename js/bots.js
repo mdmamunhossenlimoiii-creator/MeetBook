@@ -40,12 +40,10 @@ export async function seedBots() {
   let created = 0;
   for (let i = 0; i < BOTS.length; i++) {
     if (snaps[i].exists()) {
-      const existing = snaps[i].data();
-      if (!existing.roleEmoji && BOTS[i].roleEmoji) {
-        await updateDoc(doc(db, 'users', BOTS[i].id), { roleEmoji: BOTS[i].roleEmoji });
-        existing.roleEmoji = BOTS[i].roleEmoji;
+      const publicSnap = await getDoc(doc(db, 'publicProfiles', BOTS[i].id));
+      if (!publicSnap.exists()) {
+        await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(snaps[i].data()));
       }
-      await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(existing), { merge: true });
       continue;
     }
     const profile = profileFromBuiltIn(BOTS[i], i);
@@ -80,8 +78,6 @@ export async function saveBot(id, patch) {
   const data = { ...patch };
   if (data.name) data.nameLower = data.name.toLowerCase();
   await updateDoc(doc(db, 'users', id), data);
-  const snap = await getDoc(doc(db, 'users', id));
-  if (snap.exists()) await setDoc(doc(db, 'publicProfiles', id), publicProfileData(snap.data()), { merge: true });
   invalidateUser(id);
 }
 
