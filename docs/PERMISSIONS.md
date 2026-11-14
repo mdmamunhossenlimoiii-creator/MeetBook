@@ -24,7 +24,8 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | No role / Unknown role | admin document without `role` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in `/botRunners` |
 
-205 capabilities × 14 actors = 2870 cases are executed on every test run.
+206 capabilities × 14 actors = 2884 cases are executed on every test run.
+
 
 Built-in bot identities are restricted to `bot_01` through `bot_23`; test fixtures must use only these IDs.
 
@@ -64,7 +65,8 @@ Built-in bot identities are restricted to `bot_01` through `bot_23`; test fixtur
 | Block another staff member (admin) | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Suspend another staff member | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Edit another staff member's bio | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Edit an AI bot profile | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Edit an AI bot profile | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Toggle active state of an AI bot | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Turn an AI bot into a normal user | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Create an AI bot profile | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Create a non-bot profile for someone else | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
