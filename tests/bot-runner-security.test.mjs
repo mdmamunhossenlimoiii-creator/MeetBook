@@ -72,12 +72,12 @@ test('dry runs never call Gemini or print private reply text', () => {
 
 test('manual runner modes isolate one selected bot and prevent cross-mode actions', () => {
   assert.match(runner, /const MODE = process\.env\.BOT_RUNNER_MODE \|\| 'all'/);
-  assert.match(runner, /\['all', 'post', 'chat'\]\.includes\(MODE\)/);
+  assert.match(runner, /\['all', 'post', 'engage', 'chat'\]\.includes\(MODE\)/);
   assert.match(runner, /MODE !== 'all' && !isBotId\(RUNNER_BOT_ID\)/);
   assert.match(runner, /bot\.id === RUNNER_BOT_ID/);
-  assert.match(runner, /if \(MODE !== 'chat'\)/);
-  assert.match(runner, /if \(MODE === 'all' && nEngage > 0\)/);
-  assert.match(runner, /if \(MODE !== 'post'\)/);
+  assert.match(runner, /if \(MODE !== 'chat' && MODE !== 'engage'\)/);
+  assert.match(runner, /if \(\(MODE === 'all' \|\| MODE === 'engage'\) && nEngage > 0\)/);
+  assert.match(runner, /if \(MODE !== 'post' && MODE !== 'engage'\)/);
   assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
   assert.match(runner, /\.slice\(0, CHAT_MAX_REPLIES\)/);
 });
