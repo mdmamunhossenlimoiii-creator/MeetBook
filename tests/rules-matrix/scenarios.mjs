@@ -228,7 +228,8 @@ cap('Posts', 'Read a friends-only post of u1', 'get', 'posts/pf', null, ['user',
 cap('Posts', 'Publish own post', 'create', 'posts/new', (a) => newPost(a.uid), N);
 cap('Posts', 'Publish a post as someone else', 'create', 'posts/new', () => newPost('u1'), ['user']);
 cap('Posts', 'Bot runner cannot publish as its own normal account', 'create', 'posts/new', () => newPost('run'), []);
-cap('Posts', 'Publish a post as an AI bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
+cap('Posts', 'Publish a post as an AI bot with explicit AI label', 'create', 'posts/new', () => newPost('bot_01', { ai: true }), ['runner']);
+cap('Posts', 'Reject a bot post without the AI label', 'create', 'posts/new', () => newPost('bot_01'), []);
 cap('Posts', 'Bot with autoPost OFF cannot publish', 'create', 'posts/new', () => newPost('bot_24'), []);
 cap('Posts', 'Runner cannot publish as an unassigned bot', 'create', 'posts/new', () => newPost('bot_02'), []);
 cap('Posts', 'Publish an AI-bot post with a video', 'create', 'posts/new', () => newPost('bot_01', { videoUrl: 'https://x/y.mp4' }), []);
@@ -307,7 +308,7 @@ cap('AI bots', 'Runner cannot bypass the 60-second chat cooldown', 'update', 'bo
 cap('AI bots', 'Runner may reserve chat quota after cooldown', 'update', 'botRateLimits/bot_01/users/u1', { count: 2, lastAt: T(0) }, ['runner']);
 cap('AI bots', 'Read the runner state', 'get', 'botState/run', null, ['runner']);
 cap('AI bots', 'Disabled runner cannot read state', 'get', 'botState/runoff', null, []);
-cap('AI bots', 'Only an enabled runner can publish as an assigned bot', 'create', 'posts/new', () => newPost('bot_01'), ['runner']);
+cap('AI bots', 'Only an enabled runner can publish as an assigned bot with AI label', 'create', 'posts/new', () => newPost('bot_01', { ai: true }), ['runner']);
 cap('AI bots', 'Write the runner state', 'update', 'botState/run', { used: '{"bot_01":["en:0"]}' }, ['runner']);
 cap('AI bots', 'Read the runner registration', 'get', 'botRunners/run', null, ['runner']);
 cap('AI bots', 'Register a new bot runner', 'create', 'botRunners/u1', { enabled: true }, []);
