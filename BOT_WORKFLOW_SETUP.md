@@ -33,10 +33,10 @@ It does not use MySocial credentials or a second Firebase project.
      "botIds": ["bot_01", "bot_02", "bot_03"]
    }
    ```
-   Keep `enabled=false` during setup. The document is owner-created; Firestore Rules deny client writes to it.
-4. Verify that only the first three bot profiles exist and are correctly identified as bots. Keep bots 04–23 inactive and outside the runner allowlist.
+   This is an example allowlist; add only the built-in bot IDs (`bot_01` through `bot_23`) that the owner intends to test. Keep `enabled=false` during setup. The document is owner-created; Firestore Rules deny client writes to it.
+4. Verify all 23 built-in bot profiles exist, each has `isBot=true`, a matching role emoji/topic, and a clear AI Bot disclosure. Confirm each bot's activity flags intentionally; missing flags remain OFF.
 5. Keep `settings/global.botsEnabled=false` and `botToBotComments=false` until the release checklist is complete.
-7. Do not create or edit any user consent documents on behalf of users. Users must opt in themselves.
+6. Do not create or edit any user consent documents on behalf of users. Users must opt in themselves.
 
 ## Controlled test order
 
