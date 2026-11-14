@@ -263,6 +263,26 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   if (!afterDisable.empty) throw new Error('turning memory off did not delete saved summaries');
   console.log('turning memory off atomically revokes consent and deletes saved summaries');
  
+  await isolatedRunnerCase('demo-meetbook-inbox-requires-explicit-bot-switches', {
+    'users/u1': { name: 'User One', banned: false, isBot: false },
+    'users/bot_29': { name: 'Bot without explicit switches', isBot: true },
+    'chats/bot_29_u1': { type: 'private', members: ['bot_29', 'u1'] }
+  }, async (isolated) => {
+    const db = isolated.authenticatedContext('u1').firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'botInboxRateLimits/u1/bots/bot_29'), {
+      senderUid: 'u1', botId: 'bot_29', count: 1,
+      windowStartedAt: serverTimestamp(), lastAt: serverTimestamp()
+    });
+    batch.set(doc(db, 'botInbox/missing-switches'), {
+      fromUid: 'u1', botId: 'bot_29', chatId: 'bot_29_u1', text: 'hello',
+      handled: false, createdAt: serverTimestamp()
+    });
+    await denied(batch.commit(),
+      'a bot missing explicit active/chatEnabled switches must not accept inbox messages');
+    console.log('bot inbox creation fails closed when active/chatEnabled switches are missing');
+  });
+
   await isolatedRunnerCase('demo-meetbook-configured-bot-daily-limit', {
     'settings/global': { botsEnabled: true },
     'botRunners/limitRunner': { enabled: true, botIds: ['bot_28'] },
