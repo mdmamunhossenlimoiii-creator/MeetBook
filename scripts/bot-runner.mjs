@@ -48,8 +48,8 @@ if (!['all', 'post', 'chat'].includes(MODE)) {
   console.error('BOT_RUNNER_MODE must be all, post, or chat.');
   process.exit(1);
 }
-if (MODE !== 'all' && !SMART_BOT_IDS.has(RUNNER_BOT_ID)) {
-  console.error('Isolated post/chat mode requires BOT_RUNNER_BOT_ID to be one of the first three Gemini bots.');
+if (MODE !== 'all' && !isBotId(RUNNER_BOT_ID)) {
+  console.error('Isolated post/chat mode requires a valid MeetBook bot ID.');
   process.exit(1);
 }
 if (!EMAIL || !PASSWORD) {
