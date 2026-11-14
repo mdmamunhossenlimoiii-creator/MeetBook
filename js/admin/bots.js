@@ -31,7 +31,7 @@ export async function render(body) {
       ${avatarHtml(b.name, b.photo, 48)}<div class="grow"><b>${esc(b.name)}</b>${botBadge(b)} <span class="muted small">@${esc(b.username || b.id)} · ${esc(b.id)}</span>
         <div class="small">${esc(PERSONALITIES[b.personality]?.label || b.personality || '—')} · ${esc(LANGUAGES[b.lang] || 'Both')} · limit ${b.dailyLimit ?? 6}/day</div>
         <div class="small">${b.active === true ? tagHtml('Active') : tagHtml('Inactive', 'danger')}</div></div>
-      <div class="row gap wrap"><button class="btn" data-do="logs">Activity</button><button class="btn" data-do="toggle">\${b.active === true ? "Turn OFF" : "Turn ON"}</button><button class="btn btn-danger" data-do="delete">Delete</button></div></div></div>`).join('') : emptyState('No bots yet', 'Use "Create missing built-in bots" to start.')}</div>
+      <div class="row gap wrap"><button class="btn" data-do="logs">Activity</button><button class="btn" data-do="toggle">${b.active === true ? "Turn OFF" : "Turn ON"}</button><button class="btn btn-danger" data-do="delete">Delete</button></div></div></div>`).join('') : emptyState('No bots yet', 'Use "Create missing built-in bots" to start.')}</div>
     <section class="card pad"><h3>Latest bot activity (all bots)</h3><div data-log>${loading()}</div></section>`;
     loadLogs();
   };
