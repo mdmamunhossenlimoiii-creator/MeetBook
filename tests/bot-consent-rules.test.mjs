@@ -76,9 +76,10 @@ test('rules + runner: the full run is never denied, and only consenting users ar
 });
 
 test('engagement mode comments only on a relevant opted-in public post and does not post or chat', { skip: !botRunnerConfigured }, async () => {
-  const m = await startMock({ seed: seed(), rules: true });
+  const data = seed();
+  data['posts/p4'] = post('u1', 'I am learning JavaScript and found a useful coding tip about small functions.');
+  const m = await startMock({ seed: data, rules: true });
   try {
-    m.put('posts/p4', post('u1', 'I am learning JavaScript and found a useful coding tip about small functions.'));
     const beforePosts = m.ids('posts').length;
     const result = await exec(['scripts/bot-runner.mjs'], env(m, {
       BOT_RUNNER_MODE: 'engage', BOT_RUNNER_BOT_ID: 'bot_01',
