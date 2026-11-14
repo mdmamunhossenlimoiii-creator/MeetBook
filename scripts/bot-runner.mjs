@@ -131,7 +131,7 @@ async function createPost(bot, text, id) {
   const docId = id || `post_${bot.id}_${RUN_ID}`;
   try {
     return await fs.create('posts', {
-      uid: bot.id, authorName: bot.name, text, image: '',
+      uid: bot.id, authorName: bot.name, text, ai: true, image: '',
       videoUrl: '', // bots never post video (rules enforce this too)
       visibility: 'public', audience: [], groupId: null, sharedFrom: null,
       reactions: {}, commentCount: 0, shareCount: 0, createdAt: new Date()
@@ -345,7 +345,7 @@ async function main() {
       }
       const ranked = shuffle(bots.filter((b) => b.id !== post.uid && b.autoComment === true && canAct(st, b) && !st.commented.includes(`${post.id}:${b.id}`)))
         .map((b) => ({ b, score: relevance(b, post.text) }))
-        .filter((x) => x.score > 0 || (fromBot && Boolean(post.text)))
+        .filter((x) => x.score > 0)
         .sort((a, c) => c.score - a.score);
       if (!ranked.length) continue;
       const bot = ranked[0].b;
