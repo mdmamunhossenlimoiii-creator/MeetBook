@@ -42,8 +42,9 @@ Normal users cannot change their own role: \`/admins\` is not writable by them, 
 | No role / Unknown role | admin document without \`role\` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in \`/botRunners\` |
 
-${total} capabilities × ${Object.keys(ACTORS).length} actors = ${total * Object.keys(ACTORS).length} cases are executed on every test run.\n\nBuilt-in bot identities are restricted to \`bot_01\` through \`bot_23\`; test fixtures must use only these IDs.
+${total} capabilities × ${Object.keys(ACTORS).length} actors = ${total * Object.keys(ACTORS).length} cases are executed on every test run.\n
 `);
+  out.push('\nBuilt-in bot identities are restricted to `bot_01` through `bot_23`; test fixtures must use only these IDs.\n');
   for (const g of groups) {
     out.push(`\n## ${g}\n`);
     out.push('| Capability | Normal user | Moderator | Admin | Super Admin | Not signed in | Blocked | Suspended | No role | Unknown role | Bot runner |');
