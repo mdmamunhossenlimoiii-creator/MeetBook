@@ -5,11 +5,10 @@ It does not use MySocial credentials or a second Firebase project.
 
 ## Workflow behavior
 
-- The two owner-test workflows remain manual-only (`workflow_dispatch`) and default to `dry_run=true`. A dry run signs in and checks the project/global switch, but performs no Firestore writes and does not call Gemini.
-- Two scheduled workflows are included: social activity every 6 hours and chat polling every 20 minutes. Both are **skipped by default** unless the repository variable `BOT_SCHEDULE_LIVE_ENABLED` is explicitly set to `yes`.
-- Scheduled workflows use the separate `meetbook-bot-scheduled` GitHub Environment, require its own secrets/expected-project variable, and share a concurrency lock with manual bot workflows.
-- Social runs are bounded to at most one post and one engagement per run. Chat-only runs process at most one pending chat reply and do not post or comment.
-- The Firestore global kill switch, runner enablement, and per-runner bot allowlist remain mandatory. Missing/off settings fail closed.
+- Only the two owner-test workflows are retained, both manual-only (`workflow_dispatch`) and default to `dry_run=true`. A dry run signs in and checks the project/global switch, but performs no Firestore writes and does not call Gemini.
+- No scheduled or unattended bot workflows are included. Bot activity can only be started by a deliberate manual workflow dispatch after owner review.
+- The manual workflow processes one selected bot action at a time. Chat mode only answers an existing user-initiated private chat; post mode cannot process engagement or private chats.
+- The Firestore global kill switch, runner enablement, explicit per-runner bot allowlist, per-bot flags, and durable quota limits remain mandatory. Missing/off settings fail closed.
 
 ## GitHub owner setup
 
@@ -22,8 +21,6 @@ It does not use MySocial credentials or a second Firebase project.
 4. Add this **Environment variable**:
    - `BOT_RUNNER_EXPECTED_PROJECT_ID` = `meetbook-65d30`
 5. Do not set `BOT_LIVE_TEST_APPROVED` yet. It is a separate release gate and should be added only after the owner has reviewed the live test scope and approved one specific action.
-6. Create a second environment named `meetbook-bot-scheduled`. Add the same three environment secrets and the environment variable `BOT_RUNNER_EXPECTED_PROJECT_ID=meetbook-65d30`.
-7. Leave the repository variable `BOT_SCHEDULE_LIVE_ENABLED` unset (or set it to `no`). Scheduled jobs remain skipped until the owner deliberately changes it to `yes` after the controlled tests pass.
 
 ## Firebase owner setup — do not enable the kill switch yet
 
@@ -39,7 +36,6 @@ It does not use MySocial credentials or a second Firebase project.
    Keep `enabled=false` during setup. The document is owner-created; Firestore Rules deny client writes to it.
 4. Verify that only the first three bot profiles exist and are correctly identified as bots. Keep bots 04–23 inactive and outside the runner allowlist.
 5. Keep `settings/global.botsEnabled=false` and `botToBotComments=false` until the release checklist is complete.
-6. Keep `BOT_SCHEDULE_LIVE_ENABLED` unset/no until the owner has verified runner registration, bot profiles, consent, quotas, and scheduled job configuration.
 7. Do not create or edit any user consent documents on behalf of users. Users must opt in themselves.
 
 ## Controlled test order
@@ -50,9 +46,5 @@ It does not use MySocial credentials or a second Firebase project.
 4. Use a single owner-controlled test account and one pending chat request. Then use `confirm_live=true` only after the GitHub Environment approval and separate owner release flag are configured.
 5. Verify exactly one reply in the existing private chat, no public post/comment/reaction, and a bot audit record that contains no private message body.
 6. Keep public posting disabled until a separate review authorizes it. If any unexpected action occurs, set the global switch and runner's `enabled` flag to false immediately.
-
-## Scheduled automation release gate
-
-Scheduled activity is deliberately opt-in. After the owner has completed the controlled tests and reviewed the exact activity limits, set the repository variable `BOT_SCHEDULE_LIVE_ENABLED=yes` to enable scheduled jobs. Setting it to anything else, or removing it, skips both jobs. The Firestore `settings/global.botsEnabled` kill switch, each bot's explicit activity flags, runner registration, and the per-bot allowlist are still required. To stop activity immediately, set the repository variable to `no` and turn `settings/global.botsEnabled` OFF.
 
 Do not paste secrets into chat or issues. Never point tests at MySocial or a different Firebase project.
