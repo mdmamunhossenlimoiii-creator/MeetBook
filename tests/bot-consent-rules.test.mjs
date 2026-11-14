@@ -75,6 +75,23 @@ test('rules + runner: the full run is never denied, and only consenting users ar
   } finally { await m.close(); }
 });
 
+test('engagement mode comments only on a relevant opted-in public post and does not post or chat', { skip: !botRunnerConfigured }, async () => {
+  const m = await startMock({ seed: seed(), rules: true });
+  try {
+    m.put('posts/p4', post('u1', 'I am learning JavaScript and found a useful coding tip about small functions.'));
+    const beforePosts = m.ids('posts').length;
+    const result = await exec(['scripts/bot-runner.mjs'], env(m, {
+      BOT_RUNNER_MODE: 'engage', BOT_RUNNER_BOT_ID: 'bot_01',
+      BOT_POSTS: '0', BOT_COMMENTS: '1'
+    }));
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.deepEqual(m.denied, [], 'a valid engagement must pass the Firestore rules simulator');
+    assert.equal(m.ids('posts').length, beforePosts, 'engagement mode must not create posts');
+    assert.equal(m.ids('posts/p4/comments').length, 1, 'the relevant opted-in post receives one bot comment');
+    assert.equal(m.ids('chats/bot_06_u2/messages').length, 0, 'engagement mode must not answer private chats');
+  } finally { await m.close(); }
+});
+
 test('rules: even a hand-made request cannot make a bot engage with a user who did not opt in', async () => {
   const m = await startMock({ seed: seed(), rules: true });
   try {
