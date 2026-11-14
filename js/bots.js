@@ -34,7 +34,7 @@ export async function listBots() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
 }
 
-// Creates the built-in bots that do not exist yet. Existing bots are NOT touched, so admin edits survive.
+// Creates missing built-in bots. Existing bot identity and policy fields are never modified here.
 export async function seedBots() {
   const snaps = await Promise.all(BOTS.map((b) => getDoc(doc(db, 'users', b.id))));
   let created = 0;
