@@ -712,7 +712,8 @@ service cloud.firestore {
           && validPost(request.resource.data)
           && request.resource.data.visibility == 'public'
           && request.resource.data.groupId == null
-          && request.resource.data.videoUrl == '');
+          && request.resource.data.videoUrl == ''
+          && request.resource.data.get('ai', false) == true);
 
       allow update:
         // staff moderation: hide / restore, switch comments on or off
