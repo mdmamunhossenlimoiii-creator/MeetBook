@@ -164,7 +164,8 @@ cap('Users', 'Write a made-up "role" field on own profile (harmless: roles live 
 cap('Users', 'Block another staff member (admin)', 'update', 'users/adm2', { banned: true }, ['super']);
 cap('Users', 'Suspend another staff member', 'update', 'users/adm2', { suspendedUntil: T(86400e3) }, ['super']);
 cap('Users', 'Edit another staff member\'s bio', 'update', 'users/adm2', { bio: 'x' }, ['super']);
-cap('Users', 'Edit an AI bot profile', 'update', 'users/bot_01', { bio: 'I am an AI bot. New text.' }, ADM);
+cap('Users', 'Edit an AI bot profile', 'update', 'users/bot_01', { bio: 'I am an AI bot. New text.' }, []);
+cap('Users', 'Toggle active state of an AI bot', 'update', 'users/bot_01', { active: false }, ADM);
 cap('Users', 'Turn an AI bot into a normal user', 'update', 'users/bot_01', { isBot: false }, []);
 cap('Users', 'Create an AI bot profile', 'create', 'users/bot_23', { name: 'Bot Six', nameLower: 'bot five', bio: 'I am an AI bot.', banned: false, isBot: true }, ADM);
 cap('Users', 'Create a non-bot profile for someone else', 'create', 'users/u7', { name: 'Seven', bio: '', banned: false }, []);
