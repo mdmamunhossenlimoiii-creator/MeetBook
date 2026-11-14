@@ -675,6 +675,7 @@ service cloud.firestore {
         // admin: block, verify, suspend, edit basic info
         // (an admin cannot touch another staff member; only a super_admin can)
         || (isAdmin()
+          && resource.data.get('isBot', false) != true
           && (isSuper() || !isStaffUid(uid))
           && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['banned', 'verified', 'suspendedUntil', 'name', 'nameLower', 'bio', 'photo', 'cover'])
           && nameOk(request.resource.data))
