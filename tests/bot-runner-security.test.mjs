@@ -73,7 +73,7 @@ test('dry runs never call Gemini or print private reply text', () => {
 test('manual runner modes isolate one selected bot and prevent cross-mode actions', () => {
   assert.match(runner, /const MODE = process\.env\.BOT_RUNNER_MODE \|\| 'all'/);
   assert.match(runner, /\['all', 'post', 'chat'\]\.includes\(MODE\)/);
-  assert.match(runner, /MODE !== 'all' && !SMART_BOT_IDS\.has\(RUNNER_BOT_ID\)/);
+  assert.match(runner, /MODE !== 'all' && !isBotId\(RUNNER_BOT_ID\)/);
   assert.match(runner, /bot\.id === RUNNER_BOT_ID/);
   assert.match(runner, /if \(MODE !== 'chat'\)/);
   assert.match(runner, /if \(MODE === 'all' && nEngage > 0\)/);
@@ -96,6 +96,8 @@ test('bot workflows are manual-only, default to dry-run, and require an explicit
     assert.match(workflow, /GEMINI_STRICT:/);
     assert.doesNotMatch(workflow, /schedule:|pull_request:|push:/);
   }
+  assert.match(runnerWorkflow, /options: \[bot_01, bot_02, bot_03, bot_04, bot_05, bot_06, bot_07, bot_08, bot_09, bot_10, bot_11, bot_12, bot_13, bot_14, bot_15, bot_16, bot_17, bot_18, bot_19, bot_20, bot_21, bot_22, bot_23\]/);
+  assert.match(chatWorkflow, /options: \[bot_01, bot_02, bot_03, bot_04, bot_05, bot_06, bot_07, bot_08, bot_09, bot_10, bot_11, bot_12, bot_13, bot_14, bot_15, bot_16, bot_17, bot_18, bot_19, bot_20, bot_21, bot_22, bot_23\]/);
   assert.match(runnerWorkflow, /BOT_RUNNER_MODE: post/);
   assert.match(runnerWorkflow, /BOT_COMMENTS: "0"/);
   assert.match(chatWorkflow, /BOT_RUNNER_MODE: chat/);
