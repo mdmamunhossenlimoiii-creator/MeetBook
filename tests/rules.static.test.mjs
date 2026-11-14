@@ -70,7 +70,7 @@ test('users: owners cannot grant themselves bans, badges, bot flag or suspension
   const u = block('users');
   assert.match(u, /hasAny\(\['banned', 'isBot', 'verified', 'suspendedUntil'\]\)/);
   assert.match(u, /request\.resource\.data\.get\('isBot', false\) == false/);
-  assert.match(u, /isAdmin\(\)\s*&& \(isSuper\(\) \|\| !isStaffUid\(uid\)\)/, 'an admin must not edit/ban another staff member');
+  assert.match(u, /isAdmin\(\)\s*&& resource\.data\.get\('isBot', false\) != true\s*&& \(isSuper\(\) \|\| !isStaffUid\(uid\)\)/, 'general Admin profile edits must exclude bot profiles');
   assert.match(u, /isMod\(\)\s*&& !isStaffUid\(uid\)/, 'a moderator must not suspend staff');
   assert.match(u, /allow delete: if isAdmin\(\) && resource\.data\.get\('isBot', false\) == true;/, 'only bot profiles can be deleted from the client');
 });
