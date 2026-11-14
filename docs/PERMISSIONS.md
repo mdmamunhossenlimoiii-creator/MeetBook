@@ -28,9 +28,6 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 
 
 
-Built-in bot identities are restricted to `bot_01` through `bot_23`; test fixtures must use only these IDs.
-
-
 ## Users
 
 | Capability | Normal user | Moderator | Admin | Super Admin | Not signed in | Blocked | Suspended | No role | Unknown role | Bot runner |
