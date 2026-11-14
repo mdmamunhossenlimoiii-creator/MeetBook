@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS } from './auth.js';
 import { invalidateUser } from './utils.js';
 import { BOTS, BOT_DEFAULTS, botAvatar, botCover } from './bots-data.js';
 
-export const MAX_BOTS = 30; // rules allow bot_01 .. bot_30
+export const MAX_BOTS = 23; // Must match the Firestore Rules bot_01 .. bot_23 allowlist.
 
 function publicProfileData(data) {
   return {
