@@ -73,24 +73,24 @@ for (const cap of CAPS) {
 }
 // Runner authorization hardening: negative tests against isolated REAL Firestore Emulator projects.
 // Every fixture is synthetic. Each scenario is seeded before its authenticated client is created.
-if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
-  const denied = (promise, label) => assert.rejects(promise, undefined, label);
-  const isolatedRunnerCase = async (projectId, documents, run) => {
-    const isolated = await initializeTestEnvironment({
-      projectId,
-      firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8') }
+const denied = (promise, label) => assert.rejects(promise, undefined, label);
+const isolatedRunnerCase = async (projectId, documents, run) => {
+  const isolated = await initializeTestEnvironment({
+    projectId,
+    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8') }
+  });
+  try {
+    await isolated.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      for (const [path, data] of Object.entries(documents)) await setDoc(doc(db, path), data);
     });
-    try {
-      await isolated.withSecurityRulesDisabled(async (ctx) => {
-        const db = ctx.firestore();
-        for (const [path, data] of Object.entries(documents)) await setDoc(doc(db, path), data);
-      });
-      await run(isolated);
-    } finally {
-      await isolated.cleanup();
-    }
-  };
+    await run(isolated);
+  } finally {
+    await isolated.cleanup();
+  }
+};
 
+if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   await denied(getDoc(doc(env.authenticatedContext('runoff').firestore(), 'chats/bot_01_u1')),
     'disabled Runner must not read an assigned-bot chat');
   await denied(getDoc(doc(env.authenticatedContext('ghostRunner').firestore(), 'botState/ghostRunner')),
