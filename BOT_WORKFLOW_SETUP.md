@@ -5,9 +5,9 @@ It does not use MySocial credentials or a second Firebase project.
 
 ## Workflow behavior
 
-- Only the two owner-test workflows are retained, both manual-only (`workflow_dispatch`) and default to `dry_run=true`. A dry run signs in and checks the project/global switch, but performs no Firestore writes and does not call Gemini.
+- Only three owner-test workflows are retained, both manual-only (`workflow_dispatch`) and default to `dry_run=true`. A dry run signs in and checks the project/global switch, but performs no Firestore writes and does not call Gemini.
 - No scheduled or unattended bot workflows are included. Bot activity can only be started by a deliberate manual workflow dispatch after owner review.
-- The manual workflow processes one selected bot action at a time. Chat mode only answers an existing user-initiated private chat; post mode cannot process engagement or private chats.
+- The manual workflows process one selected bot action at a time: post mode creates one role-relevant public post, engagement mode may create one relevant comment and optional reaction only on an opted-in user's public post, and chat mode only answers an existing user-initiated private chat. The first three bots use Gemini when configured; the remaining built-in bots use their role-specific templates.
 - The Firestore global kill switch, runner enablement, explicit per-runner bot allowlist, per-bot flags, and durable quota limits remain mandatory. Missing/off settings fail closed.
 
 ## GitHub owner setup
@@ -40,11 +40,11 @@ It does not use MySocial credentials or a second Firebase project.
 
 ## Controlled test order
 
-1. Run either manual workflow with `dry_run=true` first. It validates runner authentication and project guard, then exits safely while the global bot switch or runner registration is OFF; it must not reply or write data.
+1. Run each of the three manual workflows with `dry_run=true` first. It validates runner authentication and project guard, then exits safely while the global bot switch or runner registration is OFF; it must not reply or write data.
 2. Inspect the workflow logs for the exact global switch state, runner allowlist, project guard success, and the absence of secrets/private message bodies.
 3. Before a real chat reply, confirm the selected bot is explicitly active with chat enabled, the sender initiated the private chat, the sender has not opted out, the privacy disclosure is visible, and the global kill switch/runner allowlist are intentionally enabled.
 4. Use a single owner-controlled test account and one pending chat request. Then use `confirm_live=true` only after the GitHub Environment approval and separate owner release flag are configured.
-5. Verify exactly one reply in the existing private chat, no public post/comment/reaction, and a bot audit record that contains no private message body.
+5. Verify exactly one reply in the existing private chat, no public post/comment/reaction, and a bot audit record that contains no private message body. Test post and engagement modes separately with a consenting test account.
 6. Keep public posting disabled until a separate review authorizes it. If any unexpected action occurs, set the global switch and runner's `enabled` flag to false immediately.
 
 Do not paste secrets into chat or issues. Never point tests at MySocial or a different Firebase project.
