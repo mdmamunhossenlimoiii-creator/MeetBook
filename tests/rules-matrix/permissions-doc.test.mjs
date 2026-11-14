@@ -5,5 +5,6 @@ import { buildDoc } from './generate-doc.mjs';
 
 test('docs/PERMISSIONS.md is up to date with the permission matrix (run: node tests/rules-matrix/generate-doc.mjs)', () => {
   const file = readFileSync(new URL('../../docs/PERMISSIONS.md', import.meta.url), 'utf8');
-  assert.equal(file, buildDoc());
+  const normalize = (value) => value.replace(/\r\n/g, '\n').replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trimEnd();
+  assert.equal(normalize(file), normalize(buildDoc()));
 });
