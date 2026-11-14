@@ -84,8 +84,9 @@ test('manual runner modes isolate one selected bot and prevent cross-mode action
 
 test('bot workflows are manual-only, default to dry-run, and require an explicit live gate', () => {
   const runnerWorkflow = readFileSync(new URL('../.github/workflows/bot-runner.yml', import.meta.url), 'utf8');
+  const engagementWorkflow = readFileSync(new URL('../.github/workflows/bot-engagement.yml', import.meta.url), 'utf8');
   const chatWorkflow = readFileSync(new URL('../.github/workflows/bot-chat.yml', import.meta.url), 'utf8');
-  for (const workflow of [runnerWorkflow, chatWorkflow]) {
+  for (const workflow of [runnerWorkflow, engagementWorkflow, chatWorkflow]) {
     assert.match(workflow, /workflow_dispatch:/);
     assert.match(workflow, /default: true/);
     assert.match(workflow, /confirm_live:/);
@@ -99,6 +100,9 @@ test('bot workflows are manual-only, default to dry-run, and require an explicit
   assert.match(runnerWorkflow, /options: \[bot_01, bot_02, bot_03, bot_04, bot_05, bot_06, bot_07, bot_08, bot_09, bot_10, bot_11, bot_12, bot_13, bot_14, bot_15, bot_16, bot_17, bot_18, bot_19, bot_20, bot_21, bot_22, bot_23\]/);
   assert.match(chatWorkflow, /options: \[bot_01, bot_02, bot_03, bot_04, bot_05, bot_06, bot_07, bot_08, bot_09, bot_10, bot_11, bot_12, bot_13, bot_14, bot_15, bot_16, bot_17, bot_18, bot_19, bot_20, bot_21, bot_22, bot_23\]/);
   assert.match(runnerWorkflow, /BOT_RUNNER_MODE: post/);
+  assert.match(engagementWorkflow, /BOT_RUNNER_MODE: engage/);
+  assert.match(engagementWorkflow, /BOT_POSTS: "0"/);
+  assert.match(engagementWorkflow, /BOT_COMMENTS: "1"/);
   assert.match(runnerWorkflow, /BOT_COMMENTS: "0"/);
   assert.match(chatWorkflow, /BOT_RUNNER_MODE: chat/);
   assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
