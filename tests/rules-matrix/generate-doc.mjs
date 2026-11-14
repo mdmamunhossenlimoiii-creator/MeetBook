@@ -42,7 +42,7 @@ Normal users cannot change their own role: \`/admins\` is not writable by them, 
 | No role / Unknown role | admin document without \`role\` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in \`/botRunners\` |
 
-${total} capabilities × ${Object.keys(ACTORS).length} actors = ${total * Object.keys(ACTORS).length} cases are executed on every test run.
+${total} capabilities × ${Object.keys(ACTORS).length} actors = ${total * Object.keys(ACTORS).length} cases are executed on every test run.\n
 `);
   for (const g of groups) {
     out.push(`\n## ${g}\n`);

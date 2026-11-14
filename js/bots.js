@@ -1,5 +1,5 @@
 // AI bot accounts: Firestore profiles (users/bot_NN, isBot: true). Bots have NO Firebase Auth login.
-// Only staff can create / edit / delete them or post as them; firestore.rules enforce that (and forbid video posts).
+// Admins can create, enable/disable, and delete bot profiles; automated content is Runner-only and Firestore Rules enforce it.
 // Automatic activity (posts, engagement, chat) is done by scripts/bot-runner.mjs in GitHub Actions. No credentials here.
 import {
   db, doc, getDoc, setDoc, addDoc, updateDoc, deleteDoc, collection, query, where, limit, getDocs, serverTimestamp, increment
@@ -8,7 +8,7 @@ import { DEFAULT_SETTINGS } from './auth.js';
 import { invalidateUser } from './utils.js';
 import { BOTS, BOT_DEFAULTS, botAvatar, botCover } from './bots-data.js';
 
-export const MAX_BOTS = 30; // rules allow bot_01 .. bot_30
+export const MAX_BOTS = 23; // Must match the Firestore Rules bot_01 .. bot_23 allowlist.
 
 function publicProfileData(data) {
   return {
@@ -34,18 +34,16 @@ export async function listBots() {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => a.id.localeCompare(b.id));
 }
 
-// Creates the built-in bots that do not exist yet. Existing bots are NOT touched, so admin edits survive.
+// Creates missing built-in bots. Existing bot identity and policy fields are never modified here.
 export async function seedBots() {
   const snaps = await Promise.all(BOTS.map((b) => getDoc(doc(db, 'users', b.id))));
   let created = 0;
   for (let i = 0; i < BOTS.length; i++) {
     if (snaps[i].exists()) {
-      const existing = snaps[i].data();
-      if (!existing.roleEmoji && BOTS[i].roleEmoji) {
-        await updateDoc(doc(db, 'users', BOTS[i].id), { roleEmoji: BOTS[i].roleEmoji });
-        existing.roleEmoji = BOTS[i].roleEmoji;
+      const publicSnap = await getDoc(doc(db, 'publicProfiles', BOTS[i].id));
+      if (!publicSnap.exists()) {
+        await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(snaps[i].data()));
       }
-      await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(existing), { merge: true });
       continue;
     }
     const profile = profileFromBuiltIn(BOTS[i], i);
@@ -80,8 +78,6 @@ export async function saveBot(id, patch) {
   const data = { ...patch };
   if (data.name) data.nameLower = data.name.toLowerCase();
   await updateDoc(doc(db, 'users', id), data);
-  const snap = await getDoc(doc(db, 'users', id));
-  if (snap.exists()) await setDoc(doc(db, 'publicProfiles', id), publicProfileData(snap.data()), { merge: true });
   invalidateUser(id);
 }
 

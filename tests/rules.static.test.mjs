@@ -6,6 +6,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
+const botAdmin = readFileSync(new URL('../js/admin/bots.js', import.meta.url), 'utf8');
+const botModule = readFileSync(new URL('../js/bots.js', import.meta.url), 'utf8');
+const botData = readFileSync(new URL('../js/bots-data.js', import.meta.url), 'utf8');
 
 // text of `match /<name>/{...} { ... }` (brace matched)
 function block(name) {
@@ -67,7 +70,7 @@ test('users: owners cannot grant themselves bans, badges, bot flag or suspension
   const u = block('users');
   assert.match(u, /hasAny\(\['banned', 'isBot', 'verified', 'suspendedUntil'\]\)/);
   assert.match(u, /request\.resource\.data\.get\('isBot', false\) == false/);
-  assert.match(u, /isAdmin\(\)\s*&& \(isSuper\(\) \|\| !isStaffUid\(uid\)\)/, 'an admin must not edit/ban another staff member');
+  assert.match(u, /isAdmin\(\)\s*&& resource\.data\.get\('isBot', false\) != true\s*&& \(isSuper\(\) \|\| !isStaffUid\(uid\)\)/, 'general Admin profile edits must exclude bot profiles');
   assert.match(u, /isMod\(\)\s*&& !isStaffUid\(uid\)/, 'a moderator must not suspend staff');
   assert.match(u, /allow delete: if isAdmin\(\) && resource\.data\.get\('isBot', false\) == true;/, 'only bot profiles can be deleted from the client');
 });
@@ -105,29 +108,42 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerHasBot'), /enabled', false\) == true/);
   assert.match(fn('runnerHasBot'), /botsEnabled', false\) == true/);
   assert.match(fn('runnerHasBot'), /bot\.get\('isBot', false\) == true/);
-  assert.match(fn('runnerHasBot'), /bot\.get\('active', true\) == true/);
+  assert.match(fn('runnerHasBot'), /bot\.get\('active', false\) == true/);
   assert.match(fn('runnerMayActAs'), /runnerHasBot\(botUid\)/);
-  assert.match(fn('runnerMayReadChat'), /runnerMayActAs\(chat\.members\[0\]\)/);
-  assert.match(fn('runnerMayReadChat'), /runnerMayActAs\(chat\.members\[1\]\)/);
+  assert.match(fn('runnerMayReadChat'), /runnerMayChatAs\(chat\.members\[0\]\)/);
+  assert.match(fn('runnerMayReadChat'), /runnerMayChatAs\(chat\.members\[1\]\)/);
+  assert.match(fn('runnerMayPost'), /autoPost', false\) == true/);
+  assert.match(fn('runnerMayCommentAs'), /autoComment', false\) == true/);
+  assert.match(fn('runnerMayReactAs'), /autoReaction', false\) == true/);
+  assert.match(fn('runnerMayChatAs'), /chatEnabled', false\) == true/);
+  assert.match(block('botInbox'), /runnerMayChatAs\(resource\.data\.botId\)/);
+  assert.match(block('botMemories'), /runnerMayChatAs\(resource\.data\.botId\)/);
+  assert.match(block('botRateLimits'), /function botDailyLimit\(\)/);
+  assert.match(block('botRateLimits'), /d\.count <= botDailyLimit\(\)/);
+  assert.match(block('botRateLimits'), /resource\.data\.count < botDailyLimit\(\)/);
+  assert.match(block('botGlobalRateLimits'), /d\.count <= 60/);
+  assert.match(block('botGeminiRateLimits'), /d\.count <= 60/);
+  assert.match(block('botGlobalRateLimits'), /resource\.data\.count < 60/);
+  assert.match(block('botGeminiRateLimits'), /resource\.data\.count < 60/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   const posts = block('posts');
   const botComment = posts.slice(posts.indexOf('match /comments'));
-  assert.match(botComment, /runnerMayActAs\(request\.resource\.data\.uid\)[\s\S]*runnerMayComment\(postId\)/, 'only assigned Runner comments as a bot');
+  assert.match(botComment, /runnerMayCommentAs\(request\.resource\.data\.uid\)[\s\S]*runnerMayComment\(postId\)/, 'only assigned bot with autoComment ON comments');
   assert.doesNotMatch(botComment, /isAdmin\(\)[\s\S]*isBotUser\(request\.resource\.data\.uid\)/, 'Admin cannot comment as a bot');
   assert.match(fn('runnerMayComment'), /engagementOk\(p\.uid\)/, 'bot comments need consent');
   assert.match(fn('runnerMayComment'), /visibility == 'public'/);
   assert.match(fn('runnerMayComment'), /botToBotComments/);
-  assert.match(fn('runnerMayReact'), /runnerMayActAs\(botUid\)/, 'reaction requires an active assigned bot');
+  assert.match(fn('runnerMayReact'), /runnerMayReactAs\(botUid\)/, 'reaction requires the explicit reaction switch');
   assert.match(fn('runnerMayReact'), /hasOnly\(\[botUid\]\)/, 'reaction key must match its bot identity marker');
   assert.match(fn('runnerMayIncrementCommentCount'), /request\.resource\.data\.commentCount == resource\.data\.commentCount \+ 1/, 'Runner may only increment commentCount with a validated comment');
-  assert.match(fn('canPublishBot'), /runnerMayActAs\(botUid\)/, 'only an assigned active Runner can publish as a bot');
+  assert.match(fn('canPublishBot'), /runnerMayPost\(botUid\)/, 'only an assigned active bot with autoPost ON can publish');
   assert.doesNotMatch(fn('canPublishBot'), /isAdmin/);
   assert.match(posts, /request\.resource\.data\.videoUrl == ''/, 'bots never post video');
-  assert.match(fn('runnerMayReact'), /runnerMayActAs\(botUid\)/, 'reaction key must be an active assigned bot');
+  assert.match(fn('runnerMayReact'), /runnerMayReactAs\(botUid\)/, 'reaction key must have explicit autoReaction permission');
   // the runner is not allowed to write anything but bot content
   assert.match(block('botState'), /runnerEnabled\(\)/);
-  assert.match(block('botInbox'), /runnerHasBot\(resource\.data\.botId\)/);
+  assert.match(block('botInbox'), /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(block('botInbox'), /hasOnly\(\['handled', 'handledAt', 'skipped'\]\)/);
   assert.match(block('botInbox'), /members\.hasAll\(\[request\.auth\.uid, request\.resource\.data\.botId\]\)/);
   assert.match(block('botInbox'), /inboxQuotaOk\(\)/, 'inbox writes require a transaction-backed quota');
@@ -163,4 +179,25 @@ test('bot-runner can read ONLY private chats that include an AI bot (it must rea
   const chats = block('chats');
   assert.match(chats, /runnerMayReadChat\(resource\.data\)/);
   assert.match(chats, /runnerMayReadChat\(get\(.*?chats\/\$\(chatId\).*?\)\.data\)/s);
+});
+
+test('bot IDs and Admin controls match the 23-bot allowlist', () => {
+  assert.match(botModule, /export const MAX_BOTS = 23;/);
+  assert.ok(botData.includes("/^bot_(0[1-9]|1[0-9]|2[0-3])$/"));
+  assert.match(rules, /'bot_23'/);
+  assert.doesNotMatch(rules, /'bot_24'/);
+  assert.match(botAdmin, /data-do="toggle"/);
+  assert.match(botAdmin, /data-do="delete"/);
+  assert.doesNotMatch(botAdmin, /data-do="edit"/);
+  assert.doesNotMatch(botAdmin, /data-do="(?:post|comment|reaction)"/);
+  assert.doesNotMatch(botAdmin, /b-lim/);
+  assert.doesNotMatch(botAdmin, /tog\('auto(?:Post|Comment|Reaction)'/);
+  assert.doesNotMatch(botAdmin, /tog\('chatEnabled'/);
+  assert.ok(botData.includes("/^bot_(0[1-9]|1[0-9]|2[0-3])$/"));
+  assert.ok(rules.includes("uid.matches('bot_(0[1-9]|1[0-9]|2[0-3])')"));
+  assert.match(block('users'), /affectedKeys\(\)\.hasOnly\(\['active'\]\)/);
+  const profiles = block('publicProfiles');
+  assert.match(profiles, /allow create: if \(isOwner\(uid\) \|\| \(isAdmin\(\) && request\.resource\.data\.get\('isBot', false\) == true\)\)/);
+  assert.match(profiles, /allow update: if isOwner\(uid\)/);
+  assert.doesNotMatch(profiles, /allow update: if isAdmin\(\)/);
 });

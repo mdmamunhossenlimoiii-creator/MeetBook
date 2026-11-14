@@ -73,24 +73,24 @@ for (const cap of CAPS) {
 }
 // Runner authorization hardening: negative tests against isolated REAL Firestore Emulator projects.
 // Every fixture is synthetic. Each scenario is seeded before its authenticated client is created.
-if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
-  const denied = (promise, label) => assert.rejects(promise, undefined, label);
-  const isolatedRunnerCase = async (projectId, documents, run) => {
-    const isolated = await initializeTestEnvironment({
-      projectId,
-      firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8') }
+const denied = (promise, label) => assert.rejects(promise, undefined, label);
+const isolatedRunnerCase = async (projectId, documents, run) => {
+  const isolated = await initializeTestEnvironment({
+    projectId,
+    firestore: { rules: readFileSync(new URL('../../firestore.rules', import.meta.url), 'utf8') }
+  });
+  try {
+    await isolated.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      for (const [path, data] of Object.entries(documents)) await setDoc(doc(db, path), data);
     });
-    try {
-      await isolated.withSecurityRulesDisabled(async (ctx) => {
-        const db = ctx.firestore();
-        for (const [path, data] of Object.entries(documents)) await setDoc(doc(db, path), data);
-      });
-      await run(isolated);
-    } finally {
-      await isolated.cleanup();
-    }
-  };
+    await run(isolated);
+  } finally {
+    await isolated.cleanup();
+  }
+};
 
+if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   await denied(getDoc(doc(env.authenticatedContext('runoff').firestore(), 'chats/bot_01_u1')),
     'disabled Runner must not read an assigned-bot chat');
   await denied(getDoc(doc(env.authenticatedContext('ghostRunner').firestore(), 'botState/ghostRunner')),
@@ -133,7 +133,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   await isolatedRunnerCase('demo-meetbook-global-stop', {
     'settings/global': { botsEnabled: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
-    'users/bot_01': { isBot: true, active: true },
+    'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'users/u2': { isBot: false },
     'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] }
   }, async (isolated) => {
@@ -155,7 +155,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   await isolatedRunnerCase('demo-meetbook-runner-atomic-actions', {
     'settings/global': { botsEnabled: true, botToBotComments: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
-    'users/bot_01': { isBot: true, active: true },
+    'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
     'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
   }, async (isolated) => {
@@ -243,7 +243,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
 
   const memoryOwnerDb = env.authenticatedContext('u2').firestore();
   const ownMemories = await realFirestore.getDocs(realFirestore.query(realFirestore.collection(memoryOwnerDb, 'botMemories'), realFirestore.where('ownerUid', '==', 'u2')));
-  if (ownMemories.size !== 1) throw new Error('memory owner could not list their own saved summaries');
+  if (ownMemories.size !== 2) throw new Error('memory owner could not list all of their own saved summaries');
   await assert.rejects(realFirestore.getDocs(realFirestore.query(realFirestore.collection(env.authenticatedContext('u4').firestore(), 'botMemories'), realFirestore.where('ownerUid', '==', 'u2'))));
   console.log('bot-memory list queries are restricted to the owning user');
 
@@ -262,6 +262,69 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   const afterDisable = await realFirestore.getDocs(realFirestore.query(realFirestore.collection(memoryOwnerDb, 'botMemories'), realFirestore.where('ownerUid', '==', 'u2')));
   if (!afterDisable.empty) throw new Error('turning memory off did not delete saved summaries');
   console.log('turning memory off atomically revokes consent and deletes saved summaries');
+ 
+  await isolatedRunnerCase('demo-meetbook-inbox-requires-explicit-bot-switches', {
+    'users/u1': { name: 'User One', banned: false, isBot: false },
+    'users/bot_29': { name: 'Bot without explicit switches', isBot: true },
+    'chats/bot_29_u1': { type: 'private', members: ['bot_29', 'u1'] }
+  }, async (isolated) => {
+    const db = isolated.authenticatedContext('u1').firestore();
+    const batch = writeBatch(db);
+    batch.set(doc(db, 'botInboxRateLimits/u1/bots/bot_29'), {
+      senderUid: 'u1', botId: 'bot_29', count: 1,
+      windowStartedAt: serverTimestamp(), lastAt: serverTimestamp()
+    });
+    batch.set(doc(db, 'botInbox/missing-switches'), {
+      fromUid: 'u1', botId: 'bot_29', chatId: 'bot_29_u1', text: 'hello',
+      handled: false, createdAt: serverTimestamp()
+    });
+    await denied(batch.commit(),
+      'a bot missing explicit active/chatEnabled switches must not accept inbox messages');
+    console.log('bot inbox creation fails closed when active/chatEnabled switches are missing');
+  });
+
+  await isolatedRunnerCase('demo-meetbook-configured-bot-daily-limit', {
+    'settings/global': { botsEnabled: true },
+    'botRunners/limitRunner': { enabled: true, botIds: ['bot_28'] },
+    'users/bot_28': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: 2 },
+    'botRateLimits/bot_28': {
+      botId: 'bot_28', kind: 'botDaily', count: 1,
+      windowStartedAt: Timestamp.fromMillis(Date.now() - 120_000),
+      lastAt: Timestamp.fromMillis(Date.now() - 120_000)
+    }
+  }, async (isolated) => {
+    const db = isolated.authenticatedContext('limitRunner').firestore();
+    await updateDoc(doc(db, 'botRateLimits/bot_28'), { count: 2, lastAt: serverTimestamp() });
+    await denied(updateDoc(doc(db, 'botRateLimits/bot_28'), { count: 3, lastAt: serverTimestamp() }),
+      'a bot configured for two daily actions must not reserve a third action');
+    console.log('per-bot dailyLimit is enforced by real Firestore Rules');
+  });
+
+  await isolatedRunnerCase('demo-meetbook-global-activity-and-gemini-budgets', {
+    'settings/global': { botsEnabled: true },
+    'botRunners/globalRunner': { enabled: true, botIds: ['bot_01'] },
+    'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
+    'botGlobalRateLimits/global': {
+      kind: 'globalDaily', count: 59,
+      windowStartedAt: Timestamp.fromMillis(Date.now() - 120_000),
+      lastAt: Timestamp.fromMillis(Date.now() - 120_000)
+    },
+    'botGeminiRateLimits/global': {
+      kind: 'geminiDaily', count: 59,
+      windowStartedAt: Timestamp.fromMillis(Date.now() - 120_000),
+      lastAt: Timestamp.fromMillis(Date.now() - 120_000)
+    }
+  }, async (isolated) => {
+    const db = isolated.authenticatedContext('globalRunner').firestore();
+    await updateDoc(doc(db, 'botGlobalRateLimits/global'), { count: 60, lastAt: serverTimestamp() });
+    await denied(updateDoc(doc(db, 'botGlobalRateLimits/global'), { count: 61, lastAt: serverTimestamp() }),
+      'global daily activity must stop at 60 actions');
+    await updateDoc(doc(db, 'botGeminiRateLimits/global'), { count: 60, lastAt: serverTimestamp() });
+    await denied(updateDoc(doc(db, 'botGeminiRateLimits/global'), { count: 61, lastAt: serverTimestamp() }),
+      'Gemini requests must stop at 60 per day');
+    console.log('global activity and Gemini daily budgets are enforced by real Firestore Rules');
+  });
+
 }
 }
 await env.cleanup();

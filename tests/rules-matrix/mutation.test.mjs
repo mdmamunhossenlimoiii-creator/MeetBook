@@ -36,15 +36,20 @@ const MUTATIONS = [
   ['suspension is ignored', "(u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time)", "true"],
   ['blocked users can write', "u.banned != true", "true"],
   ['bot posts may contain video', "&& request.resource.data.videoUrl == ''", ""],
-  ['runner reaction must validate the active assigned bot', "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return runnerMayActAs(botUid)", "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return true"],
+  ['runner reaction must validate the active assigned bot', "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return runnerMayReactAs(botUid)", "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return true"],
   ['runner comment counter must require a new atomic comment', "&& existsAfter(commentPath)\n        && !exists(commentPath)", "&& existsAfter(commentPath)"],
-  ['bot-runner may read every chat', "&& chat.members.size() == 2\n        && ((chat.members[0] in runner.get('botIds', [])\n              && runnerMayActAs(chat.members[0]))\n          || (chat.members[1] in runner.get('botIds', [])\n              && runnerMayActAs(chat.members[1])));", "&& chat.members.size() == 2\n        && true;"],
+  ['bot-runner may read every chat', "&& chat.members.size() == 2\n        && ((chat.members[0] in runner.get('botIds', [])\n              && runnerMayChatAs(chat.members[0]))\n          || (chat.members[1] in runner.get('botIds', [])\n              && runnerMayChatAs(chat.members[1])));", "&& chat.members.size() == 2\n        && true;"],
   ['comments stay possible when switched off', "return p.get('commentsDisabled', false) == false && canSeePost(p);", "return canSeePost(p);"],
   ['any reaction value is accepted', "|| request.resource.data.reactions[request.auth.uid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']", "|| true"],
   ['a report can be edited freely by staff', "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt'])\n        && request.resource.data.status in ['open', 'resolved']", "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt', 'targetUid'])\n        && request.resource.data.status in ['open', 'resolved']"],
   ['moderators can delete reports', "allow delete: if isAdmin();\n    }\n\n    // ---------- friends", "allow delete: if isStaff();\n    }\n\n    // ---------- friends"],
   ['anyone can read the activity log', "allow read: if isAdmin();\n      allow update, delete: if false;", "allow read: if signedIn();\n      allow update, delete: if false;"],
-  ['inbox quota accepts non-bot targets', "allow create: if isOwner(senderUid) && notBanned()\n        && isBotUser(botId)\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true", "allow create: if isOwner(senderUid) && notBanned()\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', true) == true"],
+  ['inbox quota accepts non-bot targets', "allow create: if isOwner(senderUid) && notBanned()\n        && isBotUser(botId)\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true", "allow create: if isOwner(senderUid) && notBanned()\n        && get(/databases/$(database)/documents/users/$(botId)).data.get('active', false) == true"],
+  ['bot posts bypass autoPost switch', "return runnerMayActAs(botUid) && bot.get('autoPost', false) == true;", "return runnerMayActAs(botUid);"],
+  ['bot comments bypass autoComment switch', "return runnerMayActAs(botUid) && bot.get('autoComment', false) == true;", "return runnerMayActAs(botUid);"],
+  ['bot reactions bypass autoReaction switch', "return runnerMayActAs(botUid) && bot.get('autoReaction', false) == true;", "return runnerMayActAs(botUid);"],
+  ['bot chats bypass chatEnabled switch', "return runnerMayActAs(botUid) && bot.get('chatEnabled', false) == true;", "return runnerMayActAs(botUid);"],
+
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 
