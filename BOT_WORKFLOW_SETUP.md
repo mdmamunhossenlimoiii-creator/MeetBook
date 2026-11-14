@@ -5,7 +5,7 @@ It does not use MySocial credentials or a second Firebase project.
 
 ## Workflow behavior
 
-- Only three owner-test workflows are retained, both manual-only (`workflow_dispatch`) and default to `dry_run=true`. A dry run signs in and checks the project/global switch, but performs no Firestore writes and does not call Gemini.
+- Only three owner-test workflows are retained, all manual-only (`workflow_dispatch`) and default to `dry_run=true`. A dry run signs in and checks the project/global switch, but performs no Firestore writes and does not call Gemini.
 - No scheduled or unattended bot workflows are included. Bot activity can only be started by a deliberate manual workflow dispatch after owner review.
 - The manual workflows process one selected bot action at a time: post mode creates one role-relevant public post, engagement mode may create one relevant comment and optional reaction only on an opted-in user's public post, and chat mode only answers an existing user-initiated private chat. The first three bots use Gemini when configured; the remaining built-in bots use their role-specific templates.
 - The Firestore global kill switch, runner enablement, explicit per-runner bot allowlist, per-bot flags, and durable quota limits remain mandatory. Missing/off settings fail closed.
