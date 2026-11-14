@@ -24,7 +24,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | No role / Unknown role | admin document without `role` / with a value we do not know (fail-closed) |
 | Bot runner | the GitHub Action account registered in `/botRunners` |
 
-204 capabilities × 14 actors = 2856 cases are executed on every test run.
+205 capabilities × 14 actors = 2870 cases are executed on every test run.
 
 
 ## Users
@@ -164,9 +164,10 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | Publish own post | ◐ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ |
 | Publish a post as someone else | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Bot runner cannot publish as its own normal account | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Publish a post as an AI bot | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Publish a post as an AI bot with explicit AI label | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Bot with autoPost OFF cannot publish | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner cannot publish as an unassigned bot | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| Reject a bot post without the AI label | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Publish an AI-bot post with a video | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Publish a friends-only AI-bot post | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Publish a post as a real user via the admin/bot path | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -250,7 +251,7 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | Runner may reserve chat quota after cooldown | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Read the runner state | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Disabled runner cannot read state | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Only an enabled runner can publish as an assigned bot | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Only an enabled runner can publish as an assigned bot with AI label | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Write the runner state | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Read the runner registration | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | Register a new bot runner | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
