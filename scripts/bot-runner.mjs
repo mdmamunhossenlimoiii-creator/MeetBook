@@ -296,7 +296,8 @@ async function main() {
   const stats = { posts: 0, comments: 0, reactions: 0, chats: 0 };
 
   // Mode isolation: post mode never processes engagement or private chats; chat mode never posts/comments/reacts.
-  if (MODE !== 'chat' && MODE !== 'engage') {
+  if (MODE !== 'chat') {
+  if (MODE !== 'engage') {
   // 2. auto posts
   for (const bot of shuffle(bots.filter((b) => b.autoPost === true && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
@@ -309,6 +310,7 @@ async function main() {
     spend(st, bot); stats.posts++;
     await log(bot, 'post', id, pick.text);
     console.log(`Posted as ${bot.name} (${id}): ${pick.text.slice(0, 70)}`);
+  }
   }
 
   // 3/4. engagement on recent public posts
