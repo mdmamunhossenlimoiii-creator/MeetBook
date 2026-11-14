@@ -6,7 +6,7 @@
 //  * Firestore rules decide what that user may do: only act AS an AI bot (public posts, never video,
 //    comments, a reaction under a bot's own key, chat replies). It cannot touch real users' data.
 //
-// What it does each run (all limits are enforced here AND configurable from the Admin panel):
+// What it does each run (all limits are enforced here AND in Firestore Rules):
 //  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
