@@ -44,8 +44,8 @@ const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID
   .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
 const safeDocPart = (value) => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
 
-if (!['all', 'post', 'chat'].includes(MODE)) {
-  console.error('BOT_RUNNER_MODE must be all, post, or chat.');
+if (!['all', 'post', 'engage', 'chat'].includes(MODE)) {
+  console.error('BOT_RUNNER_MODE must be all, post, engage, or chat.');
   process.exit(1);
 }
 if (MODE !== 'all' && !isBotId(RUNNER_BOT_ID)) {
@@ -296,7 +296,7 @@ async function main() {
   const stats = { posts: 0, comments: 0, reactions: 0, chats: 0 };
 
   // Mode isolation: post mode never processes engagement or private chats; chat mode never posts/comments/reacts.
-  if (MODE !== 'chat') {
+  if (MODE !== 'chat' && MODE !== 'engage') {
   // 2. auto posts
   for (const bot of shuffle(bots.filter((b) => b.autoPost === true && canAct(st, b))).slice(0, nPosts)) {
     const pick = nextPostText(bot, st.used);
@@ -313,7 +313,7 @@ async function main() {
 
   // 3/4. engagement on recent public posts
   let engaged = 0;
-  if (MODE === 'all' && nEngage > 0) {
+  if ((MODE === 'all' || MODE === 'engage') && nEngage > 0) {
     const recent = await fs.query({
       from: [{ collectionId: 'posts' }],
       where: eq('visibility', 'public'),
@@ -374,7 +374,7 @@ async function main() {
   }
 
   }
-  if (MODE !== 'post') {
+  if (MODE !== 'post' && MODE !== 'engage') {
   // 5. chat replies
   const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled === true).map((bot) =>
     fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
