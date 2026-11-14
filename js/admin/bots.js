@@ -1,4 +1,4 @@
-// AI Bots admin: global switches, create / edit / delete, per-bot controls and activity logs, manual post / comment tools.
+// AI Bots admin: global switches, create / edit / delete, per-bot controls and activity logs.
 import { db, doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp } from '../firebase.js';
 import { state } from '../state.js';
 import { $, $$, esc, avatarHtml, botBadge, errorBox, confirmBox, modal, closeModal, toast, errMsg, resizeImage, emptyState } from '../utils.js';
@@ -25,7 +25,7 @@ export async function render(body) {
         <div class="row gap wrap"><button class="btn ${botsOn ? 'btn-danger' : 'btn-primary'}" data-do="global">${botsOn ? 'Turn all bots OFF' : 'Turn all bots ON'}</button>
           <button class="btn" data-do="seed">Create missing built-in bots (${BOTS.length})</button>
           <button class="btn btn-primary" data-do="new" ${bots.length >= MAX_BOTS ? 'disabled' : ''}>New bot</button></div></div>
-      <p class="muted small">Automatic activity runs from GitHub Actions (every 6 hours for posts and comments, every ~20 minutes for chat replies). Text comes from ready-made templates in English and Bengali, not from an AI model.</p>
+      <p class="muted small">Bot workflows are manual-only and dry-run by default; no scheduled activity is enabled. The first three bots can use Gemini after owner-approved live configuration; other bots use role-specific templates.</p>
     </section>
     <div data-cards>${bots.length ? bots.map((b) => `<div class="card pad bot-card" data-id="${esc(b.id)}"><div class="row gap wrap">
       ${avatarHtml(b.name, b.photo, 48)}<div class="grow"><b>${esc(b.name)}</b>${botBadge(b)} <span class="muted small">@${esc(b.username || b.id)} · ${esc(b.id)}</span>
@@ -40,7 +40,7 @@ export async function render(body) {
     const box = $('[data-log]', body);
     try {
       const snap = await getDocs(query(collection(db, 'botLogs'), orderBy('createdAt', 'desc'), limit(25)));
-      box.innerHTML = snap.docs.length ? logTable(snap.docs.map((d) => d.data())) : '<div class="muted">Nothing yet. The scheduled job writes here.</div>';
+      box.innerHTML = snap.docs.length ? logTable(snap.docs.map((d) => d.data())) : '<div class="muted">Nothing yet. The manual Bot Runner writes here.</div>';
     } catch (e) { box.innerHTML = errorBox(e); }
   }
 
