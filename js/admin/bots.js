@@ -30,8 +30,8 @@ export async function render(body) {
     <div data-cards>${bots.length ? bots.map((b) => `<div class="card pad bot-card" data-id="${esc(b.id)}"><div class="row gap wrap">
       ${avatarHtml(b.name, b.photo, 48)}<div class="grow"><b>${esc(b.name)}</b>${botBadge(b)} <span class="muted small">@${esc(b.username || b.id)} · ${esc(b.id)}</span>
         <div class="small">${esc(PERSONALITIES[b.personality]?.label || b.personality || '—')} · ${esc(LANGUAGES[b.lang] || 'Both')} · limit ${b.dailyLimit ?? 6}/day</div>
-        <div class="small">${b.active === true ? tagHtml('Active') : tagHtml('Inactive', 'danger')} ${[['autoPost', 'Posts'], ['autoComment', 'Comments'], ['autoReaction', 'Reactions'], ['chatEnabled', 'Chat']].map(([k, l]) => tagHtml(`${l} ${b[k] === true ? 'on' : 'off'}`, b[k] === true ? '' : 'danger')).join(' ')}</div></div>
-      <div class="row gap wrap"><button class="btn" data-do="logs">Activity</button><button class="btn btn-primary" data-do="edit">Edit</button></div></div></div>`).join('') : emptyState('No bots yet', 'Use "Create missing built-in bots" to start.')}</div>
+        <div class="small">${b.active === true ? tagHtml('Active') : tagHtml('Inactive', 'danger')}</div></div>
+      <div class="row gap wrap"><button class="btn" data-do="logs">Activity</button><button class="btn" data-do="toggle">\${b.active === true ? "Turn OFF" : "Turn ON"}</button><button class="btn btn-danger" data-do="delete">Delete</button></div></div></div>`).join('') : emptyState('No bots yet', 'Use "Create missing built-in bots" to start.')}</div>
     <section class="card pad"><h3>Latest bot activity (all bots)</h3><div data-log>${loading()}</div></section>`;
     loadLogs();
   };
@@ -57,7 +57,8 @@ export async function render(body) {
       }
       case 'seed': if (await act(b, async () => { const r = await seedBots(); toast(`${r.created} created, ${r.existing} already existed`, 'success'); }, { ok: '', log: ['built-in bots created', '', ''] })) draw(); break;
       case 'new': editBot(null); break;
-      case 'edit': editBot(bot); break;
+      case 'toggle': { const next = bot.active !== true; if (await act(b, () => saveBot(bot.id, { active: next }), { ok: next ? 'Bot turned ON' : 'Bot turned OFF', log: ['bot active switch', bot.id, next ? 'on' : 'off'] })) draw(); break; }
+      case 'delete': { if (!(await confirmBox('Delete ' + bot.name + '? Its old posts stay on the feed with its name.', 'Delete'))) break; if (await act(b, () => deleteBot(bot.id), { ok: 'Bot deleted', log: ['bot deleted', bot.id, bot.name] })) draw(); break; }
       case 'logs': showLogs(bot); break;
       default: break;
     }
@@ -88,9 +89,9 @@ export async function render(body) {
       <div class="row gap wrap">
         <div class="field grow"><label for="b-pers">Personality</label><select id="b-pers">${Object.entries(PERSONALITIES).map(([k, p]) => `<option value="${k}" ${v.personality === k ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
         <div class="field grow"><label for="b-lang">Language</label><select id="b-lang">${Object.entries(LANGUAGES).map(([k, l]) => `<option value="${k}" ${v.lang === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
-        <div class="field"><label for="b-lim">Daily limit</label><input id="b-lim" type="number" min="0" max="12" value="${v.dailyLimit ?? 6}" style="width:90px"></div></div>
+</div>
       <div class="field"><label>Interests</label><div class="row gap wrap">${TOPICS.map((t) => `<label class="small row gap"><input type="checkbox" data-int="${t}" ${(v.interests || []).includes(t) ? 'checked' : ''}> ${t}</label>`).join('')}</div></div>
-      <div class="row gap wrap">${tog('active', 'Active')}${tog('autoPost', 'Auto post')}${tog('autoComment', 'Auto comment')}${tog('autoReaction', 'Auto reaction')}${tog('chatEnabled', 'Chat')}</div>
+      <div class="row gap wrap">${tog('active', 'Start this AI bot immediately')}</div>
       <div class="field"><label for="b-ideas">Post ideas, English (one per line; used by auto post)</label><textarea id="b-ideas" rows="3">${esc((v.ideas || []).join('\n'))}</textarea></div>
       <div class="field"><label for="b-ideasbn">Post ideas, Bengali (one per line)</label><textarea id="b-ideasbn" rows="3">${esc((v.ideasBn || []).join('\n'))}</textarea></div>
       <div class="row gap wrap"><label class="btn">Avatar<input type="file" accept="image/*" hidden data-img="photo"></label><label class="btn">Cover<input type="file" accept="image/*" hidden data-img="cover"></label>
@@ -118,11 +119,12 @@ export async function render(body) {
       if (name.length < 2) { toast('Name needs at least 2 characters', 'error'); return; }
       const data = {
         name, username: $('#b-user', m).value.trim().replace(/[^\w.]/g, '').slice(0, 30) || (bot ? bot.id : ''), bio: $('#b-bio', m).value.trim().slice(0, 300),
-        roleEmoji: $('#b-emoji', m).value, personality: $('#b-pers', m).value, lang: $('#b-lang', m).value, dailyLimit: Math.max(0, Math.min(12, Number($('#b-lim', m).value) || 0)),
+        roleEmoji: $('#b-emoji', m).value, personality: $('#b-pers', m).value, lang: $('#b-lang', m).value,
         interests: $$('[data-int]', m).filter((c) => c.checked).map((c) => c.dataset.int),
         ideas: lines($('#b-ideas', m).value), ideasBn: lines($('#b-ideasbn', m).value), ...imgs
       };
       $$('[data-k]', m).forEach((c) => { data[c.dataset.k] = c.checked; });
+      if (isNew) Object.assign(data, { autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true });
       if (!/AI/i.test(data.bio)) data.bio = `${data.bio} I am an AI bot.`.trim(); // bots are always openly AI
       const ok = isNew
         ? await act(b, () => createBot(bots, data), { ok: 'Bot created', log: ['bot created', '', name] })
