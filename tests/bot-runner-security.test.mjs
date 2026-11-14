@@ -80,6 +80,9 @@ test('manual runner modes isolate one selected bot and prevent cross-mode action
   assert.match(runner, /if \(\(MODE === 'all' \|\| MODE === 'engage'\) && nEngage > 0\)/);
   assert.match(runner, /if \(MODE !== 'post' && MODE !== 'engage'\)/);
   assert.match(runner, /const CHAT_MAX_REPLIES = 1/);
+  assert.match(runner, /uid: bot\.id, authorName: bot\.name, text, ai: true/);
+  assert.match(rules, /request\.resource\.data\.get\('ai', false\) == true/);
+  assert.match(runner, /\.filter\(\(x\) => x\.score > 0\)/);
   assert.match(runner, /\.slice\(0, CHAT_MAX_REPLIES\)/);
 });
 
