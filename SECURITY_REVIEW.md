@@ -15,7 +15,7 @@
 ## Important limitations
 
 - The runner uses Firestore transaction-backed quota reservations, and Rules validate fixed-path per-bot, per-user, global-activity and Gemini counters. CI/emulator coverage exists, but isolated live staging verification and review of concurrency behavior remain required before activation.
-- `profileVisibility` currently means “who can see my posts on my profile page” in the app UI. It does not hide profile metadata from signed-in users, and it does not hide public posts from feeds. The Settings screen already discloses this. A stronger private-profile feature needs a separate data-model and query migration; changing the user-document read rule alone would break existing feed/profile lookups.
+- Detailed profile metadata is served through `publicProfiles/{uid}` and is restricted by Firestore Rules to the owner, staff, bots, everyone when visibility is `everyone`, or friends when visibility is `friends`. `publicDirectory/{uid}` exposes only minimal discovery fields. Public posts continue to follow their own audience settings and can appear in feeds independently of profile metadata visibility. Existing-account projection migration must be checked before release.
 - Firestore Admin SDK / service-account operations bypass Firestore Rules. Any future service account must remain least-privilege and be reviewed separately.
 - The Admin bot panel is limited to bot creation/configuration, enable/disable, deletion and activity review; manual post/comment-as-bot controls are not exposed. Only the owner-approved manual dry-run/live-gated workflows are retained; no scheduled or unattended bot workflows are present. No secrets, Firebase production rules, project settings, or live data were changed.
 
