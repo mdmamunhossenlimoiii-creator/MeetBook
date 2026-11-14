@@ -24,7 +24,7 @@ jobs:
         with:
           node-version: 22
       - name: Node tests (rules matrix, mutation, simulator, scripts, edge cases)
-        run: node --test "tests/*.test.mjs" "tests/rules-sim/*.test.mjs" "tests/rules-matrix/*.test.mjs" "tests/emulator/harness.test.mjs"
+        run: node --test "tests/*.test.mjs" "tests/rules-sim/*.test.mjs" "tests/rules-matrix/*.test.mjs" "tests/emulator/harness.test.mjs" tests/image-upload-worker.test.mjs
       - name: Import check
         run: python3 tests/check-imports.py .
 
