@@ -118,6 +118,9 @@ test('Admin, Runner, and Firestore Rules treat missing bot switches as OFF', () 
   assert.match(runner, /Activation blocked: settings\/global document is missing/);
   assert.match(rules, /bot\.get\('active', false\) == true/);
   assert.match(rules, /get\('chatEnabled', false\) == true/);
+  assert.match(rules, /get\('active', false\) == true/);
+  assert.doesNotMatch(rules, /get\('active', true\) == true/);
+  assert.doesNotMatch(rules, /get\('chatEnabled', true\) == true/);
   assert.match(rules, /get\('autoPost', false\) == true/);
   assert.match(rules, /get\('autoComment', false\) == true/);
   assert.match(rules, /get\('autoReaction', false\) == true/);
