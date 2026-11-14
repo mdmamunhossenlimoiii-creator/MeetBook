@@ -116,7 +116,12 @@ test('bot workflows are manual-only, default to dry-run, and require an explicit
 test('Admin, Runner, and Firestore Rules treat missing bot switches as OFF', () => {
   assert.match(adminBots, /const botsOn = site\.botsEnabled === true/);
   assert.match(adminBots, /const next = site\.botsEnabled !== true/);
-  assert.match(adminBots, /b\[k\] === true \? 'on' : 'off'/);
+  assert.match(adminBots, /data-do=\"toggle\"/);
+  assert.match(adminBots, /data-do=\"delete\"/);
+  assert.doesNotMatch(adminBots, /data-do=\"edit\"/);
+  assert.doesNotMatch(adminBots, /tog\('auto(?:Post|Comment|Reaction)'/);
+  assert.doesNotMatch(adminBots, /tog\('chatEnabled'/);
+  assert.doesNotMatch(adminBots, /b-lim/);
   assert.match(adminBots, /v\[k\] === true \? 'checked' : ''/);
   assert.match(runner, /bot\.active === true/);
   assert.match(runner, /b\.autoPost === true/);
