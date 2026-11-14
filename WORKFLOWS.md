@@ -4,7 +4,8 @@
 |---|---|---|
 | `tests.yml` | Enabled | Pull requests and pushes to `main`; no Firebase production credentials |
 | `bot-runner.yml` | Manual-only; dry-run by default | One selected bot; at most one public post; live action requires protected environment approval and owner release flag |
-| `bot-chat.yml` | Manual-only; dry-run by default | One selected Gemini bot; at most one user-initiated private chat reply; live action requires protected environment approval and owner release flag |
+| `bot-engagement.yml` | Manual-only; dry-run by default | One selected bot; at most one relevant comment and optional reaction on a consenting user's public post; live action requires protected environment approval and owner release flag |
+| `bot-chat.yml` | Manual-only; dry-run by default | One selected bot; at most one user-initiated private chat reply; first three bots use Gemini, others use role templates; live action requires protected environment approval and owner release flag |
 | `backup.yml` | Manual-only | Requires explicit `confirm_backup=true` and MeetBook-only secrets |
 | `maintenance.yml` (account deletion queue) | Disabled | Destructive Auth and Firestore deletion is blocked pending separate owner review |
 
