@@ -167,9 +167,9 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 | Publish a post as someone else | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Bot runner cannot publish as its own normal account | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Publish a post as an AI bot with explicit AI label | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| Reject a bot post without the AI label | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Bot with autoPost OFF cannot publish | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Runner cannot publish as an unassigned bot | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| Reject a bot post without the AI label | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Publish an AI-bot post with a video | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Publish a friends-only AI-bot post | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | Publish a post as a real user via the admin/bot path | ◐ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
@@ -313,4 +313,4 @@ Normal users cannot change their own role: `/admins` is not writable by them, an
 
 * The matrix is run by the in-repo rules interpreter on every test run, and by the **real Firebase Emulator** only in the GitHub Actions job `rules-emulator`. Look at the latest run of that job before trusting a release.
 * A few protections are enforced only in the website UI, not by rules (hidden posts, maintenance mode); see ARCHITECTURE.md "Known limits".
-* List queries (`allow list`) are not part of the matrix; document reads, creates, updates and deletes are.
+* List queries (`allow list`) are not part of the matrix; document reads, creates, updates and deletes.
