@@ -31,3 +31,5 @@ This is CI/emulator evidence only. No real Gemini API summarization, isolated st
 ## Release decision
 
 **Not release-ready.** Profile metadata privacy and opt-in memory require full existing-account projection migration and isolated staging verification. Bot Runner changes require successful current-branch CI and isolated staging verification. Owner-side Firebase/Cloudflare/Pages checks remain outstanding. Real Gemini API memory summarization has not been run. Durable server-side bot quotas remain covered by CI/emulator tests. Do not merge, enable workflows, activate bots, or deploy based on CI alone.
+
+Draft PR #16 adds the blocked/suspended-recipient and private-inbox gates plus a permission-safe legacy projection backfill. Its current-branch unit, browser, and Firestore Emulator results are still pending; the updated matrix contains 226 capabilities × 14 actors = 3,164 cases.
