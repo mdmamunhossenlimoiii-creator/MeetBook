@@ -56,8 +56,10 @@ test('blocked or suspended chat requests are skipped without aborting other elig
 });
 
 test('private inbox stores only message IDs and reads message bodies after chat eligibility', () => {
-  assert.match(rules, /request\.resource\.data\.keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'messageId', 'handled', 'createdAt'\]\)/);
+  assert.match(rules, /request\.resource\.data\.keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'messageId', 'schemaVersion', 'handled', 'createdAt'\]\)/);
   assert.match(rules, /function inboxMessageOk\(\)/);
+  assert.match(rules, /function validInboxMetadata\(d\)/);
+  assert.match(runner, /eq\('schemaVersion', 2\)/);
   assert.match(runner, /const messageId = typeof m\.messageId === 'string'/);
   assert.match(runner, /userMessage = await fs\.get\(\`chats\/\$\{m\.chatId\}\/messages\/\$\{messageId\}\`\)/);
   assert.ok(runner.indexOf('chat = await fs.get') < runner.indexOf('userMessage = await fs.get'),
