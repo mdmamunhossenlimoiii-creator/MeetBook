@@ -602,13 +602,13 @@ service cloud.firestore {
       // the exact private chat is still eligible; staff never receive private inbox bodies.
       allow read: if isOwner(resource.data.fromUid)
         || (runnerMayChatAs(resource.data.botId) && inboxChatAllowed());
-      allow update: if isAdmin()
-        || (runnerMayChatAs(resource.data.botId)
-          && inboxChatAllowed()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
-          && request.resource.data.handled == true
-          && request.resource.data.handledAt is timestamp);
-      allow delete: if isAdmin();
+      allow update: if runnerMayChatAs(resource.data.botId)
+        && inboxChatAllowed()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
+        && request.resource.data.handled == true
+        && request.resource.data.handledAt is timestamp;
+      // The sender may cancel a pending request; staff cannot inspect or manage private inbox bodies.
+      allow delete: if isOwner(resource.data.fromUid);
     }
     match /botLogs/{id} {
       allow create: if isAdmin()
