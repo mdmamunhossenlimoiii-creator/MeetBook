@@ -11,8 +11,8 @@ import { startMock } from './mock-firestore.mjs';
 import { BOTS } from '../js/bots-data.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 
-// Bot runner integration tests require an owner-configured Firebase Web App. They are skipped
-// while MeetBook intentionally has blank Firebase placeholders; bot automation remains out of scope.
+// Bot runner integration tests use the in-memory Auth/Firestore mock below; they never sign in
+// to the live Firebase project. They are skipped only if the public Web App config is missing.
 const botRunnerConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 // async on purpose: the mock server lives in this process, so a blocking spawnSync would deadlock it
