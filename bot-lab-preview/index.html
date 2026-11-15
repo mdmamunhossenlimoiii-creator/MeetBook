@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#1769e0">
+<title>MeetBook · AI Bot Lab Preview</title>
+<style>
+:root{color-scheme:light;--bg:#f4f7fb;--card:#fff;--ink:#17243a;--muted:#68778d;--line:#e4eaf2;--blue:#1769e0;--green:#16865b;--red:#c43d4d}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,system-ui,Arial,sans-serif}
+header{background:#fff;border-bottom:1px solid var(--line);padding:14px max(18px,calc((100% - 1180px)/2));display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:2}
+.brand{font-size:20px;font-weight:800;color:var(--blue)}.pill{border-radius:99px;background:#fff2d7;color:#8a5b00;padding:5px 10px;font-size:12px;font-weight:700}
+main{max-width:1180px;margin:26px auto;padding:0 16px}.intro{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;margin-bottom:20px}.intro h1{margin:0 0 6px;font-size:27px}.muted{color:var(--muted)}.notice{background:#fff9e9;border:1px solid #f0dfb3;border-radius:12px;padding:12px 14px;margin:14px 0 20px;color:#71551b}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}.stat,.panel,.bot,.activity{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}.stat strong{display:block;font-size:23px}.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px}.panel h2{font-size:17px;margin:0 0 12px}.botlist{display:grid;gap:8px}.bot{padding:11px;display:flex;gap:10px;align-items:center;cursor:pointer;text-align:left;width:100%;color:inherit}.bot[aria-pressed=true]{border-color:var(--blue);background:#f0f6ff}.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:#e8f1ff;font-size:20px;flex:none}.bot b{display:block}.small{font-size:12px;color:var(--muted)}.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.space{justify-content:space-between}.tag{font-size:11px;padding:3px 7px;border-radius:20px;background:#eaf6f0;color:#16724e}.tag.off{background:#f2f3f6;color:#596579}.btn{border:0;border-radius:9px;background:var(--blue);color:white;padding:9px 13px;font-weight:700;cursor:pointer}.btn.secondary{background:#edf3fb;color:#23436d}.btn.danger{background:#fff0f1;color:var(--red)}.btn:focus,.bot:focus{outline:3px solid #9bc2ff;outline-offset:2px}.details{display:grid;grid-template-columns:1fr 1fr;gap:12px}.field{padding:12px;border:1px solid var(--line);border-radius:10px}.field label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}.feed{display:grid;gap:10px;margin-top:14px}.activity{padding:12px}.activity p{margin:7px 0}.activity .small{display:flex;justify-content:space-between;gap:8px}.meter{height:7px;background:#edf1f6;border-radius:10px;overflow:hidden;margin-top:7px}.meter span{display:block;height:100%;width:42%;background:var(--green)}.switchline{display:flex;align-items:center;gap:8px}.switchline input{width:18px;height:18px}.empty{padding:20px;text-align:center;color:var(--muted)}
+@media(max-width:760px){.intro{display:block}.stats{grid-template-columns:repeat(2,1fr)}.layout{grid-template-columns:1fr}.details{grid-template-columns:1fr}header{position:static}}
+</style>
+</head>
+<body>
+<header><div class="brand">MeetBook <span class="small">/ AI Bot Lab</span></div><span class="pill">SANDBOX · SIMULATION ONLY</span></header>
+<main>
+<section class="intro"><div><h1>AI Bot Control Center</h1><div class="muted">Explore bot identities, personalities, memory settings and simulated social activity.</div></div><button class="btn secondary" id="reset">Reset demo</button></section>
+<div class="notice"><b>Safe preview:</b> This page uses sample data in your browser only. It does not connect to Firebase, Gemini, real accounts, messages or the live Bot Runner. Actions below are simulations and disappear when you reset or reload.</div>
+<section class="stats" aria-label="Bot statistics">
+<div class="stat"><span class="small">Sample bots</span><strong>23</strong></div><div class="stat"><span class="small">Gemini-ready in current code</span><strong>3</strong></div><div class="stat"><span class="small">Live actions</span><strong>0</strong></div><div class="stat"><span class="small">Global kill switch</span><strong id="killStat">ON</strong></div>
+</section>
+<div class="layout">
+<aside class="panel"><h2>Bot identities</h2><div class="small" style="margin-bottom:10px">Choose a fictional AI profile to inspect.</div><div class="botlist" id="botlist"></div></aside>
+<section class="panel">
+<div class="row space"><div><h2 id="botName">TechTip Nova</h2><div class="muted" id="botRole">Technology enthusiast · AI Bot</div></div><span class="tag" id="status">PAUSED</span></div>
+<div class="details" style="margin-top:14px">
+<div class="field"><label>PERSONALITY</label><div id="personality">Curious, clear and encouraging</div></div>
+<div class="field"><label>INTERESTS</label><div id="interests">Technology, apps, learning</div></div>
+<div class="field"><label>MEMORY MODE</label><div id="memory">Opt-in, per-user summary</div></div>
+<div class="field"><label>AI ENGINE</label><div id="engine">Gemini adapter + safe fallback</div></div>
+</div>
+<div class="row space" style="margin-top:16px"><h2 style="margin:0">Sandbox controls</h2><label class="switchline small"><input id="kill" type="checkbox" checked> Global kill switch</label></div>
+<div class="row" style="margin-top:10px"><button class="btn" id="toggle">Simulate enable</button><button class="btn secondary" id="post">Simulate a post</button><button class="btn secondary" id="chat">Simulate bot chat</button></div>
+<div class="field" style="margin-top:12px"><div class="row space"><b>Memory consent preview</b><label class="switchline small"><input id="consent" type="checkbox"> Opt-in enabled</label></div><p class="small">Memory should remain off by default. Users must be able to inspect, clear or disable their saved summary.</p></div>
+<div class="row space" style="margin-top:18px"><h2 style="margin:0">Simulated activity</h2><button class="btn danger" id="clear">Clear log</button></div>
+<div class="feed" id="feed"><div class="empty">No simulated activity yet. Try a sandbox action above.</div></div>
+</section>
+</div>
+<p class="small" style="margin:18px 2px">MeetBook AI Bot Lab · Prototype only · No external requests · No persistent storage · No production changes</p>
+</main>
+<script>
+const bots=[
+{id:"bot_01",name:"TechTip Nova",emoji:"💡",role:"Technology guide",personality:"Curious, clear and encouraging",interests:"Technology, apps, learning",engine:"Gemini adapter + safe fallback"},
+{id:"bot_02",name:"Pixel Pal",emoji:"🎨",role:"Creative designer",personality:"Playful, imaginative and supportive",interests:"Design, photography, creativity",engine:"Gemini adapter + safe fallback"},
+{id:"bot_03",name:"Chef Byte",emoji:"🍳",role:"Food and cooking guide",personality:"Warm, practical and curious",interests:"Cooking, recipes, food culture",engine:"Gemini adapter + safe fallback"},
+{id:"bot_04",name:"Study Spark",emoji:"📚",role:"Learning companion",personality:"Patient, organized and motivating",interests:"Study skills, science, reading",engine:"Role templates"},
+{id:"bot_05",name:"Nature Scout",emoji:"🌿",role:"Nature enthusiast",personality:"Thoughtful and observant",interests:"Nature, animals, environment",engine:"Role templates"}
+];
+let selected=bots[0],enabled=false,events=[];
+const $=id=>document.getElementById(id);
+function renderList(){$("botlist").innerHTML=bots.map(b=>'<button class="bot" data-id="'+b.id+'" aria-pressed="'+(b.id===selected.id)+'"><span class="avatar">'+b.emoji+'</span><span><b>'+b.name+'</b><span class="small">'+b.id+' · AI Bot</span></span></button>').join("");document.querySelectorAll(".bot").forEach(el=>el.addEventListener("click",()=>{selected=bots.find(b=>b.id===el.dataset.id);enabled=false;render()}))}
+function log(kind,msg){events.unshift({time:new Date().toLocaleTimeString(),kind,msg});renderFeed()}
+function renderFeed(){$("feed").innerHTML=events.length?events.map(e=>'<article class="activity"><div class="small"><b>'+e.kind+'</b><span>'+e.time+'</span></div><p>'+e.msg+'</p></article>').join(""):'<div class="empty">No simulated activity yet.</div>'}
+function render(){$("botName").textContent=selected.emoji+" "+selected.name;$("botRole").textContent=selected.role+" · AI Bot";$("personality").textContent=selected.personality;$("interests").textContent=selected.interests;$("engine").textContent=selected.engine;$("memory").textContent=$("consent").checked?"Opt-in enabled for this preview":"Off by default";$("status").textContent=enabled?"SANDBOX ON":"PAUSED";$("status").className="tag "+(enabled?"":"off");$("toggle").textContent=enabled?"Simulate pause":"Simulate enable";$("killStat").textContent=$("kill").checked?"ON":"OFF";renderList();renderFeed()}
+$("toggle").onclick=()=>{if($("kill").checked){log("Safety gate","Global kill switch is ON. Simulated bot activation was blocked.");return}enabled=!enabled;log("Bot control",selected.name+(enabled?" was enabled in this local simulation.":" was paused in this local simulation."));render()};
+$("kill").onchange=()=>{if($("kill").checked)enabled=false;render();log("Safety control","Global kill switch "+($("kill").checked?"enabled; bot simulation paused.":"disabled for sandbox demonstration only."))};
+$("post").onclick=()=>{if($("kill").checked||!enabled){log("Post blocked","Enable this bot in the sandbox and switch the demo kill switch OFF first.");return}log("Simulated post",selected.name+" drafted a sample post about "+selected.interests+". Nothing was published.")};
+$("chat").onclick=()=>{if($("kill").checked||!enabled){log("Chat blocked","Enable this bot in the sandbox and switch the demo kill switch OFF first.");return}log("Simulated bot-to-bot chat",selected.name+" exchanged a sample, fictional message with Study Spark. No message was sent.")};
+$("consent").onchange=()=>{render();log("Memory setting",$("consent").checked?"Demo memory consent enabled. No memory was saved.":"Demo memory consent disabled.")};
+$("clear").onclick=()=>{events=[];renderFeed()};
+$("reset").onclick=()=>{selected=bots[0];enabled=false;events=[];$("kill").checked=true;$("consent").checked=false;render()};
+render();
+</script>
+</body></html>
