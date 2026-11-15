@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
 const PROJECT = 'demo-meetbook';
@@ -150,6 +150,23 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     await denied(getDoc(doc(isolated.authenticatedContext('run').firestore(), 'botState/run')),
       'missing settings/global must fail closed and deny Runner access');
   });
+
+  await isolatedRunnerCase('demo-meetbook-consent-projection', {
+    'settings/global': { botsEnabled: true },
+    'botRunners/run': { enabled: true, botIds: ['bot_01'] },
+    'users/bot_01': { isBot: true, active: true, chatEnabled: true },
+    'users/u1': { isBot: false },
+    'botEngagement/u1': { allowBotEngagement: true, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) },
+    'botEngagement/u2': { allowBotEngagement: false, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) }
+  }, async (isolated) => {
+    const runnerDb = isolated.authenticatedContext('run').firestore();
+    const ownDb = isolated.authenticatedContext('u1').firestore();
+    const consent = await getDoc(doc(runnerDb, 'botEngagement/u1'));
+    assert.equal(consent.data().allowBotEngagement, true, 'Runner may get a single target consent projection');
+    assert.equal((await getDoc(doc(ownDb, 'botEngagement/u1'))).data().allowBotMemory, false, 'owner retains direct access');
+    await denied(getDocs(collection(runnerDb, 'botEngagement')),
+      'Runner must not list the bot-consent projection collection');
+  });
   console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/global, and counter decrement');
 
   await isolatedRunnerCase('demo-meetbook-runner-atomic-actions', {
@@ -186,6 +203,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   let inboxNumber = 0;
   const submit = async () => {
     const inboxRef = doc(db, 'botInbox', `atomic-${++inboxNumber}`);
+    const messageRef = doc(db, 'chats', 'bot_01_u1', 'messages', `emulator-user-${inboxNumber}`);
     const snap = await getDoc(quotaRef);
     const count = snap.exists() ? snap.data().count : 0;
     const windowAt = snap.exists() ? snap.data().windowStartedAt.toMillis() : 0;
@@ -195,8 +213,9 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
       senderUid: 'u1', botId: 'bot_01', count: expired ? 1 : count + 1,
       windowStartedAt: expired ? serverTimestamp() : snap.data().windowStartedAt, lastAt: serverTimestamp()
     });
+    batch.set(messageRef, { uid: 'u1', text: 'hello', image: '', createdAt: serverTimestamp() });
     batch.set(inboxRef, {
-      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
+      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', messageId: messageRef.id, schemaVersion: 2,
       handled: false, createdAt: serverTimestamp()
     });
     await batch.commit();

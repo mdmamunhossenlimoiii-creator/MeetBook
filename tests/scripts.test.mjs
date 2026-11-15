@@ -11,8 +11,8 @@ import { startMock } from './mock-firestore.mjs';
 import { BOTS } from '../js/bots-data.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 
-// Bot runner integration tests require an owner-configured Firebase Web App. They are skipped
-// while MeetBook intentionally has blank Firebase placeholders; bot automation remains out of scope.
+// Bot runner integration tests use the in-memory Auth/Firestore mock below; they never sign in
+// to the live Firebase project. They are skipped only if the public Web App config is missing.
 const botRunnerConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 // async on purpose: the mock server lives in this process, so a blocking spawnSync would deadlock it
@@ -49,7 +49,8 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
     'posts/p3': post('u1', 'My grandfather passed away today'),
     'posts/p4': post('bot_01', 'Tech tip: update your phone and apps regularly.'),
     'chats/bot_06_u1': { type: 'private', members: ['bot_06', 'u1'] },
-    'botInbox/i1': { botId: 'bot_06', fromUid: 'u1', chatId: 'bot_06_u1', text: 'তুমি কি রোবট?', handled: false, createdAt: now }
+    'chats/bot_06_u1/messages/user-msg': { uid: 'u1', text: 'তুমি কি রোবট?', image: '', createdAt: now },
+    'botInbox/i1': { botId: 'bot_06', fromUid: 'u1', chatId: 'bot_06_u1', messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now }
   } });
   const env = { BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '2', BOT_COMMENTS: '6' };
   try {
@@ -75,10 +76,12 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
 
     // chat
     const msgs = m.ids('chats/bot_06_u1/messages');
-    assert.equal(msgs.length, 1);
-    const reply = m.get(`chats/bot_06_u1/messages/${msgs[0]}`);
+    const botReplies = msgs.filter((id) => m.get(`chats/bot_06_u1/messages/${id}`).uid === 'bot_06');
+    assert.equal(botReplies.length, 1);
+    const reply = m.get(`chats/bot_06_u1/messages/${botReplies[0]}`);
     assert.equal(reply.uid, 'bot_06'); assert.match(reply.text, /এআই বট/, 'answers honestly that it is an AI bot');
     assert.equal(m.get('botInbox/i1').handled, true);
+    assert.equal(Object.hasOwn(m.get('botInbox/i1'), 'text'), false, 'the inbox must not duplicate private message text');
     assert.equal(m.get('chats/bot_06_u1').lastMessage.uid, 'bot_06');
 
     assert.ok(m.ids('botLogs').length >= 4, 'activity logged');
