@@ -50,7 +50,7 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
     'posts/p4': post('bot_01', 'Tech tip: update your phone and apps regularly.'),
     'chats/bot_06_u1': { type: 'private', members: ['bot_06', 'u1'] },
     'chats/bot_06_u1/messages/user-msg': { uid: 'u1', text: 'তুমি কি রোবট?', image: '', createdAt: now },
-    'botInbox/i1': { botId: 'bot_06', fromUid: 'u1', chatId: 'bot_06_u1', messageId: 'user-msg', handled: false, createdAt: now }
+    'botInbox/i1': { botId: 'bot_06', fromUid: 'u1', chatId: 'bot_06_u1', messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now }
   } });
   const env = { BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '2', BOT_COMMENTS: '6' };
   try {
