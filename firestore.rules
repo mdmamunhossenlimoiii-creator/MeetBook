@@ -589,15 +589,29 @@ service cloud.firestore {
           && getAfter(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(request.resource.data.messageId)).data.text.size() > 0
           && getAfter(/databases/$(database)/documents/chats/$(request.resource.data.chatId)/messages/$(request.resource.data.messageId)).data.text.size() <= 4000;
       }
+      function validInboxMetadata(d) {
+        return d.keys().hasOnly(['fromUid', 'botId', 'chatId', 'messageId', 'schemaVersion', 'handled', 'createdAt'])
+          && d.fromUid is string
+          && d.botId in botIds()
+          && d.chatId is string
+          && d.messageId is string
+          && d.messageId.size() > 0
+          && d.messageId.size() <= 128
+          && !d.messageId.matches('.*[/].*')
+          && d.schemaVersion == 2
+          && d.handled is bool
+          && d.createdAt is timestamp;
+      }
       allow create: if notBanned()
         && inboxQuotaOk()
         && inboxMessageOk()
+        && request.resource.data.schemaVersion == 2
         && request.resource.data.fromUid == request.auth.uid
         && isBotUser(request.resource.data.botId)
         && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('active', false) == true
         && get(/databases/$(database)/documents/users/$(request.resource.data.botId)).data.get('chatEnabled', false) == true
         && request.resource.data.handled == false
-        && request.resource.data.keys().hasOnly(['fromUid', 'botId', 'chatId', 'messageId', 'handled', 'createdAt'])
+        && request.resource.data.keys().hasOnly(['fromUid', 'botId', 'chatId', 'messageId', 'schemaVersion', 'handled', 'createdAt'])
         && request.resource.data.createdAt is timestamp
         && request.resource.data.chatId == pairId(request.auth.uid, request.resource.data.botId)
         && exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
@@ -606,9 +620,9 @@ service cloud.firestore {
       // Inbox records contain only routing metadata and a message ID, never the private message body.
       // The assigned Runner must pass runnerMayReadChat before it can read the referenced chat message.
       // Staff never receive inbox metadata or private chat bodies.
-      allow read: if isOwner(resource.data.fromUid) || runnerMayChatAs(resource.data.botId);
+      allow read: if isOwner(resource.data.fromUid) || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));
       // The assigned Runner may mark a queued item skipped after chat access is denied.
-      allow update: if runnerMayChatAs(resource.data.botId)
+      allow update: if validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
         && request.resource.data.handled == true
         && request.resource.data.handledAt is timestamp
