@@ -409,7 +409,21 @@ async function main() {
     const memoryConsent = await fs.get(`botEngagement/${m.fromUid}`);
     const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
-    const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
+    // Dry runs never need persisted memory. In live mode, a missing or unreadable
+    // optional memory record must not prevent a consented private chat reply.
+    let savedMemory = null;
+    if (!DRY && memoryEnabled) {
+      try {
+        savedMemory = await fs.get(`botMemories/${memoryId}`);
+      } catch (error) {
+        const message = String(error?.message || error);
+        if (/403|PERMISSION_DENIED|Missing or insufficient permissions/i.test(message)) {
+          console.warn(`Bot memory unavailable for ${bot.id}; continuing without long-term memory.`);
+        } else {
+          throw error;
+        }
+      }
+    }
     const replyText = DRY ? reply.text : await generateText({
       bot, kind: 'chat', source: m.text,
       history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
