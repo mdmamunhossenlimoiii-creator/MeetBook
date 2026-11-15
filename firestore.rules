@@ -698,8 +698,10 @@ service cloud.firestore {
           && d.get('allowBotMemory', false) is bool
           && d.updatedAt is timestamp;
       }
-      // Only the owner and the authorized Runner can read this minimal consent projection.
-      allow read: if validBotEngagement(resource.data) && (isOwner(uid) || runnerEnabled());
+      // The owner and an enabled Runner may get one user's minimal consent projection.
+      // Runners must not enumerate the collection or map users' opt-in choices.
+      allow get: if validBotEngagement(resource.data) && (isOwner(uid) || runnerEnabled());
+      allow list: if false;
       allow create, update: if isOwner(uid)
         && validBotEngagement(request.resource.data)
         && request.resource.data.updatedAt == request.time
