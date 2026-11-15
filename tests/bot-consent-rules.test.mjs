@@ -154,6 +154,33 @@ test('rules: runner allowlist and global emergency stop are enforced server-side
   } finally { await m.close(); }
 });
 
+test('a missing optional bot memory is denied by Rules but does not block a consented chat reply', { skip: !botRunnerConfigured }, async () => {
+  const data = seed();
+  data['users/u2'].settings.allowBotMemory = true;
+  data['botEngagement/u2'] = { allowBotEngagement: false, allowBotMemory: true, updatedAt: now };
+  data['chats/bot_01_u2'] = { type: 'private', members: ['bot_01', 'u2'] };
+  data['chats/bot_01_u2/messages/user-msg'] = {
+    uid: 'u2', text: 'Can you share a beginner phone tip?', image: '', createdAt: now
+  };
+  data['botInbox/i_memory'] = {
+    botId: 'bot_01', fromUid: 'u2', chatId: 'bot_01_u2',
+    messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now
+  };
+  const m = await startMock({ seed: data, rules: true });
+  try {
+    const result = await exec(['scripts/bot-runner.mjs'], env(m, {
+      GITHUB_RUN_ID: 'missing-memory-001', BOT_RUNNER_MODE: 'chat', BOT_RUNNER_BOT_ID: 'bot_01',
+      BOT_POSTS: '0', BOT_COMMENTS: '0', DRY_RUN: '0', GEMINI_API_KEY: '', GEMINI_STRICT: '0'
+    }));
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.match(result.stdout, /Saved bot memory was unavailable; continuing without it\./);
+    const messages = m.ids('chats/bot_01_u2/messages');
+    assert.equal(messages.filter((id) => m.get(`chats/bot_01_u2/messages/${id}`).uid === 'bot_01').length, 1,
+      'the chat reply must be saved even when an optional memory document is absent');
+    assert.equal(m.get('botInbox/i_memory').handled, true);
+  } finally { await m.close(); }
+});
+
 test('negative control: without the rules gate the same hand-made write succeeds (so the 403s above come from the rules)', async () => {
   const m = await startMock({ seed: seed(), rules: false });
   try {
