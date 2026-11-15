@@ -133,13 +133,16 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   assert.match(fn('runnerMayReadChat'), /eligibleHumanForBotInteraction\(userUid\)/, 'Runner cannot read chats with blocked or suspended users');
   assert.match(block('botMemories'), /eligibleHumanForBotInteraction/);
-  assert.match(block('botInbox'), /allow read: if isOwner\(resource\.data\.fromUid\) \|\| runnerMayChatAs\(resource\.data\.botId\)/, 'only sender and assigned active bot can read inbox metadata');
+  assert.match(block('botInbox'), /allow read: if isOwner\(resource\.data\.fromUid\) \|\| \(validInboxMetadata\(resource\.data\) && runnerMayChatAs\(resource\.data\.botId\)\)/, 'only sender and assigned active bot can read versioned inbox metadata');
+  assert.match(block('botInbox'), /function validInboxMetadata\(d\)/);
+  assert.match(block('botInbox'), /d\.schemaVersion == 2/);
   assert.match(block('botInbox'), /function inboxMessageOk\(\)/);
   assert.match(block('botInbox'), /getAfter\([\s\S]*messages\/\$\(request\.resource\.data\.messageId\)[\s\S]*\)\.data\.uid == request\.auth\.uid/);
   assert.match(block('botInbox'), /'messageId'/);
+  assert.match(block('botInbox'), /'schemaVersion'/);
   assert.doesNotMatch(block('botInbox'), /'text'/, 'inbox documents must not duplicate private message bodies');
   assert.match(block('botInbox'), /allow delete: if isOwner\(resource\.data\.fromUid\)/, 'senders may cancel their own pending requests');
-  assert.match(block('botInbox'), /allow update: if runnerMayChatAs\(resource\.data\.botId\)/, 'only the assigned active Runner can mark queue metadata');
+  assert.match(block('botInbox'), /allow update: if validInboxMetadata\(resource\.data\) && runnerMayChatAs\(resource\.data\.botId\)/, 'only the assigned active Runner can mark versioned queue metadata');
   assert.match(block('botInbox'), /get\('skipped', ''\)\.size\(\) <= 80/, 'skip reason is bounded metadata');
   assert.doesNotMatch(block('botInbox'), /allow read: if isStaff\(\)/, 'staff cannot read private bot inbox bodies');
   assert.doesNotMatch(block('botInbox'), /allow update: if isAdmin\(\)/, 'admins cannot manage private inbox bodies');
