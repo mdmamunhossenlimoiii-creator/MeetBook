@@ -55,6 +55,15 @@ test('blocked or suspended chat requests are skipped without aborting other elig
   assert.match(rules, /eligibleHumanForBotInteraction\(userUid\)/);
 });
 
+test('private inbox stores only message IDs and reads message bodies after chat eligibility', () => {
+  assert.match(rules, /request\.resource\.data\.keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'messageId', 'handled', 'createdAt'\]\)/);
+  assert.match(rules, /function inboxMessageOk\(\)/);
+  assert.match(runner, /const messageId = typeof m\.messageId === 'string'/);
+  assert.match(runner, /userMessage = await fs\.get\(\`chats\/\$\{m\.chatId\}\/messages\/\$\{messageId\}\`\)/);
+  assert.ok(runner.indexOf('chat = await fs.get') < runner.indexOf('userMessage = await fs.get'),
+    'the private chat eligibility gate must run before the message body is fetched');
+});
+
 test('runner inbox and private chat access are limited to assigned bots', () => {
   assert.match(rules, /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
