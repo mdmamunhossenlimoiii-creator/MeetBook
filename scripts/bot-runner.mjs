@@ -415,6 +415,26 @@ async function main() {
       continue;
     }
 
+    // Inbox entries contain no message body. Only after Firestore Rules authorize this exact
+    // private chat do we fetch the user-authored message referenced by the inbox item.
+    const messageId = typeof m.messageId === 'string'
+      && m.messageId.length > 0 && m.messageId.length <= 128 && !m.messageId.includes('/')
+      ? m.messageId : '';
+    if (!messageId) { await mark('message-not-found'); continue; }
+    let userMessage;
+    try {
+      userMessage = await fs.get(`chats/${m.chatId}/messages/${messageId}`);
+    } catch (error) {
+      if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+      throw error;
+    }
+    if (!userMessage || userMessage.uid !== m.fromUid || userMessage.ai === true
+      || typeof userMessage.text !== 'string' || !userMessage.text.trim()) {
+      await mark('message-not-found');
+      continue;
+    }
+    const userText = userMessage.text.slice(0, 4000);
+
     const replyMessageId = `reply_${safeDocPart(bot.id)}_${safeDocPart(m.id)}`;
     const replyPath = `chats/${m.chatId}/messages/${replyMessageId}`;
     let previousReply = null;
@@ -452,13 +472,9 @@ async function main() {
       }
       throw error;
     }
-    if (typeof m.text !== 'string' || !hist.some((item) => item.uid === m.fromUid && item.text === m.text && item.ai !== true)) {
-      await mark('message-not-found');
-      continue;
-    }
     if (!(await reserveBotAction(bot)) || !(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
 
-    const reply = chatReply({ bot, text: m.text, history: hist });
+    const reply = chatReply({ bot, text: userText, history: hist });
     // Memory is optional; a missing/denied consent projection never blocks a normal chat reply.
     let memoryConsent = null;
     try { memoryConsent = await fs.get(`botEngagement/${m.fromUid}`); }
@@ -474,8 +490,8 @@ async function main() {
       }
     }
     const replyText = DRY ? reply.text : await generateText({
-      bot, kind: 'chat', source: m.text,
-      history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
+      bot, kind: 'chat', source: userText,
+      history: hist.filter((item) => item.id !== messageId).map(({ uid, text }) => ({ uid, text })),
       memoryContext: savedMemory?.summary || '',
       fallback: reply.text
     });
@@ -504,7 +520,7 @@ async function main() {
           if (await reserveGeminiRequest()) {
             const summary = await updateSmartBotMemory({
               bot, existingSummary: savedMemory?.summary || '',
-              messages: [...hist, { uid: bot.id, text: storedReplyText }]
+              messages: [...hist.filter((item) => item.id !== messageId), userMessage, { uid: bot.id, text: storedReplyText }]
             });
             if (summary || savedMemory) {
               const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
