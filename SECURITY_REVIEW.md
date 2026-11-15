@@ -24,5 +24,5 @@
 ## Required verification before release
 
 - Unit/static tests, permission matrix, browser smoke tests, and Firestore Emulator suite must pass on the updated pull request.
-- Run a dedicated integration test with a real isolated MeetBook staging project before any production enablement. The observed main-branch Bot Chat Run #30 was a dry run (`DRY_RUN=1`) and failed on a denied optional `botMemories` read; the feature branch now treats that memory read as optional and includes a regression test. No live reply was attempted in Run #30.
+- Run a dedicated integration test with a real isolated MeetBook staging project before any production enablement. Main-branch Bot Chat Run #30's visible summary showed exit code 1, but the actual dispatch input and step-level error log were not available; its mode and root cause remain unverified. The feature branch handles optional `botMemories` permission failures non-fatally and includes a regression test, but this has not been confirmed as Run #30's cause. No live reply is verified.
 - Firestore transaction-backed rolling-window quotas and cooldowns are implemented and CI/emulator-tested. Isolated live staging verification and concurrency review remain required before exposing automated activity to users.
