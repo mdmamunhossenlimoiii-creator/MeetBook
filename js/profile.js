@@ -58,13 +58,13 @@ export async function render(view, uid) {
         <div class="profile-row">
           <div class="profile-avatar">${avatarHtml(directory.name, '', 96)}</div>
           <div class="profile-info"><h2>${esc(directory.name)}${botBadge(directory)}</h2>
-            <p class="muted">This person shares profile details with friends only.</p></div>
+            <p class="muted">Profile details are unavailable. The owner may limit visibility or need to refresh their profile.</p></div>
           <div class="profile-actions row gap wrap" data-actions>${privateProfileActions(uid, rel)}</div>
         </div>
       </section>
       <div class="card pad center"><span class="lock-icon">${icon('lock', 32)}</span>
-        <h3>Profile details are private</h3>
-        <p class="muted">Send a friend request to see this person's profile details.</p>
+        <h3>Profile details are unavailable</h3>
+        <p class="muted">If you know this person, you can send a friend request. Full details may become available after the owner refreshes their profile.</p>
       </div>`;
     $('[data-actions]', view).addEventListener('click', async (event) => {
       const button = event.target.closest('[data-act]');
