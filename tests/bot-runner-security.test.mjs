@@ -45,6 +45,16 @@ test('private chat message bodies are not copied into bot audit logs', () => {
   assert.doesNotMatch(runner, /await log\(bot, 'chat', m\.chatId, reply\.text\)/);
 });
 
+test('blocked or suspended chat requests are skipped without aborting other eligible bot work', () => {
+  assert.match(runner, /const isPermissionDenied =/);
+  assert.match(runner, /bots\.filter\(\(b\) => b\.active === true && b\.chatEnabled === true\)/);
+  assert.match(runner, /if \(isPermissionDenied\(error\)\)/);
+  assert.match(runner, /await mark\('not-eligible'\)/);
+  assert.match(runner, /message-not-found/);
+  assert.match(rules, /function eligibleHumanForBotInteraction\(uid\)/);
+  assert.match(rules, /eligibleHumanForBotInteraction\(userUid\)/);
+});
+
 test('runner inbox and private chat access are limited to assigned bots', () => {
   assert.match(rules, /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
