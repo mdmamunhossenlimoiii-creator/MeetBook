@@ -52,7 +52,7 @@ const MUTATIONS = [
 
   ['bot engagement ignores a blocked account', "&& user.get('banned', false) != true", "&& true"],
   ['bot interaction ignores an active suspension', "&& (user.get('suspendedUntil', null) == null || user.get('suspendedUntil', null) < request.time)", "&& true"],
-  ['staff can read private bot inbox metadata', "allow read: if isOwner(resource.data.fromUid) || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));", "allow read: if isStaff() || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));"],
+  ['staff can read private bot inbox metadata', "allow get: if isOwner(resource.data.fromUid) || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));", "allow get: if isStaff() || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));"],
   ['admins can delete private bot inbox messages', "allow delete: if isOwner(resource.data.fromUid);", "allow delete: if isAdmin();"],
   ['admins can mark private inbox items handled', "allow update: if validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId)\n        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])", "allow update: if isAdmin() || validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId)\n        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
