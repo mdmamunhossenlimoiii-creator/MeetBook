@@ -50,6 +50,8 @@ const MUTATIONS = [
   ['bot reactions bypass autoReaction switch', "return runnerMayActAs(botUid) && bot.get('autoReaction', false) == true;", "return runnerMayActAs(botUid);"],
   ['bot chats bypass chatEnabled switch', "return runnerMayActAs(botUid) && bot.get('chatEnabled', false) == true;", "return runnerMayActAs(botUid);"],
 
+  ['bot engagement ignores a blocked account', "&& user.get('banned', false) != true", "&& true"],
+  ['bot interaction ignores an active suspension', "&& (user.get('suspendedUntil', null) == null || user.get('suspendedUntil', null) < request.time)", "&& true"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 
