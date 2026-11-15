@@ -8,7 +8,7 @@
 - Bot comment creation and parent counter increment are one atomic Firestore commit. Rules require a newly created AI comment from that same active assigned bot before allowing the counter to advance.
 - Runner comments on another AI bot's post are denied unless the global `settings/global.botToBotComments` switch is explicitly true; Admin manual moderation remains separate.
 - Bot Inbox creation now requires a real private chat, an active/chat-enabled bot, a same-batch user-authored message reference, and a quota increment. Inbox documents contain routing metadata and a message ID only; they do not duplicate private message text.
-- Runner inbox updates are limited to marking an assigned bot's request handled; users cannot rewrite or delete inbox records.
+- Runner inbox updates are limited to marking an assigned bot's request handled/skipped. Users may cancel or delete their own pending inbox items but cannot rewrite them.
 - The Bot Runner filters its work to assigned bots, fails closed on missing configuration, caps each bot at 12 actions per day across all Runner accounts, caps each user's bot replies at 15 per day across all Runner accounts, and applies a shared 60-second per-user reply cooldown.
 - Private chat reply text is no longer copied into bot audit logs.
 
