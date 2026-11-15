@@ -46,16 +46,16 @@ async function ensureProfileProjections(uid, data) {
   // Keep the public profile and minimal bot-consent projection in one atomic write.
   // The Runner must never read the full users/{uid} document.
   const batch = writeBatch(db);
-  batch.set(doc(db, 'publicProfiles', uid), publicProfileData(data), { merge: true });
+  batch.set(doc(db, 'publicProfiles', uid), publicProfileData(data));
   batch.set(doc(db, 'publicDirectory', uid), {
     name: data.name || 'Unknown user', nameLower: String(data.name || '').toLowerCase(),
     isBot: data.isBot === true, roleEmoji: data.roleEmoji || '', verified: data.verified === true
-  }, { merge: true });
+  });
   batch.set(doc(db, 'botEngagement', uid), {
     allowBotEngagement: data.settings?.allowBotEngagement === true,
     allowBotMemory: data.settings?.allowBotMemory === true,
     updatedAt: serverTimestamp()
-  }, { merge: true });
+  });
   await batch.commit();
 }
 
