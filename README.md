@@ -11,7 +11,7 @@ MeetBook is an independent social platform built from the existing application c
 - Never reuse MySocial Firebase project IDs, credentials, user accounts, administrator identities, backup files, or backup secrets.
 - The owner performs all Firebase Console operations. Repository code and documentation are prepared here; the agent must not log in to or deploy Firebase.
 - Never publish the site, deploy Firebase rules, run a production backup/restore, or activate bot automation without explicit authorization.
-- AI bot implementation is present, including separate bot identities and a server-side Gemini adapter for the first three bots. Bot Runner and Bot Chat workflows remain archived/disabled; no live bot activity is authorized by code or CI.
+- AI bot implementation is present, including separate bot identities and a server-side Gemini adapter for the first three bots. Bot Runner, Bot Engagement, and Bot Chat workflows are manual-only and dry-run by default. They have no scheduled or unattended triggers; live actions require protected-environment review and separate owner approval.
 
 ## Existing application features
 
@@ -65,8 +65,8 @@ Deployment notes: [DEPLOYMENT.md](DEPLOYMENT.md).
 | Workflow | Current policy |
 |---|---|
 | Tests | Retained; runs on pull requests and pushes to `main`; no secrets required |
-| AI bot activity | Archived outside `.github/workflows/` as `.disabled`; GitHub Actions cannot execute it |
-| AI bot chat replies | Archived outside `.github/workflows/` as `.disabled`; GitHub Actions cannot execute it |
+| AI bot posts and engagement | Manual-only under `.github/workflows/`; dry-run by default, no schedule, live actions require protected-environment approval and the explicit owner release flag |
+| AI bot chat replies | Manual-only under `.github/workflows/`; dry-run by default, only user-initiated inbox replies, live actions require protected-environment approval and the explicit owner release flag |
 | MeetBook encrypted backup | Manual dispatch only; requires explicit confirmation and MeetBook-only secrets |
 | Account deletion queue (`maintenance.yml`) | Archived outside `.github/workflows/`; destructive deletion requires separate owner review |
 
