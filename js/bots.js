@@ -70,7 +70,7 @@ export async function createBot(existing, data) {
     nameLower: String(data.name).toLowerCase(), banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
   };
   await setDoc(doc(db, 'users', id), profile);
-  await setDoc(doc(db, 'publicProfiles', id), publicProfileData(profile), { merge: true });
+  await setDoc(doc(db, 'publicProfiles', id), publicProfileData(profile));
   return id;
 }
 
