@@ -41,7 +41,7 @@ const seed = () => {
     'posts/p3': post('u3', 'Amazing travel trip to the sea with friends'),
     'chats/bot_06_u2': { type: 'private', members: ['bot_06', 'u2'] },
     'chats/bot_06_u2/messages/user-msg': { uid: 'u2', text: 'hello', image: '', createdAt: now },
-    'botInbox/i1': { botId: 'bot_06', fromUid: 'u2', chatId: 'bot_06_u2', messageId: 'user-msg', handled: false, createdAt: now }
+    'botInbox/i1': { botId: 'bot_06', fromUid: 'u2', chatId: 'bot_06_u2', messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now }
   };
 };
 const env = (m, more = {}) => ({ BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '1', BOT_COMMENTS: '10', ...more });
