@@ -11,7 +11,7 @@
 - Runner inbox updates are limited to marking an assigned bot's request handled/skipped. Rules permit the sender to delete their own inbox item but not rewrite it. The chat UI lets a sender unsend their own message; if the Runner has not yet fetched the referenced message, it skips the now-unavailable request. There is no separate inbox-item cancel button.
 - The Bot Runner filters its work to assigned bots, fails closed on missing configuration, caps each bot at 12 actions per day across all Runner accounts, caps each user's bot replies at 15 per day across all Runner accounts, and applies a shared 60-second per-user reply cooldown.
 - Private chat reply text is no longer copied into bot audit logs. A missing or permission-denied optional memory document is treated as no saved memory; it must never abort an otherwise authorized chat reply.
-- The Runner can directly get only the minimal consent projection for a specific user when checking an eligible interaction; collection listing is denied so it cannot enumerate users' bot opt-in choices.
+- The Runner can directly get only the minimal consent projection for a specific user when checking an eligible interaction; collection listing is denied. This is a per-document access boundary, not an anonymity guarantee for a UID already known to an authorized Runner.
 
 ## Important limitations
 
