@@ -45,6 +45,32 @@ test('private chat message bodies are not copied into bot audit logs', () => {
   assert.doesNotMatch(runner, /await log\(bot, 'chat', m\.chatId, reply\.text\)/);
 });
 
+test('blocked or suspended chat requests are skipped without aborting other eligible bot work', () => {
+  assert.match(runner, /const isPermissionDenied =/);
+  assert.match(runner, /bots\.filter\(\(b\) => b\.active === true && b\.chatEnabled === true\)/);
+  assert.match(runner, /if \(isPermissionDenied\(error\)\)/);
+  assert.match(runner, /await mark\('not-eligible'\)/);
+  assert.match(runner, /message-not-found/);
+  assert.match(rules, /function eligibleHumanForBotInteraction\(uid\)/);
+  assert.match(rules, /eligibleHumanForBotInteraction\(userUid\)/);
+});
+
+test('optional memory permission failures do not abort the chat runner', () => {
+  assert.match(runner, /const isPermissionDenied = [\s\S]*?403[\s\S]*?PERMISSION_DENIED/);
+  assert.match(runner, /if \(!isPermissionDenied\(error\)\) throw error;[\s\S]*Saved bot memory was unavailable; continuing without it\./);
+});
+
+test('private inbox stores only message IDs and reads message bodies after chat eligibility', () => {
+  assert.match(rules, /request\.resource\.data\.keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'messageId', 'schemaVersion', 'handled', 'createdAt'\]\)/);
+  assert.match(rules, /function inboxMessageOk\(\)/);
+  assert.match(rules, /function validInboxMetadata\(d\)/);
+  assert.match(runner, /eq\('schemaVersion', 2\)/);
+  assert.match(runner, /const messageId = typeof m\.messageId === 'string'/);
+  assert.match(runner, /userMessage = await fs\.get\(\`chats\/\$\{m\.chatId\}\/messages\/\$\{messageId\}\`\)/);
+  assert.ok(runner.indexOf('chat = await fs.get') < runner.indexOf('userMessage = await fs.get'),
+    'the private chat eligibility gate must run before the message body is fetched');
+});
+
 test('runner inbox and private chat access are limited to assigned bots', () => {
   assert.match(rules, /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);

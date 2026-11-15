@@ -32,6 +32,17 @@ test('every built-in bot has a unique character marker and a known personality',
   }
 });
 
+test('every public bot bio is transparent and does not claim real professional credentials', () => {
+  for (const bot of BOTS) {
+    assert.match(bot.bio, /AI bot/i, `${bot.id} must disclose that it is an AI bot`);
+    assert.doesNotMatch(
+      bot.bio,
+      /\b(?:I am|I'm|as)\s+(?:a\s+)?(?:licensed|certified|registered|professional)\b/i,
+      `${bot.id} must not claim real-world credentials`
+    );
+  }
+});
+
 test('each built-in bot comments on a topic from its own interests', () => {
   for (const bot of BOTS) {
     const topic = bot.interests[0];

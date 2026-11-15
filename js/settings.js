@@ -82,12 +82,24 @@ export async function render(view) {
       };
       const batch = writeBatch(db);
       batch.update(doc(db, 'users', state.user.uid), { settings: next });
-      batch.set(doc(db, 'publicProfiles', state.user.uid), { profileVisibility: next.profileVisibility }, { merge: true });
+      const canonical = state.profile || {};
+      batch.set(doc(db, 'publicProfiles', state.user.uid), {
+        name: canonical.name || 'Unknown user',
+        nameLower: String(canonical.name || 'Unknown user').toLowerCase(),
+        bio: String(canonical.bio || '').slice(0, 500),
+        photo: canonical.photo || '',
+        cover: canonical.cover || '',
+        isBot: canonical.isBot === true,
+        roleEmoji: canonical.roleEmoji || '',
+        verified: canonical.verified === true,
+        profileVisibility: next.profileVisibility === 'friends' ? 'friends' : 'everyone',
+        createdAt: canonical.createdAt || serverTimestamp()
+      });
       batch.set(doc(db, 'botEngagement', state.user.uid), {
         allowBotEngagement: next.allowBotEngagement,
         allowBotMemory: next.allowBotMemory,
         updatedAt: serverTimestamp()
-      }, { merge: true });
+      });
       // Turning memory off revokes Runner access and deletes the user's stored summaries.
       if (next.allowBotMemory === false) {
         const memories = await getDocs(query(collection(db, 'botMemories'), where('ownerUid', '==', state.user.uid)));

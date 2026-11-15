@@ -198,7 +198,7 @@ export async function render(view, a, b) {
           });
           batch.set(messageRef, { uid: me, text, image: imageUrl, createdAt: serverTimestamp() });
           batch.set(inboxRef, {
-            fromUid: me, botId: otherUid, chatId: id, text: text.slice(0, 500),
+            fromUid: me, botId: otherUid, chatId: id, messageId: messageRef.id, schemaVersion: 2,
             handled: false, createdAt: serverTimestamp()
           });
           batch.update(chatRef, { lastMessage, lastAt: serverTimestamp(), [`lastRead.${me}`]: serverTimestamp() });

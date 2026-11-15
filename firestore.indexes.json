@@ -153,6 +153,16 @@
       ]
     },
     {
+      "collectionGroup": "botInbox",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "botId", "order": "ASCENDING" },
+        { "fieldPath": "handled", "order": "ASCENDING" },
+        { "fieldPath": "schemaVersion", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "botLogs",
       "queryScope": "COLLECTION",
       "fields": [

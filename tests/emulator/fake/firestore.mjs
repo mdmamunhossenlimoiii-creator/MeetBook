@@ -8,6 +8,7 @@ export const increment = (n) => ({ $inc: n });
 export const deleteField = () => ({ $del: 1 });
 export const Timestamp = { fromMillis: (ms) => ({ $rel: ms - Date.now() }) };
 export const doc = (db, path) => ({ db, path });
+export const collection = (db, path) => ({ db, path });
 
 const deny = () => Object.assign(new Error('Missing or insufficient permissions.'), { code: 'permission-denied' });
 function guard(db, op, path, newData) {
@@ -16,6 +17,14 @@ function guard(db, op, path, newData) {
   if (!v.allowed) throw deny();
 }
 export async function getDoc({ db, path }) { guard(db, 'get', path); return { exists: () => db.map.has(path) }; }
+export async function getDocs({ db, path }) {
+  guard(db, 'list', path);
+  const prefix = `${path}/`;
+  const docs = [...db.map.entries()].filter(([key]) => key.startsWith(prefix)).map(([key, value]) => ({
+    id: key.slice(prefix.length), data: () => value
+  }));
+  return { docs, empty: docs.length === 0, size: docs.length };
+}
 export async function setDoc({ db, path }, data) { const nd = resolve(data); guard(db, 'create', path, nd); db.map.set(path, nd); }
 export async function updateDoc({ db, path }, patch) {
   const ex = db.map.get(path); if (!ex) throw Object.assign(new Error('not found'), { code: 'not-found' });
