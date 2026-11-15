@@ -40,7 +40,8 @@ const seed = () => {
     'posts/p2': post('u2', 'Lovely travel photo from my trip to the beach'),
     'posts/p3': post('u3', 'Amazing travel trip to the sea with friends'),
     'chats/bot_06_u2': { type: 'private', members: ['bot_06', 'u2'] },
-    'botInbox/i1': { botId: 'bot_06', fromUid: 'u2', chatId: 'bot_06_u2', text: 'hello', handled: false, createdAt: now }
+    'chats/bot_06_u2/messages/user-msg': { uid: 'u2', text: 'hello', image: '', createdAt: now },
+    'botInbox/i1': { botId: 'bot_06', fromUid: 'u2', chatId: 'bot_06_u2', messageId: 'user-msg', handled: false, createdAt: now }
   };
 };
 const env = (m, more = {}) => ({ BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '1', BOT_COMMENTS: '10', ...more });
@@ -70,7 +71,9 @@ test('rules + runner: the full run is never denied, and only consenting users ar
     assert.deepEqual(m.get('posts/p2').reactions, {});
     assert.deepEqual(m.get('posts/p3').reactions, {});
     assert.equal(m.get('posts/p2').commentCount + m.get('posts/p3').commentCount, 0);
-    assert.equal(m.ids('chats/bot_06_u2/messages').length, 1, 'bot chat reply passes the rules (runner may read private chats with a bot)');
+    const chatMessages = m.ids('chats/bot_06_u2/messages');
+    assert.equal(chatMessages.filter((id) => m.get(`chats/bot_06_u2/messages/${id}`).uid === 'bot_06').length, 1,
+      'bot chat reply passes the rules after validating the referenced user message');
     assert.ok(m.ids('posts').length >= 4, 'bot post created under rules');
   } finally { await m.close(); }
 });
