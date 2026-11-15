@@ -25,7 +25,8 @@ export async function backfillPublicProfiles() {
     const directory = buildDirectoryProjection(user);
     if (directory) {
       const current = existingDirectories.get(snapshot.id);
-      const unchanged = current && DIRECTORY_FIELDS.every((field) => current[field] === directory[field]);
+      const unchanged = current && Object.keys(current).length === DIRECTORY_FIELDS.length
+        && DIRECTORY_FIELDS.every((field) => current[field] === directory[field]);
       if (!unchanged) {
         operations.push({ ref: doc(db, 'publicDirectory', snapshot.id), data: directory });
         directoryWrites += 1;
