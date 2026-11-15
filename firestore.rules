@@ -599,7 +599,9 @@ service cloud.firestore {
       allow update: if runnerMayChatAs(resource.data.botId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
         && request.resource.data.handled == true
-        && request.resource.data.handledAt is timestamp;
+        && request.resource.data.handledAt is timestamp
+        && request.resource.data.get('skipped', '') is string
+        && request.resource.data.get('skipped', '').size() <= 80;
       // The sender may cancel a pending request; staff cannot inspect or manage private inbox bodies.
       allow delete: if isOwner(resource.data.fromUid);
     }
