@@ -217,12 +217,18 @@ function openEdit(u, done) {
       const coverUrl = cover.startsWith('data:') ? await uploadImageToCloudinary(cover) : cover;
       const batch = writeBatch(db);
       batch.update(doc(db, 'users', state.user.uid), { name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl });
+      const canonical = state.profile || {};
       batch.set(doc(db, 'publicProfiles', state.user.uid), {
-        name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl
-      }, { merge: true });
+        name, nameLower: name.toLowerCase(), bio, photo: photoUrl, cover: coverUrl,
+        isBot: canonical.isBot === true, roleEmoji: canonical.roleEmoji || '',
+        verified: canonical.verified === true,
+        profileVisibility: canonical.settings?.profileVisibility === 'friends' ? 'friends' : 'everyone',
+        createdAt: canonical.createdAt || serverTimestamp()
+      });
       batch.set(doc(db, 'publicDirectory', state.user.uid), {
-        name, nameLower: name.toLowerCase()
-      }, { merge: true });
+        name, nameLower: name.toLowerCase(), isBot: canonical.isBot === true,
+        roleEmoji: canonical.roleEmoji || '', verified: canonical.verified === true
+      });
       await batch.commit();
       try { await updateProfile(state.user, { displayName: name }); } catch { /* not critical */ }
       invalidateUser(state.user.uid);
