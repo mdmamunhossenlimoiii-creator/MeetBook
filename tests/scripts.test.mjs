@@ -81,6 +81,7 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
     const reply = m.get(`chats/bot_06_u1/messages/${botReplies[0]}`);
     assert.equal(reply.uid, 'bot_06'); assert.match(reply.text, /এআই বট/, 'answers honestly that it is an AI bot');
     assert.equal(m.get('botInbox/i1').handled, true);
+    assert.equal(Object.hasOwn(m.get('botInbox/i1'), 'text'), false, 'the inbox must not duplicate private message text');
     assert.equal(m.get('chats/bot_06_u1').lastMessage.uid, 'bot_06');
 
     assert.ok(m.ids('botLogs').length >= 4, 'activity logged');
