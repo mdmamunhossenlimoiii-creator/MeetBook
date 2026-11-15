@@ -134,7 +134,7 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerMayReadChat'), /eligibleHumanForBotInteraction\(userUid\)/, 'Runner cannot read chats with blocked or suspended users');
   assert.match(block('botMemories'), /eligibleHumanForBotInteraction/);
   assert.match(block('botInbox'), /allow get: if isOwner\(resource\.data\.fromUid\) \|\| \(validInboxMetadata\(resource\.data\) && runnerMayChatAs\(resource\.data\.botId\)\)/, 'only sender and assigned active bot can get versioned inbox metadata');
-  assert.match(block('botInbox'), /allow list: if isOwner\(resource\.data\.fromUid\) \|\| \(resource\.data\.get\('schemaVersion', 0\) == 2 && runnerMayChatAs\(resource\.data\.botId\)\)/, 'Runner list queries can only return schema version 2 metadata');
+  assert.match(block('botInbox'), /allow list: if resource\.data\.get\('schemaVersion', 0\) == 2 && runnerMayChatAs\(resource\.data\.botId\)/, 'Runner list queries can only return schema version 2 metadata');
   assert.match(block('botInbox'), /function validInboxMetadata\(d\)/);
   assert.match(block('botInbox'), /d\.schemaVersion == 2/);
   assert.match(block('botInbox'), /function inboxMessageOk\(\)/);
