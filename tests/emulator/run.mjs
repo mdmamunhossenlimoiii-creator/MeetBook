@@ -186,6 +186,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   let inboxNumber = 0;
   const submit = async () => {
     const inboxRef = doc(db, 'botInbox', `atomic-${++inboxNumber}`);
+    const messageRef = doc(db, 'chats', 'bot_01_u1', 'messages', `emulator-user-${inboxNumber}`);
     const snap = await getDoc(quotaRef);
     const count = snap.exists() ? snap.data().count : 0;
     const windowAt = snap.exists() ? snap.data().windowStartedAt.toMillis() : 0;
@@ -195,8 +196,9 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
       senderUid: 'u1', botId: 'bot_01', count: expired ? 1 : count + 1,
       windowStartedAt: expired ? serverTimestamp() : snap.data().windowStartedAt, lastAt: serverTimestamp()
     });
+    batch.set(messageRef, { uid: 'u1', text: 'hello', image: '', createdAt: serverTimestamp() });
     batch.set(inboxRef, {
-      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
+      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', messageId: messageRef.id,
       handled: false, createdAt: serverTimestamp()
     });
     await batch.commit();
