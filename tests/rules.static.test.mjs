@@ -92,8 +92,9 @@ test('private user documents are not readable by other ordinary users', () => {
   assert.match(block('publicProfiles'), /hasOnly\(\['name', 'nameLower', 'bio', 'photo', 'cover', 'isBot', 'roleEmoji', 'verified', 'profileVisibility', 'createdAt'\]\)/);
   assert.match(block('publicDirectory'), /allow read: if signedIn\(\) && validDirectory\(resource\.data\)/);
   assert.match(block('botEngagement'), /function validBotEngagement\(d\)/);
-  assert.match(block('botEngagement'), /validBotEngagement\(resource\.data\)/);
-  assert.match(block('botEngagement'), /runnerEnabled\(\)/);
+  assert.match(block('botEngagement'), /allow get: if validBotEngagement\(resource\.data\) && \(isOwner\(uid\) \|\| runnerEnabled\(\)\)/);
+  assert.match(block('botEngagement'), /allow list: if false/);
+  assert.doesNotMatch(block('botEngagement'), /allow read:/);
   assert.doesNotMatch(block('botEngagement'), /isStaff\(\)/);
   assert.doesNotMatch(block('botEngagement'), /allow write/);
 });
