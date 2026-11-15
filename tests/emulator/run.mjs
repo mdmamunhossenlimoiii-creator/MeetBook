@@ -165,7 +165,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     assert.equal(consent.data().allowBotEngagement, true, 'Runner may get a single target consent projection');
     assert.equal((await getDoc(doc(ownDb, 'botEngagement/u1'))).data().allowBotMemory, false, 'owner retains direct access');
     await denied(getDocs(collection(runnerDb, 'botEngagement')),
-      'Runner must not enumerate users or their bot-consent choices');
+      'Runner must not list the bot-consent projection collection');
   });
   console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/global, and counter decrement');
 
