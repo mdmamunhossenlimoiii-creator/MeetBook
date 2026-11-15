@@ -70,7 +70,7 @@ MeetBook image uploads use Cloudinary through a separate authenticated Cloudflar
 1. The repository includes the Worker in `cloudflare/image-upload/`. Review its source before deploying.
 2. Deploy the Worker using the instructions in `cloudflare/image-upload/README.md`.
 3. Configure the Worker variables for the MeetBook Firebase project, Cloudinary cloud name, and the exact GitHub Pages origin.
-4. Add the Cloudinary API key as a Worker variable and the Cloudinary API secret as a Worker secret. Never put the API secret in this repository, frontend config, or chat.
+4. Add both the Cloudinary API key and API secret as Cloudflare Worker secrets (not frontend variables). Never put either credential in this repository, frontend config, or chat.
 5. After deployment, add the Worker URL to `imageUploadEndpoint` in `js/firebase-config.js`.
 6. The Worker verifies Firebase ID tokens, accepts JPEG images only up to 1 MB, checks the file signature, and creates a signed Cloudinary upload in the fixed `MeetBook/images` folder.
 7. Test post photos, profile photos, cover photos, stories, and message photos before launch.
