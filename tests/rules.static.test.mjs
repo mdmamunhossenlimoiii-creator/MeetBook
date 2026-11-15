@@ -125,8 +125,16 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(block('botGeminiRateLimits'), /d\.count <= 60/);
   assert.match(block('botGlobalRateLimits'), /resource\.data\.count < 60/);
   assert.match(block('botGeminiRateLimits'), /resource\.data\.count < 60/);
+  assert.match(fn('eligibleHumanForBotInteraction'), /banned/);
+  assert.match(fn('eligibleHumanForBotInteraction'), /suspendedUntil/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
+  assert.match(fn('engagementOk'), /eligibleHumanForBotInteraction\(ownerUid\)/, 'blocked or suspended users cannot receive bot engagement');
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
+  assert.match(fn('runnerMayReadChat'), /eligibleHumanForBotInteraction\(userUid\)/, 'Runner cannot read chats with blocked or suspended users');
+  assert.match(block('botMemories'), /eligibleHumanForBotInteraction/);
+  assert.match(block('botInbox'), /inboxChatAllowed/);
+  assert.match(block('botInbox'), /isOwner\(resource\.data\.fromUid\)/);
+  assert.doesNotMatch(block('botInbox'), /allow read: if isStaff\(\)/, 'staff cannot read private bot inbox bodies');
   const posts = block('posts');
   const botComment = posts.slice(posts.indexOf('match /comments'));
   assert.match(botComment, /runnerMayCommentAs\(request\.resource\.data\.uid\)[\s\S]*runnerMayComment\(postId\)/, 'only assigned bot with autoComment ON comments');
