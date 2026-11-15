@@ -380,7 +380,11 @@ async function main() {
   if (MODE !== 'post' && MODE !== 'engage') {
   // 5. chat replies
   const inboxByBot = await Promise.all(bots.filter((b) => b.active === true && b.chatEnabled === true).map((bot) =>
-    fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
+    fs.query({
+      from: [{ collectionId: 'botInbox' }],
+      where: and(eq('handled', false), eq('botId', bot.id), eq('schemaVersion', 2)),
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'ASCENDING' }], limit: 25
+    })
   ));
   const inbox = inboxByBot.flat()
     .sort((a, b) => (a.createdAt?.getTime?.() || 0) - (b.createdAt?.getTime?.() || 0))
