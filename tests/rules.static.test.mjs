@@ -88,9 +88,13 @@ test('moderators get only moderation powers: no settings, staff, logs, bot logs 
 
 test('private user documents are not readable by other ordinary users', () => {
   assert.match(block('users'), /allow read: if isOwner\(uid\) \|\| isStaff\(\) \|\| \(signedIn\(\) && resource\.data\.get\('isBot', false\) == true\)/);
-  assert.match(block('publicProfiles'), /allow read: if signedIn\(\)/);
+  assert.match(block('publicProfiles'), /allow read: if signedIn\(\) && validPublicProfile\(resource\.data\)/);
   assert.match(block('publicProfiles'), /hasOnly\(\['name', 'nameLower', 'bio', 'photo', 'cover', 'isBot', 'roleEmoji', 'verified', 'profileVisibility', 'createdAt'\]\)/);
+  assert.match(block('publicDirectory'), /allow read: if signedIn\(\) && validDirectory\(resource\.data\)/);
+  assert.match(block('botEngagement'), /function validBotEngagement\(d\)/);
+  assert.match(block('botEngagement'), /validBotEngagement\(resource\.data\)/);
   assert.match(block('botEngagement'), /runnerEnabled\(\)/);
+  assert.doesNotMatch(block('botEngagement'), /isStaff\(\)/);
   assert.doesNotMatch(block('botEngagement'), /allow write/);
 });
 
