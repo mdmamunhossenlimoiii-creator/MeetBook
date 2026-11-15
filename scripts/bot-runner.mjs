@@ -43,7 +43,7 @@ const GEMINI_DAILY_REQUEST_LIMIT = 60;
 const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID || `local_${process.pid}_${Date.now()}`)
   .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
 const safeDocPart = (value) => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
-const isPermissionDenied = (error) => /(?:->\\s*403\\b|PERMISSION_DENIED|Missing or insufficient permissions)/i.test(String(error?.message || error));
+const isPermissionDenied = (error) => /(?:->\s*403\b|PERMISSION_DENIED|Missing or insufficient permissions)/i.test(String(error?.message || error));
 
 if (!['all', 'post', 'engage', 'chat'].includes(MODE)) {
   console.error('BOT_RUNNER_MODE must be all, post, engage, or chat.');
