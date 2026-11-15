@@ -90,3 +90,26 @@ test('admin migration writes the minimal directory and only creates missing bot 
   assert.doesNotMatch(source, /collection\(db, 'botEngagement'\)/);
   assert.match(source, /index \+= 400/);
 });
+
+
+test('legacy directory projections with unexpected fields are replaced, not treated as unchanged', async () => {
+  const source = await readFile(new URL('../js/admin/public-profile-migration.js', import.meta.url), 'utf8');
+  assert.match(source, /Object\.keys\(current\)\.length === DIRECTORY_FIELDS\.length/);
+  assert.match(source, /batch\.set\(operation\.ref, operation\.data\);/);
+});
+
+test('sign-in and owner profile writes replace exact allowlisted projections', async () => {
+  const auth = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
+  const settings = await readFile(new URL('../js/settings.js', import.meta.url), 'utf8');
+  const profile = await readFile(new URL('../js/profile.js', import.meta.url), 'utf8');
+  assert.match(auth, /batch\.set\(doc\(db, 'publicProfiles', uid\), publicProfileData\(data\)\);/);
+  assert.match(auth, /batch\.set\(doc\(db, 'publicDirectory', uid\), \{/);
+  assert.match(auth, /batch\.set\(doc\(db, 'botEngagement', uid\), \{/);
+  assert.doesNotMatch(auth, /merge: true/);
+  assert.match(settings, /batch\.set\(doc\(db, 'publicProfiles', state\.user\.uid\), \{/);
+  assert.match(settings, /batch\.set\(doc\(db, 'botEngagement', state\.user\.uid\), \{/);
+  assert.doesNotMatch(settings, /merge: true/);
+  assert.match(profile, /batch\.set\(doc\(db, 'publicProfiles', state\.user\.uid\), \{/);
+  assert.match(profile, /batch\.set\(doc\(db, 'publicDirectory', state\.user\.uid\), \{/);
+  assert.doesNotMatch(profile, /merge: true/);
+});
