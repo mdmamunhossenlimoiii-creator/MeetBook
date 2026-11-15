@@ -198,7 +198,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     });
     batch.set(messageRef, { uid: 'u1', text: 'hello', image: '', createdAt: serverTimestamp() });
     batch.set(inboxRef, {
-      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', messageId: messageRef.id,
+      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', messageId: messageRef.id, schemaVersion: 2,
       handled: false, createdAt: serverTimestamp()
     });
     await batch.commit();
