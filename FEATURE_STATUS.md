@@ -20,8 +20,8 @@ This document records repository source status and CI evidence only. Passing CI 
 ## Latest automated verification
 
 - PR #2, “Harden MeetBook bot identities and Runner permissions,” was merged on 2026-11-13. Its CI run `43384231456` completed successfully: unit, browser, and Firestore Emulator jobs all passed.
-- Draft PR #16 is on `feature/character-bot-identities`. Latest completed CI run `43675651285` (#423) passed all three jobs on commit `c4da4c3`:
-  - Unit: **405/405 tests passed**; import check reported 0 problems. Coverage includes role/emoji/topic and AI-disclosure tests, privacy/security regressions, Runner integration tests, and Cloudflare image-upload Worker tests.
+- Draft PR #16 is on `feature/character-bot-identities`. Latest completed CI run `43676105629` (#429) passed all three jobs on commit `b437326`:
+  - Unit: **408/408 tests passed**; import check reported 0 problems. Coverage includes all 23 role/emoji/topic identities, AI transparency, Runner and privacy regressions, sensitive-memory filtering, mocked Gemini behavior, and Cloudinary image-upload Worker tests.
   - Browser/Admin smoke: **51 checks passed**.
   - Firestore Rules Emulator: **3,164 permission cases, 0 mismatches**. Additional emulator checks confirmed the atomic version-2 bot-inbox + quota write, Runner negative-security gates, and direct-only bot-consent reads with collection listing denied.
 - Inspected main-branch Bot Chat Run #30: it was a manual dry run (`DRY_RUN=1`) and failed when the old Runner received 403 for an optional bot-memory document read. PR #16 treats a missing/permission-denied optional memory read as non-fatal and continues without saved memory; the branch includes a regression test.
