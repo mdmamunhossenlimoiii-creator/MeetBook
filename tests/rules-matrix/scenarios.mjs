@@ -300,8 +300,10 @@ cap('AI bots', 'Runner raises commentCount on a non-consenting user\'s post', 'u
 cap('AI bots', 'Runner pretends to be a human in a comment', 'create', 'posts/p2/comments/new', { uid: 'u1', text: 'hi' }, ['user']);
 cap('AI bots', 'Read the bot inbox: sender and eligible Runner only, never staff', 'get', 'botInbox/i1', null, ['user', 'runner']);
 cap('AI bots', 'Sender can read own inbox when chat is OFF but Runner cannot', 'get', 'botInbox/i9', null, ['user']);
-cap('AI bots', 'Blocked user can read own inbox but Runner cannot read it', 'get', 'botInbox/i_banned', null, ['banned']);
-cap('AI bots', 'Suspended user can read own inbox but Runner cannot read it', 'get', 'botInbox/i_suspended', null, ['suspended']);
+cap('AI bots', 'Sender and assigned Runner can read the user-initiated inbox item for a blocked account', 'get', 'botInbox/i_banned', null, ['banned', 'runner']);
+cap('AI bots', 'Sender and assigned Runner can read the user-initiated inbox item for a suspended account', 'get', 'botInbox/i_suspended', null, ['suspended', 'runner']);
+cap('AI bots', 'Runner can mark a blocked-user inbox item skipped without reading chat history', 'update', 'botInbox/i_banned', { handled: true, handledAt: T(0), skipped: 'not-eligible' }, ['runner']);
+cap('AI bots', 'Runner can mark a suspended-user inbox item skipped without reading chat history', 'update', 'botInbox/i_suspended', { handled: true, handledAt: T(0), skipped: 'not-eligible' }, ['runner']);
 cap('AI bots', 'Create inbox quota for a non-bot target', 'create', 'botInboxRateLimits/u1/bots/u2', { senderUid: 'u1', botId: 'u2', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
 cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: pair(a.uid, 'bot_01'), createdAt: { $srv: 1 } }), []);
 cap('AI bots', 'Send an inbox message to a non-bot', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'u2', text: 'hello', handled: false, chatId: pair(a.uid, 'u2'), createdAt: { $srv: 1 } }), []);
