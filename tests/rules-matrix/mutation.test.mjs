@@ -52,7 +52,7 @@ const MUTATIONS = [
 
   ['bot engagement ignores a blocked account', "&& user.get('banned', false) != true", "&& true"],
   ['bot interaction ignores an active suspension', "&& (user.get('suspendedUntil', null) == null || user.get('suspendedUntil', null) < request.time)", "&& true"],
-  ['staff can read private bot inbox bodies', "allow read: if isOwner(resource.data.fromUid)\n        || (runnerMayChatAs(resource.data.botId) && inboxChatAllowed());", "allow read: if isStaff() || runnerMayChatAs(resource.data.botId);"],
+  ['staff can read private bot inbox bodies', "allow read: if isOwner(resource.data.fromUid) || runnerMayChatAs(resource.data.botId);", "allow read: if isStaff() || runnerMayChatAs(resource.data.botId);"],
   ['admins can delete private bot inbox messages', "allow delete: if isOwner(resource.data.fromUid);", "allow delete: if isAdmin();"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
