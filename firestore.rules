@@ -591,19 +591,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/chats/$(request.resource.data.chatId))
         && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.type == 'private'
         && get(/databases/$(database)/documents/chats/$(request.resource.data.chatId)).data.members.hasAll([request.auth.uid, request.resource.data.botId]);
-      function inboxChatAllowed() {
-        let chatPath = /databases/$(database)/documents/chats/$(resource.data.chatId);
-        return exists(chatPath)
-          && get(chatPath).data.members is list
-          && get(chatPath).data.members.hasAll([resource.data.fromUid, resource.data.botId])
-          && runnerMayReadChat(get(chatPath).data);
-      }
-      // Senders can see their own queued message. The Runner can read it only when
-      // the exact private chat is still eligible; staff never receive private inbox bodies.
-      allow read: if isOwner(resource.data.fromUid)
-        || (runnerMayChatAs(resource.data.botId) && inboxChatAllowed());
+      // The sender and assigned active bot can read the user-initiated inbox item.
+      // The Runner must still pass runnerMayReadChat before reading chat history or replying.
+      // Staff never receive private inbox bodies.
+      allow read: if isOwner(resource.data.fromUid) || runnerMayChatAs(resource.data.botId);
+      // The assigned Runner may mark a queued item skipped after chat access is denied.
       allow update: if runnerMayChatAs(resource.data.botId)
-        && inboxChatAllowed()
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
         && request.resource.data.handled == true
         && request.resource.data.handledAt is timestamp;
