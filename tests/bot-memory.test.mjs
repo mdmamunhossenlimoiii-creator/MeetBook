@@ -42,6 +42,9 @@ test('memory input redacts contact details and excludes sensitive topics', () =>
     'My home address is 12 Example Road and my GPS coordinates are private.',
     'My sexual orientation and gender identity are personal.',
     'My passport number and date of birth are private.',
+    'I have a fever and need medical advice.',
+    'I am Muslim and my prayer routine is personal.',
+    'I live at a specific address in the city.',
     'আমার পাসওয়ার্ড এবং ওটিপি কাউকে বলবেন না।',
     'আমার বাড়ির ঠিকানা এবং জাতীয় পরিচয়পত্রের তথ্য ব্যক্তিগত।'
   ];
