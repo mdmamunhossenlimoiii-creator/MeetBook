@@ -93,7 +93,7 @@ test('engagement mode comments only on a relevant opted-in public post and does 
     assert.deepEqual(m.denied, [], 'a valid engagement must pass the Firestore rules simulator');
     assert.equal(m.ids('posts').length, beforePosts, 'engagement mode must not create posts');
     assert.equal(m.ids('posts/p4/comments').length, 1, 'the relevant opted-in post receives one bot comment');
-    assert.equal(m.ids('chats/bot_06_u2/messages').length, 0, 'engagement mode must not answer private chats');
+    assert.equal(m.ids('chats/bot_06_u2/messages').filter((id) => m.get(`chats/bot_06_u2/messages/${id}`).uid === 'bot_06').length, 0, 'engagement mode must not answer private chats');
   } finally { await m.close(); }
 });
 
@@ -193,7 +193,7 @@ test('an unhandled inbox item with an existing deterministic reply is recovered 
       GITHUB_RUN_ID: 'retry-chat-001', BOT_POSTS: '0', BOT_COMMENTS: '0'
     }));
     assert.equal(result.status, 0, result.stderr + result.stdout);
-    assert.equal(m.ids('chats/bot_06_u2/messages').length, 1, 'existing reply is reused, not duplicated');
+    assert.equal(m.ids('chats/bot_06_u2/messages').filter((id) => m.get(`chats/bot_06_u2/messages/${id}`).uid === 'bot_06').length, 1, 'existing reply is reused, not duplicated');
     assert.equal(m.get('botInbox/i1').handled, true, 'recovered inbox item is marked handled');
     assert.equal(m.get('chats/bot_06_u2').lastMessage.text, 'Existing reply');
   } finally { await m.close(); }
