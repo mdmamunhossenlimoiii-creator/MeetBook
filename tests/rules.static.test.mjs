@@ -134,7 +134,9 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(block('botMemories'), /eligibleHumanForBotInteraction/);
   assert.match(block('botInbox'), /inboxChatAllowed/);
   assert.match(block('botInbox'), /isOwner\(resource\.data\.fromUid\)/);
+  assert.match(block('botInbox'), /allow delete: if isOwner\(resource\.data\.fromUid\)/, 'senders may cancel their own pending requests');
   assert.doesNotMatch(block('botInbox'), /allow read: if isStaff\(\)/, 'staff cannot read private bot inbox bodies');
+  assert.doesNotMatch(block('botInbox'), /allow update: if isAdmin\(\)/, 'admins cannot manage private inbox bodies');
   const posts = block('posts');
   const botComment = posts.slice(posts.indexOf('match /comments'));
   assert.match(botComment, /runnerMayCommentAs\(request\.resource\.data\.uid\)[\s\S]*runnerMayComment\(postId\)/, 'only assigned bot with autoComment ON comments');
