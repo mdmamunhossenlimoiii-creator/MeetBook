@@ -53,12 +53,16 @@ export const SEED = {
   'botEngagement/u1': { allowBotEngagement: false, allowBotMemory: false },
   'botEngagement/u2': { allowBotEngagement: true, allowBotMemory: true },
   'botEngagement/u3': { allowBotEngagement: false, allowBotMemory: false },
+  'botEngagement/ub': { allowBotEngagement: true, allowBotMemory: true },
+  'botEngagement/us': { allowBotEngagement: true, allowBotMemory: true },
   'botMemories/bot_01_u1': { ownerUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', summary: 'Private test memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_01_u2': { ownerUid: 'u2', botId: 'bot_01', chatId: 'bot_01_u2', summary: 'Likes photography', createdAt: T(-1000), updatedAt: T(-1000) },
+  'botMemories/bot_01_ub': { ownerUid: 'ub', botId: 'bot_01', chatId: 'bot_01_ub', summary: 'Blocked-user memory', createdAt: T(-1000), updatedAt: T(-1000) },
+  'botMemories/bot_01_us': { ownerUid: 'us', botId: 'bot_01', chatId: 'bot_01_us', summary: 'Suspended-user memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_09_u2': { ownerUid: 'u2', botId: 'bot_09', chatId: 'bot_09_u2', summary: 'Private memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'friendships/u1_u2': { members: ['u1', 'u2'] },
-  'users/ub': user({ name: 'Blocked User', banned: true }),
-  'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3) }),
+  'users/ub': user({ name: 'Blocked User', banned: true, settings: { allowBotEngagement: true, allowBotMemory: true } }),
+  'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3), settings: { allowBotEngagement: true, allowBotMemory: true } }),
   'users/mod': user({ name: 'Mod Person' }), 'users/adm': user({ name: 'Admin Person' }), 'users/adm2': user({ name: 'Second Admin' }),
   'users/sup': user({ name: 'Super Person' }), 'users/leg': user({ name: 'Legacy Admin' }), 'users/bad': user({ name: 'Badrole Admin' }),
   'users/bot_01': user({ name: 'TechTip Nova', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, bio: 'I am an AI bot.' }),
@@ -88,10 +92,14 @@ export const SEED = {
   'botRateLimits/bot_01/users/u1': { botId: 'bot_01', actorUid: 'u1', kind: 'chatDaily', count: 1, windowStartedAt: T(-120000), lastAt: T(-120000) },
   'botInbox/i1': { fromUid: 'u1', botId: 'bot_01', text: 'hi', handled: false, chatId: 'bot_01_u1' },
   'botInbox/i9': { fromUid: 'u1', botId: 'bot_09', text: 'hi', handled: false, chatId: 'bot_09_u1' },
+  'botInbox/i_banned': { fromUid: 'ub', botId: 'bot_01', text: 'blocked private message', handled: false, chatId: 'bot_01_ub' },
+  'botInbox/i_suspended': { fromUid: 'us', botId: 'bot_01', text: 'suspended private message', handled: false, chatId: 'bot_01_us' },
   'botLogs/bl1': { botId: 'bot_01', kind: 'post', text: 'x' },
   'posts/p1': post('u1', { reactions: {} }),
   'posts/p2': post('u2', { reactions: { u1: 'like' } }),
   'posts/p2/comments/bot_01': { uid: 'bot_01', ai: true, text: 'existing bot comment' },
+  'posts/pblocked': post('ub'),
+  'posts/psuspended': post('us'),
   'posts/pb': post('bot_01'),
   'posts/pf': post('u1', { visibility: 'friends', audience: ['u1'] }),
   'posts/pn': post('u2', { commentsDisabled: true }),
@@ -103,6 +111,10 @@ export const SEED = {
   'chats/u1_u2': { type: 'private', members: ['u1', 'u2'] },
   'chats/bot_01_u1': { type: 'private', members: ['bot_01', 'u1'] },
   'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] },
+  'chats/bot_01_ub': { type: 'private', members: ['bot_01', 'ub'] },
+  'chats/bot_01_us': { type: 'private', members: ['bot_01', 'us'] },
+  'chats/bot_01_ub/messages/m1': { uid: 'ub', text: 'blocked private message' },
+  'chats/bot_01_us/messages/m1': { uid: 'us', text: 'suspended private message' },
   'chats/bot_09_u1': { type: 'private', members: ['bot_09', 'u1'] },
   'chats/bot_09_u2': { type: 'private', members: ['bot_09', 'u2'] },
   'chats/bot_09_u1/messages/m1': { uid: 'u1', text: 'hello' },
@@ -132,11 +144,15 @@ cap('Users', 'Read a bot user document', 'get', 'users/bot_01', null, SIGNED);
 cap('Users', 'Read friend-only profile metadata (owner, friend and staff)', 'get', 'publicProfiles/u2', null, ['user', 'other', 'moderator', 'admin', 'super']);
 cap('Users', 'Read another friend-only profile without friendship', 'get', 'publicProfiles/u3', null, ['moderator', 'admin', 'super']);
 cap('Users', 'Read minimal public directory entry', 'get', 'publicDirectory/u3', null, SIGNED);
+cap('Users', 'Admin may backfill a minimal directory entry matching the user', 'create', 'publicDirectory/u4', { name: 'User Four', nameLower: 'user four', isBot: false, roleEmoji: '', verified: false }, ADM);
+cap('Users', 'Admin cannot backfill full profile metadata for another human user', 'create', 'publicProfiles/u4', { name: 'User Four', nameLower: 'user four', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, []);
 cap('Users', 'Cannot loosen profile visibility through projection alone', 'update', 'publicProfiles/u3', { profileVisibility: 'everyone' }, []);
 cap('Users', 'Cannot forge a public directory name', 'update', 'publicDirectory/u2', { name: 'Forged Name' }, []);
 cap('Users', 'Cannot forge bot memory consent projection', 'update', 'botEngagement/u2', { allowBotMemory: false, updatedAt: { $srv: 1 } }, []);
 cap('Users', 'Read bot consent projection (owner, staff, active runner only)', 'get', 'botEngagement/u1', null, ['user', 'moderator', 'admin', 'super', 'runner']);
 cap('Bot memory', 'Read own bot memory when consent is off', 'get', 'botMemories/bot_01_u1', null, ['user']);
+cap('Bot memory', 'Blocked user can read own memory but Runner cannot', 'get', 'botMemories/bot_01_ub', null, ['banned']);
+cap('Bot memory', 'Suspended user can read own memory but Runner cannot', 'get', 'botMemories/bot_01_us', null, ['suspended']);
 cap('Bot memory', 'Read another user bot memory only with owner consent and assigned runner', 'get', 'botMemories/bot_01_u2', null, ['other', 'runner']);
 cap('Bot memory', 'Create memory only for opted-in owner and assigned bot', 'create', 'botMemories/bot_03_u2', { ownerUid: 'u2', botId: 'bot_03', chatId: 'bot_03_u2', summary: 'Likes cooking', createdAt: { $srv: 1 }, updatedAt: { $srv: 1 } }, ['runner']);
 cap('Bot memory', 'Update memory only for opted-in owner and assigned bot', 'update', 'botMemories/bot_01_u2', { summary: 'Likes street photography', updatedAt: { $srv: 1 } }, ['runner']);
@@ -265,6 +281,8 @@ cap('AI bots', 'Runner cannot comment as an unassigned bot', 'create', 'posts/p2
 cap('AI bots', 'Bot comment WITHOUT the AI flag (must be refused for everyone)', 'create', 'posts/p2/comments/new', { ...botComment, ai: false }, []);
 cap('AI bots', 'Bot comment with the AI flag missing entirely', 'create', 'posts/p2/comments/new', { uid: 'bot_01', authorName: 'TechTip Nova', text: 'Nice one.', createdAt: { $srv: 1 } }, []);
 cap('AI bots', 'Bot comment on a post of a user who did NOT allow it (u1)', 'create', 'posts/p1/comments/new', botComment, []);
+cap('AI bots', 'Bot comment on a blocked user public post is denied', 'create', 'posts/pblocked/comments/new', botComment, []);
+cap('AI bots', 'Bot comment on a suspended user public post is denied', 'create', 'posts/psuspended/comments/new', botComment, []);
 cap('AI bots', 'Bot comment on a friends-only post', 'create', 'posts/pf/comments/new', botComment, []);
 cap('AI bots', 'Bot comment on a bot\'s post while bot-to-bot comments are OFF', 'create', 'posts/pb/comments/new', botComment, []);
 cap('AI bots', 'Bot comment where comments are off (owner allowed)', 'create', 'posts/pn/comments/new', botComment, []);
@@ -272,14 +290,18 @@ cap('AI bots', 'Bot reaction on a post of a user who allowed it', 'update', 'pos
 cap('AI bots', 'Bot with autoReaction OFF cannot react', 'update', 'posts/p2', { 'reactions.bot_08': 'love', lastBotReactionBy: 'bot_08' }, []);
 cap('AI bots', 'Runner cannot react as an unassigned bot', 'update', 'posts/p2', { 'reactions.bot_02': 'love' }, []);
 cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update', 'posts/p1', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
+cap('AI bots', 'Bot reaction on a blocked user public post is denied', 'update', 'posts/pblocked', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
+cap('AI bots', 'Bot reaction on a suspended user public post is denied', 'update', 'posts/psuspended', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
 cap('AI bots', 'Bot reaction on a friends-only post', 'update', 'posts/pf', { 'reactions.bot_01': 'love' }, []);
 cap('AI bots', 'Bot reaction on a bot\'s post', 'update', 'posts/pb', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, ['runner']);
 cap('AI bots', 'Runner writes a reaction under a human\'s key (u2)', 'update', 'posts/p2', { 'reactions.u2': 'wow' }, ['other']);
 cap('AI bots', 'Runner cannot raise commentCount without a same-batch new comment', 'update', 'posts/p2', { commentCount: { $inc: 1 }, lastBotCommentBy: 'bot_01' }, []);
 cap('AI bots', 'Runner raises commentCount on a non-consenting user\'s post', 'update', 'posts/p1', { commentCount: { $inc: 1 } }, N);
 cap('AI bots', 'Runner pretends to be a human in a comment', 'create', 'posts/p2/comments/new', { uid: 'u1', text: 'hi' }, ['user']);
-cap('AI bots', 'Read the bot inbox', 'get', 'botInbox/i1', null, [...STAFF, 'runner']);
-cap('AI bots', 'Runner cannot read inbox when chat is OFF', 'get', 'botInbox/i9', null, [...STAFF]);
+cap('AI bots', 'Read the bot inbox: sender and eligible Runner only, never staff', 'get', 'botInbox/i1', null, ['user', 'runner']);
+cap('AI bots', 'Sender can read own inbox when chat is OFF but Runner cannot', 'get', 'botInbox/i9', null, ['user']);
+cap('AI bots', 'Blocked user can read own inbox but Runner cannot read it', 'get', 'botInbox/i_banned', null, ['banned']);
+cap('AI bots', 'Suspended user can read own inbox but Runner cannot read it', 'get', 'botInbox/i_suspended', null, ['suspended']);
 cap('AI bots', 'Create inbox quota for a non-bot target', 'create', 'botInboxRateLimits/u1/bots/u2', { senderUid: 'u1', botId: 'u2', count: 1, windowStartedAt: { $srv: 1 }, lastAt: { $srv: 1 } }, []);
 cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: pair(a.uid, 'bot_01'), createdAt: { $srv: 1 } }), []);
 cap('AI bots', 'Send an inbox message to a non-bot', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'u2', text: 'hello', handled: false, chatId: pair(a.uid, 'u2'), createdAt: { $srv: 1 } }), []);
@@ -316,11 +338,17 @@ cap('AI bots', 'Register a new bot runner', 'create', 'botRunners/u1', { enabled
 
 // ---------------------------------------------------------------- chats (bot replies)
 cap('Chats', 'Open a chat between u1 and a bot', 'get', 'chats/c_bot', null, ['user', 'runner']);
+cap('Chats', 'Blocked user can read own bot chat but Runner cannot', 'get', 'chats/bot_01_ub', null, ['banned']);
+cap('Chats', 'Suspended user can read own bot chat but Runner cannot', 'get', 'chats/bot_01_us', null, ['suspended']);
 cap('Chats', 'Open a chat between two people', 'get', 'chats/c_uu', null, ['user', 'other']);
 cap('Chats', 'Read messages of the bot chat', 'get', 'chats/c_bot/messages/m1', null, ['user', 'runner']);
+cap('Chats', 'Blocked user can read own messages but Runner cannot read history', 'get', 'chats/bot_01_ub/messages/m1', null, ['banned']);
+cap('Chats', 'Suspended user can read own messages but Runner cannot read history', 'get', 'chats/bot_01_us/messages/m1', null, ['suspended']);
 cap('Chats', 'Read messages between two people', 'get', 'chats/c_uu/messages/m1', null, ['user', 'other']);
 cap('Chats', 'Reply as the bot in the bot chat WITHOUT the AI flag', 'create', 'chats/c_bot/messages/new', { uid: 'bot_01', text: 'Hello.', image: '', ai: false, createdAt: { $srv: 1 } }, []);
 cap('Chats', 'Reply as the bot in the bot chat', 'create', 'chats/c_bot/messages/new', { uid: 'bot_01', text: 'Hello, I am an AI bot.', image: '', ai: true, createdAt: { $srv: 1 } }, ['runner']);
+cap('Chats', 'Runner cannot reply to a blocked user chat', 'create', 'chats/bot_01_ub/messages/new', { uid: 'bot_01', text: 'Hello, I am an AI bot.', image: '', ai: true, createdAt: { $srv: 1 } }, []);
+cap('Chats', 'Runner cannot reply to a suspended user chat', 'create', 'chats/bot_01_us/messages/new', { uid: 'bot_01', text: 'Hello, I am an AI bot.', image: '', ai: true, createdAt: { $srv: 1 } }, []);
 cap('Chats', 'Bot with chat OFF cannot reply', 'create', 'chats/bot_09_u1/messages/new', { uid: 'bot_09', text: 'Hello.', image: '', ai: true, createdAt: { $srv: 1 } }, []);
 cap('Chats', 'Reply as a bot in a chat between two people', 'create', 'chats/c_uu/messages/new', { uid: 'bot_01', text: 'hi', createdAt: { $srv: 1 } }, []);
 cap('Chats', 'Runner writes as u1 in the bot chat', 'create', 'chats/c_bot/messages/new', { uid: 'u1', text: 'hi' }, ['user']);
