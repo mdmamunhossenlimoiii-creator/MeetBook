@@ -54,6 +54,7 @@ const MUTATIONS = [
   ['bot interaction ignores an active suspension', "&& (user.get('suspendedUntil', null) == null || user.get('suspendedUntil', null) < request.time)", "&& true"],
   ['staff can read private bot inbox bodies', "allow read: if isOwner(resource.data.fromUid) || runnerMayChatAs(resource.data.botId);", "allow read: if isStaff() || runnerMayChatAs(resource.data.botId);"],
   ['admins can delete private bot inbox messages', "allow delete: if isOwner(resource.data.fromUid);", "allow delete: if isAdmin();"],
+  ['admins can mark private inbox items handled', "allow update: if runnerMayChatAs(resource.data.botId)", "allow update: if isAdmin() || runnerMayChatAs(resource.data.botId)"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 
