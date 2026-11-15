@@ -110,8 +110,9 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('runnerHasBot'), /bot\.get\('isBot', false\) == true/);
   assert.match(fn('runnerHasBot'), /bot\.get\('active', false\) == true/);
   assert.match(fn('runnerMayActAs'), /runnerHasBot\(botUid\)/);
-  assert.match(fn('runnerMayReadChat'), /runnerMayChatAs\(chat\.members\[0\]\)/);
-  assert.match(fn('runnerMayReadChat'), /runnerMayChatAs\(chat\.members\[1\]\)/);
+  assert.match(fn('runnerMayReadChat'), /firstBot = membersOk && runnerBotsOk && chat\.members\[0\] in runner\.get\('botIds', \[\]\)/);
+  assert.match(fn('runnerMayReadChat'), /secondBot = membersOk && runnerBotsOk && chat\.members\[1\] in runner\.get\('botIds', \[\]\)/);
+  assert.match(fn('runnerMayReadChat'), /runnerMayChatAs\(botUid\)/);
   assert.match(fn('runnerMayPost'), /autoPost', false\) == true/);
   assert.match(fn('runnerMayCommentAs'), /autoComment', false\) == true/);
   assert.match(fn('runnerMayReactAs'), /autoReaction', false\) == true/);
@@ -132,7 +133,11 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
   assert.match(fn('runnerMayReadChat'), /eligibleHumanForBotInteraction\(userUid\)/, 'Runner cannot read chats with blocked or suspended users');
   assert.match(block('botMemories'), /eligibleHumanForBotInteraction/);
-  assert.match(block('botInbox'), /allow read: if isOwner\(resource\.data\.fromUid\) \|\| runnerMayChatAs\(resource\.data\.botId\)/, 'only sender and assigned active bot can read the inbox item');
+  assert.match(block('botInbox'), /allow read: if isOwner\(resource\.data\.fromUid\) \|\| runnerMayChatAs\(resource\.data\.botId\)/, 'only sender and assigned active bot can read inbox metadata');
+  assert.match(block('botInbox'), /function inboxMessageOk\(\)/);
+  assert.match(block('botInbox'), /getAfter\([\s\S]*messages\/\$\(request\.resource\.data\.messageId\)[\s\S]*\)\.data\.uid == request\.auth\.uid/);
+  assert.match(block('botInbox'), /'messageId'/);
+  assert.doesNotMatch(block('botInbox'), /'text'/, 'inbox documents must not duplicate private message bodies');
   assert.match(block('botInbox'), /allow delete: if isOwner\(resource\.data\.fromUid\)/, 'senders may cancel their own pending requests');
   assert.match(block('botInbox'), /allow update: if runnerMayChatAs\(resource\.data\.botId\)/, 'only the assigned active Runner can mark queue metadata');
   assert.match(block('botInbox'), /get\('skipped', ''\)\.size\(\) <= 80/, 'skip reason is bounded metadata');
