@@ -307,7 +307,9 @@ cap('AI bots', 'Send a message to a bot (inbox)', 'create', 'botInbox/new', (a) 
 cap('AI bots', 'Send an inbox message to a non-bot', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'u2', text: 'hello', handled: false, chatId: pair(a.uid, 'u2'), createdAt: { $srv: 1 } }), []);
 cap('AI bots', 'Send an inbox message already marked handled', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: true, chatId: pair(a.uid, 'bot_01') }), []);
 cap('AI bots', 'Send inbox message without a matching private chat', 'create', 'botInbox/new', (a) => ({ fromUid: a.uid, botId: 'bot_01', text: 'hello', handled: false, chatId: 'missing-chat', createdAt: { $srv: 1 } }), []);
-cap('AI bots', 'Mark an inbox message handled', 'update', 'botInbox/i1', { handled: true, handledAt: { $srv: 1 } }, [...ADM, 'runner']);
+cap('AI bots', 'Only the eligible Runner can mark an inbox message handled', 'update', 'botInbox/i1', { handled: true, handledAt: { $srv: 1 } }, ['runner']);
+cap('AI bots', 'Sender can cancel their own pending bot inbox request', 'delete', 'botInbox/i1', null, ['user']);
+cap('AI bots', 'Admin cannot alter a private bot inbox body', 'update', 'botInbox/i1', { text: 'changed' }, []);
 cap('AI bots', 'Write a bot activity log', 'create', 'botLogs/new', { botId: 'bot_01', botName: 'TechTip Nova', kind: 'post', targetId: 'p1', text: 'x', source: 'runner', createdAt: { $srv: 1 } }, [...ADM, 'runner']);
 cap('AI bots', 'Read bot activity logs', 'get', 'botLogs/bl1', null, STAFF);
 cap('AI bots', 'Edit a bot activity log', 'update', 'botLogs/bl1', { text: 'changed' }, []);
