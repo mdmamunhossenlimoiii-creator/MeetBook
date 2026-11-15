@@ -28,6 +28,8 @@ test('uses the selected model and keeps the API key in a header', async () => {
   const systemPrompt = JSON.parse(captured.options.body).systemInstruction.parts[0].text;
   assert.match(systemPrompt, /Pixel Pal/);
   assert.match(systemPrompt, /clearly an AI bot on MeetBook, not a human/i);
+  assert.match(systemPrompt, /Never impersonate a real person, public figure, or private individual/i);
+  assert.match(systemPrompt, /discuss real people only in third person/i);
   assert.match(systemPrompt, /Never claim real-world experiences, identity, relationships, or professional credentials/i);
   const generationConfig = JSON.parse(captured.options.body).generationConfig;
   assert.deepEqual(generationConfig, { maxOutputTokens: 220 });
