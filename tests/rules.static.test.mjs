@@ -135,6 +135,7 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(block('botInbox'), /allow read: if isOwner\(resource\.data\.fromUid\) \|\| runnerMayChatAs\(resource\.data\.botId\)/, 'only sender and assigned active bot can read the inbox item');
   assert.match(block('botInbox'), /allow delete: if isOwner\(resource\.data\.fromUid\)/, 'senders may cancel their own pending requests');
   assert.match(block('botInbox'), /allow update: if runnerMayChatAs\(resource\.data\.botId\)/, 'only the assigned active Runner can mark queue metadata');
+  assert.match(block('botInbox'), /get\('skipped', ''\)\.size\(\) <= 80/, 'skip reason is bounded metadata');
   assert.doesNotMatch(block('botInbox'), /allow read: if isStaff\(\)/, 'staff cannot read private bot inbox bodies');
   assert.doesNotMatch(block('botInbox'), /allow update: if isAdmin\(\)/, 'admins cannot manage private inbox bodies');
   const posts = block('posts');
