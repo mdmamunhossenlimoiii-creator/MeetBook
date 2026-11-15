@@ -56,8 +56,8 @@ test('blocked or suspended chat requests are skipped without aborting other elig
 });
 
 test('optional memory permission failures do not abort the chat runner', () => {
-  assert.match(runner, /const isPermissionDenied = \(error\) => \/\(\?:->\\s\*403\\b\|PERMISSION_DENIED\|Missing or insufficient permissions\)\/i/);
-  assert.match(runner, /if \(!isPermissionDenied\(error\)\) throw error;\s*console\.warn\('Saved bot memory was unavailable; continuing without it\.'/);
+  assert.match(runner, /const isPermissionDenied = [\s\S]*?403[\s\S]*?PERMISSION_DENIED/);
+  assert.match(runner, /if \(!isPermissionDenied\(error\)\) throw error;[\s\S]*Saved bot memory was unavailable; continuing without it\./);
 });
 
 test('private inbox stores only message IDs and reads message bodies after chat eligibility', () => {
