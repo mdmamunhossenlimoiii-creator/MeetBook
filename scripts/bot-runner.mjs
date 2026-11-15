@@ -409,7 +409,21 @@ async function main() {
     const memoryConsent = await fs.get(`botEngagement/${m.fromUid}`);
     const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
-    const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
+    // Dry runs never need persisted memory. In live mode, a missing or unreadable
+    // optional memory record must not prevent a consented private chat reply.
+    let savedMemory = null;
+    if (!DRY && memoryEnabled) {
+      try {
+        savedMemory = await fs.get(`botMemories/${memoryId}`);
+      } catch (error) {
+        const message = String(error?.message || error);
+        if (/403|PERMISSION_DENIED|Missing or insufficient permissions/i.test(message)) {
+          console.warn(`Bot memory unavailable for ${bot.id}; continuing without long-term memory.`);
+        } else {
+          throw error;
+        }
+      }
+    }
     const replyText = DRY ? reply.text : await generateText({
       bot, kind: 'chat', source: m.text,
       history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
@@ -430,20 +444,24 @@ async function main() {
       // Persist only a bounded, non-sensitive summary after an explicit user opt-in.
       // Other bots/users cannot read this document; the raw transcript is never copied here.
       if (memoryEnabled && process.env.GEMINI_API_KEY && ['bot_01', 'bot_02', 'bot_03'].includes(bot.id)) {
-        if (await reserveGeminiRequest()) {
-          const summary = await updateSmartBotMemory({
-            bot, existingSummary: savedMemory?.summary || '',
-            messages: [...hist, { uid: bot.id, text: storedReplyText }]
-          });
-          if (summary || savedMemory) {
-            const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
-            if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
-            else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
-              // Another scheduled run may have created it concurrently; update the same isolated record.
-              await fs.patch(`botMemories/${memoryId}`, memoryData);
+        try {
+          if (await reserveGeminiRequest()) {
+            const summary = await updateSmartBotMemory({
+              bot, existingSummary: savedMemory?.summary || '',
+              messages: [...hist, { uid: bot.id, text: storedReplyText }]
             });
-          }
-        } else console.warn('Gemini daily request budget reached; memory update skipped.');
+            if (summary || savedMemory) {
+              const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
+              if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
+              else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
+                // Another run may have created the same isolated record concurrently.
+                await fs.patch(`botMemories/${memoryId}`, memoryData);
+              });
+            }
+          } else console.warn('Gemini daily request budget reached; memory update skipped.');
+        } catch (error) {
+          console.warn(`Optional bot memory update failed for ${bot.id}; chat reply was retained: ${error?.message || error}`);
+        }
       }
       // Never put private conversation text in audit logs.
       await log(bot, 'chat', m.chatId, reply.intent);
