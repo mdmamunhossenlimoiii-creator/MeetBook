@@ -50,11 +50,11 @@ export const SEED = {
   'publicDirectory/u1': { name: 'User One', nameLower: 'user one', isBot: false, roleEmoji: '', verified: false },
   'publicDirectory/u2': { name: 'User Two', nameLower: 'user two', isBot: false, roleEmoji: '', verified: false },
   'publicDirectory/u3': { name: 'User Three', nameLower: 'user three', isBot: false, roleEmoji: '', verified: false },
-  'botEngagement/u1': { allowBotEngagement: false, allowBotMemory: false },
-  'botEngagement/u2': { allowBotEngagement: true, allowBotMemory: true },
-  'botEngagement/u3': { allowBotEngagement: false, allowBotMemory: false },
-  'botEngagement/ub': { allowBotEngagement: true, allowBotMemory: true },
-  'botEngagement/us': { allowBotEngagement: true, allowBotMemory: true },
+  'botEngagement/u1': { allowBotEngagement: false, allowBotMemory: false, updatedAt: T(-1000) },
+  'botEngagement/u2': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
+  'botEngagement/u3': { allowBotEngagement: false, allowBotMemory: false, updatedAt: T(-1000) },
+  'botEngagement/ub': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
+  'botEngagement/us': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
   'botMemories/bot_01_u1': { ownerUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', summary: 'Private test memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_01_u2': { ownerUid: 'u2', botId: 'bot_01', chatId: 'bot_01_u2', summary: 'Likes photography', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_01_ub': { ownerUid: 'ub', botId: 'bot_01', chatId: 'bot_01_ub', summary: 'Blocked-user memory', createdAt: T(-1000), updatedAt: T(-1000) },
@@ -150,7 +150,7 @@ cap('Users', 'Only the owner may create full profile metadata for a human user',
 cap('Users', 'Cannot loosen profile visibility through projection alone', 'update', 'publicProfiles/u3', { profileVisibility: 'everyone' }, []);
 cap('Users', 'Cannot forge a public directory name', 'update', 'publicDirectory/u2', { name: 'Forged Name' }, []);
 cap('Users', 'Cannot forge bot memory consent projection', 'update', 'botEngagement/u2', { allowBotMemory: false, updatedAt: { $srv: 1 } }, []);
-cap('Users', 'Read bot consent projection (owner, staff, active runner only)', 'get', 'botEngagement/u1', null, ['user', 'moderator', 'admin', 'super', 'runner']);
+cap('Users', 'Read bot consent projection (owner and active Runner only)', 'get', 'botEngagement/u1', null, ['user', 'runner']);
 cap('Bot memory', 'Read own bot memory when consent is off', 'get', 'botMemories/bot_01_u1', null, ['user']);
 cap('Bot memory', 'Blocked user can read own memory but Runner cannot', 'get', 'botMemories/bot_01_ub', null, ['banned']);
 cap('Bot memory', 'Suspended user can read own memory but Runner cannot', 'get', 'botMemories/bot_01_us', null, ['suspended']);
