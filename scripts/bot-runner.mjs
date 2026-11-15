@@ -43,6 +43,7 @@ const GEMINI_DAILY_REQUEST_LIMIT = 60;
 const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID || `local_${process.pid}_${Date.now()}`)
   .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
 const safeDocPart = (value) => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+const isPermissionDenied = (error) => /(?:->\\s*403\\b|PERMISSION_DENIED|Missing or insufficient permissions)/i.test(String(error?.message || error));
 
 if (!['all', 'post', 'engage', 'chat'].includes(MODE)) {
   console.error('BOT_RUNNER_MODE must be all, post, engage, or chat.');
@@ -378,7 +379,7 @@ async function main() {
   }
   if (MODE !== 'post' && MODE !== 'engage') {
   // 5. chat replies
-  const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled === true).map((bot) =>
+  const inboxByBot = await Promise.all(bots.filter((b) => b.active === true && b.chatEnabled === true).map((bot) =>
     fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
   ));
   const inbox = inboxByBot.flat()
@@ -386,30 +387,92 @@ async function main() {
     .slice(0, CHAT_MAX_REPLIES);
   for (const m of inbox) {
     const bot = botMap.get(m.botId);
-    const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
+    const mark = async (skipped) => {
+      if (DRY) return;
+      try {
+        await fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) });
+      } catch {
+        console.warn('Could not update a bot inbox status; the request remains pending.');
+      }
+    };
     if (!bot || bot.active !== true || bot.chatEnabled !== true) { await mark('chat-disabled'); continue; }
-    const chat = await fs.get(`chats/${m.chatId}`);
-    if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) { await mark('no-chat'); continue; }
+
+    // Inbox access alone is not permission to read a private chat or send a reply.
+    // Firestore Rules re-check recipient eligibility on the chat and message reads/writes.
+    let chat;
+    try {
+      chat = await fs.get(`chats/${m.chatId}`);
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        await mark('not-eligible');
+        console.log(`Skipped a private chat request for ${bot.name}; the recipient is not eligible for bot replies.`);
+        continue;
+      }
+      throw error;
+    }
+    if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) {
+      await mark('no-chat');
+      continue;
+    }
+
     const replyMessageId = `reply_${safeDocPart(bot.id)}_${safeDocPart(m.id)}`;
     const replyPath = `chats/${m.chatId}/messages/${replyMessageId}`;
-    const previousReply = DRY ? null : await fs.get(replyPath);
+    let previousReply = null;
+    if (!DRY) {
+      try {
+        previousReply = await fs.get(replyPath);
+      } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+        throw error;
+      }
+    }
     if (previousReply) {
-      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: previousReply.text, uid: bot.id }, lastAt: new Date() });
+      try {
+        await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: previousReply.text, uid: bot.id }, lastAt: new Date() });
+      } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+        throw error;
+      }
       await mark();
       console.log(`Existing reply recovered for ${bot.name}; duplicate reply prevented.`);
       continue;
     }
+
+    let hist;
+    try {
+      hist = (await fs.query({
+        from: [{ collectionId: 'messages' }],
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
+      }, `chats/${m.chatId}`)).reverse();
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        await mark('not-eligible');
+        console.log(`Skipped a private chat request for ${bot.name}; chat history is not available to the Runner.`);
+        continue;
+      }
+      throw error;
+    }
+    if (typeof m.text !== 'string' || !hist.some((item) => item.uid === m.fromUid && item.text === m.text && item.ai !== true)) {
+      await mark('message-not-found');
+      continue;
+    }
     if (!(await reserveBotAction(bot)) || !(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
-    const hist = (await fs.query({
-      from: [{ collectionId: 'messages' }],
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
-    }, `chats/${m.chatId}`)).reverse();
+
     const reply = chatReply({ bot, text: m.text, history: hist });
-    // Long-term memory is isolated by bot + user and is completely disabled without explicit opt-in.
-    const memoryConsent = await fs.get(`botEngagement/${m.fromUid}`);
+    // Memory is optional; a missing/denied consent projection never blocks a normal chat reply.
+    let memoryConsent = null;
+    try { memoryConsent = await fs.get(`botEngagement/${m.fromUid}`); }
+    catch (error) { if (!isPermissionDenied(error)) throw error; }
     const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
-    const savedMemory = memoryEnabled ? await fs.get(`botMemories/${memoryId}`) : null;
+    let savedMemory = null;
+    if (memoryEnabled) {
+      try { savedMemory = await fs.get(`botMemories/${memoryId}`); }
+      catch (error) {
+        if (!isPermissionDenied(error)) throw error;
+        console.warn('Saved bot memory was unavailable; continuing without it.');
+      }
+    }
     const replyText = DRY ? reply.text : await generateText({
       bot, kind: 'chat', source: m.text,
       history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
@@ -422,28 +485,40 @@ async function main() {
       try {
         await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() }, replyMessageId);
       } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
         const existing = await fs.get(replyPath);
         if (!existing) throw error;
         storedReplyText = existing.text;
       }
-      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: storedReplyText, uid: bot.id }, lastAt: new Date() });
+      try {
+        await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: storedReplyText, uid: bot.id }, lastAt: new Date() });
+      } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+        throw error;
+      }
+
       // Persist only a bounded, non-sensitive summary after an explicit user opt-in.
       // Other bots/users cannot read this document; the raw transcript is never copied here.
       if (memoryEnabled && process.env.GEMINI_API_KEY && ['bot_01', 'bot_02', 'bot_03'].includes(bot.id)) {
-        if (await reserveGeminiRequest()) {
-          const summary = await updateSmartBotMemory({
-            bot, existingSummary: savedMemory?.summary || '',
-            messages: [...hist, { uid: bot.id, text: storedReplyText }]
-          });
-          if (summary || savedMemory) {
-            const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
-            if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
-            else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
-              // Another scheduled run may have created it concurrently; update the same isolated record.
-              await fs.patch(`botMemories/${memoryId}`, memoryData);
+        try {
+          if (await reserveGeminiRequest()) {
+            const summary = await updateSmartBotMemory({
+              bot, existingSummary: savedMemory?.summary || '',
+              messages: [...hist, { uid: bot.id, text: storedReplyText }]
             });
-          }
-        } else console.warn('Gemini daily request budget reached; memory update skipped.');
+            if (summary || savedMemory) {
+              const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
+              if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
+              else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
+                // Another run may have created it concurrently; update the same isolated record.
+                await fs.patch(`botMemories/${memoryId}`, memoryData);
+              });
+            }
+          } else console.warn('Gemini daily request budget reached; memory update skipped.');
+        } catch (error) {
+          if (isPermissionDenied(error)) console.warn('Bot memory update skipped because access or consent is no longer available.');
+          else console.warn('Bot memory update failed; the chat reply remains saved.');
+        }
       }
       // Never put private conversation text in audit logs.
       await log(bot, 'chat', m.chatId, reply.intent);
