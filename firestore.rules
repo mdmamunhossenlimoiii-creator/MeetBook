@@ -699,7 +699,7 @@ service cloud.firestore {
           && d.updatedAt is timestamp;
       }
       // The owner and an enabled Runner may get one user's minimal consent projection.
-      // Runners must not enumerate the collection or map users' opt-in choices.
+      // Runner access is direct-get only; code should request it for a target interaction.
       allow get: if validBotEngagement(resource.data) && (isOwner(uid) || runnerEnabled());
       allow list: if false;
       allow create, update: if isOwner(uid)
