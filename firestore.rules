@@ -522,7 +522,7 @@ service cloud.firestore {
       allow delete: if false;
     }
 
-    // A user's message to a bot is mirrored here so the manual Runner can answer it.
+    // User-to-bot queue entries store routing metadata and a message ID, never private message text.
  
     // Per-user, per-bot long-term memory. Only a short summary is persisted; raw transcripts are not.
     // The Runner can access one exact record only while the owner has explicitly opted in.
