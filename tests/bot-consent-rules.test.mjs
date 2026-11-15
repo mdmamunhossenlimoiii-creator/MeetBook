@@ -74,6 +74,7 @@ test('rules + runner: the full run is never denied, and only consenting users ar
     const chatMessages = m.ids('chats/bot_06_u2/messages');
     assert.equal(chatMessages.filter((id) => m.get(`chats/bot_06_u2/messages/${id}`).uid === 'bot_06').length, 1,
       'bot chat reply passes the rules after validating the referenced user message');
+    assert.equal(Object.hasOwn(m.get('botInbox/i1'), 'text'), false, 'the inbox must not duplicate private message text');
     assert.ok(m.ids('posts').length >= 4, 'bot post created under rules');
   } finally { await m.close(); }
 });
