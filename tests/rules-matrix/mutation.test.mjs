@@ -38,7 +38,7 @@ const MUTATIONS = [
   ['bot posts may contain video', "&& request.resource.data.videoUrl == ''", ""],
   ['runner reaction must validate the active assigned bot', "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return runnerMayReactAs(botUid)", "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return true"],
   ['runner comment counter must require a new atomic comment', "&& existsAfter(commentPath)\n        && !exists(commentPath)", "&& existsAfter(commentPath)"],
-  ['bot-runner may read every chat', "&& chat.members.size() == 2\n        && ((chat.members[0] in runner.get('botIds', [])\n              && runnerMayChatAs(chat.members[0]))\n          || (chat.members[1] in runner.get('botIds', [])\n              && runnerMayChatAs(chat.members[1])));", "&& chat.members.size() == 2\n        && true;"],
+  ['bot-runner may read blocked or suspended chat history', "&& eligibleHumanForBotInteraction(userUid);", "&& true;"],
   ['comments stay possible when switched off', "return p.get('commentsDisabled', false) == false && canSeePost(p);", "return canSeePost(p);"],
   ['any reaction value is accepted', "|| request.resource.data.reactions[request.auth.uid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']", "|| true"],
   ['a report can be edited freely by staff', "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt'])\n        && request.resource.data.status in ['open', 'resolved']", "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt', 'targetUid'])\n        && request.resource.data.status in ['open', 'resolved']"],
@@ -54,7 +54,7 @@ const MUTATIONS = [
   ['bot interaction ignores an active suspension', "&& (user.get('suspendedUntil', null) == null || user.get('suspendedUntil', null) < request.time)", "&& true"],
   ['staff can read private bot inbox bodies', "allow read: if isOwner(resource.data.fromUid) || runnerMayChatAs(resource.data.botId);", "allow read: if isStaff() || runnerMayChatAs(resource.data.botId);"],
   ['admins can delete private bot inbox messages', "allow delete: if isOwner(resource.data.fromUid);", "allow delete: if isAdmin();"],
-  ['admins can mark private inbox items handled', "allow update: if runnerMayChatAs(resource.data.botId)", "allow update: if isAdmin() || runnerMayChatAs(resource.data.botId)"],
+  ['admins can mark private inbox items handled', "allow update: if runnerMayChatAs(resource.data.botId)\n        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])", "allow update: if isAdmin() || runnerMayChatAs(resource.data.botId)\n        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 
