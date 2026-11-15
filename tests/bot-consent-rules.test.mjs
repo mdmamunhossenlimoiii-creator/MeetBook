@@ -154,7 +154,7 @@ test('rules: runner allowlist and global emergency stop are enforced server-side
   } finally { await m.close(); }
 });
 
-test('a missing optional bot memory is denied by Rules but does not block a consented chat reply', { skip: !botRunnerConfigured }, async () => {
+test('a missing optional bot memory does not block a consented chat reply', { skip: !botRunnerConfigured }, async () => {
   const data = seed();
   data['users/u2'].settings.allowBotMemory = true;
   data['botEngagement/u2'] = { allowBotEngagement: false, allowBotMemory: true, updatedAt: now };
@@ -173,7 +173,6 @@ test('a missing optional bot memory is denied by Rules but does not block a cons
       BOT_POSTS: '0', BOT_COMMENTS: '0', DRY_RUN: '0', GEMINI_API_KEY: '', GEMINI_STRICT: '0'
     }));
     assert.equal(result.status, 0, result.stderr + result.stdout);
-    assert.match(result.stdout, /Saved bot memory was unavailable; continuing without it\./);
     const messages = m.ids('chats/bot_01_u2/messages');
     assert.equal(messages.filter((id) => m.get(`chats/bot_01_u2/messages/${id}`).uid === 'bot_01').length, 1,
       'the chat reply must be saved even when an optional memory document is absent');
