@@ -539,7 +539,7 @@ service cloud.firestore {
           && get(/databases/$(database)/documents/chats/$(d.chatId)).data.type == 'private'
           && get(/databases/$(database)/documents/chats/$(d.chatId)).data.members.hasAll([d.ownerUid, d.botId]);
       }
-      allow get: if signedIn()
+      allow get: if signedIn() && validMemory(resource.data)
         && (isOwner(resource.data.ownerUid)
           || (runnerMayChatAs(resource.data.botId)
             && eligibleHumanForBotInteraction(resource.data.ownerUid)
@@ -662,7 +662,7 @@ service cloud.firestore {
       }
       // Detailed profile metadata is private unless the owner chose everyone or the viewer is a friend.
       // Bot profiles remain public. Firestore Rules enforce this even for direct SDK/API reads.
-      allow read: if signedIn()
+      allow read: if signedIn() && validPublicProfile(resource.data)
         && (isOwner(uid) || isStaff() || resource.data.get('isBot', false) == true
           || resource.data.get('profileVisibility', 'everyone') == 'everyone'
           || isFriend(uid));
@@ -683,7 +683,7 @@ service cloud.firestore {
           && d.nameLower is string && d.isBot is bool
           && d.roleEmoji is string && d.verified is bool;
       }
-      allow read: if signedIn();
+      allow read: if signedIn() && validDirectory(resource.data);
       allow create, update: if (isOwner(uid) || isAdmin())
         && validDirectory(request.resource.data)
         && directoryMatches(uid, request.resource.data);
@@ -692,11 +692,16 @@ service cloud.firestore {
 
     // Minimal consent projection: the Runner can read only these explicit booleans, not user documents.
     match /botEngagement/{uid} {
-      allow read: if isOwner(uid) || isStaff() || runnerEnabled();
+      function validBotEngagement(d) {
+        return d.keys().hasOnly(['allowBotEngagement', 'allowBotMemory', 'updatedAt'])
+          && d.allowBotEngagement is bool
+          && d.get('allowBotMemory', false) is bool
+          && d.updatedAt is timestamp;
+      }
+      // Only the owner and the authorized Runner can read this minimal consent projection.
+      allow read: if validBotEngagement(resource.data) && (isOwner(uid) || runnerEnabled());
       allow create, update: if isOwner(uid)
-        && request.resource.data.keys().hasOnly(['allowBotEngagement', 'allowBotMemory', 'updatedAt'])
-        && request.resource.data.allowBotEngagement is bool
-        && request.resource.data.get('allowBotMemory', false) is bool
+        && validBotEngagement(request.resource.data)
         && request.resource.data.updatedAt == request.time
         && botConsentMatches(uid, request.resource.data);
       allow delete: if false;
