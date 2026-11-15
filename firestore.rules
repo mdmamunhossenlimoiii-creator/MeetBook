@@ -621,7 +621,7 @@ service cloud.firestore {
       // The assigned Runner must pass runnerMayReadChat before it can read the referenced chat message.
       // Staff never receive inbox metadata or private chat bodies.
       allow get: if isOwner(resource.data.fromUid) || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));
-      allow list: if isOwner(resource.data.fromUid) || (resource.data.get('schemaVersion', 0) == 2 && runnerMayChatAs(resource.data.botId));
+      allow list: if resource.data.get('schemaVersion', 0) == 2 && runnerMayChatAs(resource.data.botId);
       // The assigned Runner may mark a queued item skipped after chat access is denied.
       allow update: if validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId)
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])
