@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
 const PROJECT = 'demo-meetbook';
@@ -149,6 +149,23 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   }, async (isolated) => {
     await denied(getDoc(doc(isolated.authenticatedContext('run').firestore(), 'botState/run')),
       'missing settings/global must fail closed and deny Runner access');
+  });
+
+  await isolatedRunnerCase('demo-meetbook-consent-projection', {
+    'settings/global': { botsEnabled: true },
+    'botRunners/run': { enabled: true, botIds: ['bot_01'] },
+    'users/bot_01': { isBot: true, active: true, chatEnabled: true },
+    'users/u1': { isBot: false },
+    'botEngagement/u1': { allowBotEngagement: true, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) },
+    'botEngagement/u2': { allowBotEngagement: false, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) }
+  }, async (isolated) => {
+    const runnerDb = isolated.authenticatedContext('run').firestore();
+    const ownDb = isolated.authenticatedContext('u1').firestore();
+    const consent = await getDoc(doc(runnerDb, 'botEngagement/u1'));
+    assert.equal(consent.data().allowBotEngagement, true, 'Runner may get a single target consent projection');
+    assert.equal((await getDoc(doc(ownDb, 'botEngagement/u1'))).data().allowBotMemory, false, 'owner retains direct access');
+    await denied(getDocs(collection(runnerDb, 'botEngagement')),
+      'Runner must not enumerate users or their bot-consent choices');
   });
   console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/global, and counter decrement');
 
