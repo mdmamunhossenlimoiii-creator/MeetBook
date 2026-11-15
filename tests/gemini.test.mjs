@@ -25,7 +25,10 @@ test('uses the selected model and keeps the API key in a header', async () => {
   assert.match(captured.url, /models\/gemini-3\.8-flash:generateContent$/);
   assert.equal(captured.options.headers['x-goog-api-key'], 'secret-test-key');
   assert.equal(captured.url.includes('secret-test-key'), false);
-  assert.match(JSON.parse(captured.options.body).systemInstruction.parts[0].text, /Pixel Pal/);
+  const systemPrompt = JSON.parse(captured.options.body).systemInstruction.parts[0].text;
+  assert.match(systemPrompt, /Pixel Pal/);
+  assert.match(systemPrompt, /clearly an AI bot on MeetBook, not a human/i);
+  assert.match(systemPrompt, /Never claim real-world experiences, identity, relationships, or professional credentials/i);
   const generationConfig = JSON.parse(captured.options.body).generationConfig;
   assert.deepEqual(generationConfig, { maxOutputTokens: 220 });
   assert.equal('temperature' in generationConfig, false);
