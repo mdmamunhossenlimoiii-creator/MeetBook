@@ -29,7 +29,7 @@ const MUTATIONS = [
   ['moderator can forge the role in a log', "        && request.resource.data.role == roleOf()\n", ""],
   ['logs can be back-dated', "        && request.resource.data.role == roleOf()\n        && request.resource.data.createdAt == request.time\n        && textOk(request.resource.data.action, 120)", "        && request.resource.data.role == roleOf()\n        && textOk(request.resource.data.action, 120)"],
   ['logs can be edited', "allow update, delete: if false;\n    }\n\n    // ---------- site settings", "allow update, delete: if isStaff();\n    }\n\n    // ---------- site settings"],
-  ['a moderator can change global settings', "allow write: if isAdmin() && id == 'global'", "allow write: if isStaff() && id == 'global'"],
+  ['a moderator can change global settings', "allow write: if isAdmin() && id == 'overall'", "allow write: if isStaff() && id == 'overall'"],
   ['settings accept any field', "request.resource.data.keys().hasOnly(['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'])", "true"],
   ['users can verify or block themselves', "!request.resource.data.diff(resource.data).affectedKeys().hasAny(['banned', 'isBot', 'verified', 'suspendedUntil'])", "true"],
   ['a user may become a bot on creation', "&& request.resource.data.get('isBot', false) == false\n          && request.resource.data.get('verified', false) == false", "&& request.resource.data.get('verified', false) == false"],
