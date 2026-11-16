@@ -14,6 +14,26 @@ const TASKS = Object.freeze({
   comment: 'Write one natural, relevant and respectful comment on this public post. Do not flatter excessively, advertise, guess personal details, or start an argument.',
   chat: 'Reply naturally to the user in the same language they used. Be concise, helpful and conversational. You are always transparent that you are an AI bot if asked. Do not claim to be human or a licensed professional.'
 });
+const CREDENTIAL_CLAIM = /\b(?:i am|i['’]m|as (?:a|an)|i work as)\s+(?:(?:a|an)\s+)?(?:(?:licensed|certified|registered|qualified|professional|expert|experienced)\s+)?(?:(?:software|civil|mechanical|electrical|aerospace|chemical)\s+)?(?:doctor|physician|therapist|psychologist|psychiatrist|nutritionist|dietitian|lawyer|attorney|engineer|teacher|professor|nurse|surgeon|counselor|coach|photographer|chef|cook|programmer|developer|designer|scientist|researcher|analyst|accountant|consultant|specialist|trainer|instructor|veterinarian|pilot|architect|founder|ceo|manager|journalist|reporter|editor|writer|professional|expert)\b/i;
+const CREDENTIAL_STATUS = /\b(?:i am|i['’]m)\s+(?:(?:a|an)\s+)?(?:licensed|certified|registered|qualified)\b/i;
+const CREDENTIAL_POSSESSION = /\b(?:i (?:hold|have|earned|received))\s+(?:a|an)\s+(?:license|certification|degree|diploma|ph\.?d|m\.?d)\b/i;
+const HUMAN_CLAIM = /\b(?:i am|i['’]m)\s+(?:a|an)\s+(?:real\s+)?(?:human|person|individual)\b/i;
+const PERSONAL_EXPERIENCE = /\b(?:i (?:was born|grew up|live in|lived|work at|work for|worked|study|studied|graduated|visited|travelled|traveled|met|own|have (?:visited|used|tried|worked|experience)|am from|am based in)|my (?:experience|career|professional experience|work history|license|certification|degree|credentials))\b/i;
+const SELF_NAMED_IDENTITY = /\b(?:i am|i['’]m)\s+(?:the\s+)?([A-Z][\p{L}'’.-]*(?:\s+[A-Z][\p{L}'’.-]*){0,3})\b/gu;
+
+function unsafeSelfClaim(text, bot) {
+  if (CREDENTIAL_CLAIM.test(text) || CREDENTIAL_STATUS.test(text)
+    || CREDENTIAL_POSSESSION.test(text) || HUMAN_CLAIM.test(text)
+    || PERSONAL_EXPERIENCE.test(text)) return true;
+  const botName = String(bot?.name || '').trim().toLowerCase();
+  for (const match of text.matchAll(SELF_NAMED_IDENTITY)) {
+    const identity = match[1].trim().toLowerCase();
+    if (identity === botName || identity === 'ai' || identity === 'ai bot') continue;
+    return true;
+  }
+  return false;
+}
+
 function cleanOutput(value, maxChars) {
   if (typeof value !== 'string') return '';
   return value.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
@@ -77,6 +97,10 @@ export async function generateSmartBotText({
     const raw = data?.candidates?.[0]?.content?.parts?.filter((p) => typeof p?.text === 'string').map((p) => p.text).join('\n');
     const output = cleanOutput(raw, maxChars);
     if (!output && strict) throw new Error('Gemini returned no usable text.');
+    if (output && unsafeSelfClaim(output, bot)) {
+      if (strict) throw new Error('Gemini output failed the bot identity safety check.');
+      return safeFallback;
+    }
     return output || safeFallback;
   } catch {
     // Never log request text, response text, private messages, or the API key.
