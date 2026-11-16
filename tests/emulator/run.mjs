@@ -99,7 +99,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'Runner must not decrement a post comment counter');
 
   await isolatedRunnerCase('demo-meetbook-empty-runner', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/emptyRunner': { enabled: true, botIds: [] },
     'botRunners/normalAsBot': { enabled: true, botIds: ['u2'] },
     'users/u2': { isBot: false },
@@ -112,7 +112,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-inactive-bot', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/inactiveRunner': { enabled: true, botIds: ['bot_02'] },
     'users/bot_02': { isBot: true, active: false },
     'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
@@ -131,7 +131,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-global-stop', {
-    'settings/global': { botsEnabled: false },
+    'settings/overall': { botsEnabled: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'users/u2': { isBot: false },
@@ -148,11 +148,11 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'botRunners/run': { enabled: true, botIds: ['bot_01'] }
   }, async (isolated) => {
     await denied(getDoc(doc(isolated.authenticatedContext('run').firestore(), 'botState/run')),
-      'missing settings/global must fail closed and deny Runner access');
+      'missing settings/overall must fail closed and deny Runner access');
   });
 
   await isolatedRunnerCase('demo-meetbook-consent-projection', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, chatEnabled: true },
     'users/u1': { isBot: false },
@@ -167,10 +167,10 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     await denied(getDocs(collection(runnerDb, 'botEngagement')),
       'Runner must not list the bot-consent projection collection');
   });
-  console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/global, and counter decrement');
+  console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/overall, and counter decrement');
 
   await isolatedRunnerCase('demo-meetbook-runner-atomic-actions', {
-    'settings/global': { botsEnabled: true, botToBotComments: false },
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
@@ -303,7 +303,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-configured-bot-daily-limit', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/limitRunner': { enabled: true, botIds: ['bot_28'] },
     'users/bot_28': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: 2 },
     'botRateLimits/bot_28': {
@@ -320,7 +320,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-global-activity-and-gemini-budgets', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/globalRunner': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'botGlobalRateLimits/global': {
