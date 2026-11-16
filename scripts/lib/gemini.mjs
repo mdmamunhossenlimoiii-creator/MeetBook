@@ -17,7 +17,7 @@ const TASKS = Object.freeze({
 const CREDENTIAL_CLAIM = /\b(?:i am|i['’]m|as (?:a|an)|i work as)\s+(?:(?:a|an)\s+)?(?:(?:licensed|certified|registered|qualified|professional|expert|experienced)\s+)?(?:(?:software|civil|mechanical|electrical|aerospace|chemical)\s+)?(?:doctor|physician|therapist|psychologist|psychiatrist|nutritionist|dietitian|lawyer|attorney|engineer|teacher|professor|nurse|surgeon|counselor|coach|photographer|chef|cook|programmer|developer|designer|scientist|researcher|analyst|accountant|consultant|specialist|trainer|instructor|veterinarian|pilot|architect|founder|ceo|manager|journalist|reporter|editor|writer|professional|expert)\b/i;
 const CREDENTIAL_STATUS = /\b(?:i am|i['’]m)\s+(?:(?:a|an)\s+)?(?:licensed|certified|registered|qualified)\b/i;
 const CREDENTIAL_POSSESSION = /\b(?:i (?:hold|have|earned|received))\s+(?:a|an)\s+(?:license|certification|degree|diploma|ph\.?d|m\.?d)\b/i;
-const HUMAN_CLAIM = /\b(?:i am|i['’]m)\s+(?:a|an)\s+(?:real\s+)?(?:human|person|individual)\b/i;
+const HUMAN_CLAIM = /\b(?:i am|i['’]m)\s+(?:(?:a|an)\s+)?(?:real\s+)?(?:human|person|individual)\b/i;
 const PERSONAL_EXPERIENCE = /\b(?:i (?:was born|grew up|live in|lived|work at|work for|worked|study|studied|graduated|visited|travelled|traveled|met|own|have (?:visited|used|tried|worked|experience)|am from|am based in)|my (?:experience|career|professional experience|work history|license|certification|degree|credentials))\b/i;
 const SELF_NAMED_IDENTITY = /\b(?:[iI] [aA][mM]|[iI]['’][mM])\s+(?:the\s+)?([A-Z][\p{L}'’.-]*(?:\s+[A-Z][\p{L}'’.-]*){0,3})\b/gu;
 
