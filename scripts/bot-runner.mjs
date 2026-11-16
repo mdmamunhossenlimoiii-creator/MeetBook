@@ -7,12 +7,12 @@
 //    comments, a reaction under a bot's own key, chat replies). It cannot touch real users' data.
 //
 // What it does each run (all limits are enforced here AND in Firestore Rules):
-//  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
+//  1. Global switch  settings/overall.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
 //                    Settings -> "Allow AI bots to react and comment" (Runner reads the minimal botEngagement projection; Firestore Rules verify users/{uid}.settings.allowBotEngagement).
 //                    At most one bot per post, a relevant comment + a reaction, always shown as AI.
-//  4. Bot-to-bot comments: only if settings/global.botToBotComments is on (default OFF, to avoid
+//  4. Bot-to-bot comments: only if settings/overall.botToBotComments is on (default OFF, to avoid
 //                    staged conversations that look like real popularity).
 //  5. Chat replies   answers messages users sent to a bot (botInbox).
 //  Every action is written to botLogs.
@@ -275,9 +275,9 @@ async function main() {
 
   await signIn();
   console.log(`Activation check: DRY_RUN=${DRY ? '1 (no writes)' : '0 (live writes)'}, mode=${MODE}, project=${firebaseConfig.projectId}.`);
-  const global = await fs.get('settings/global');
-  if (!global) { console.error('Activation blocked: settings/global document is missing.'); return; }
-  if (global.botsEnabled !== true) { console.error(`Activation blocked: settings/global.botsEnabled is ${String(global.botsEnabled)}; expected boolean true.`); return; }
+  const global = await fs.get('settings/overall');
+  if (!global) { console.error('Activation blocked: settings/overall document is missing.'); return; }
+  if (global.botsEnabled !== true) { console.error(`Activation blocked: settings/overall.botsEnabled is ${String(global.botsEnabled)}; expected boolean true.`); return; }
   const runner = await fs.get(`botRunners/${runnerUid}`);
   if (!runner) { console.error('Activation blocked: botRunners registration document is missing for the authenticated runner.'); return; }
   if (runner.enabled !== true) { console.error(`Activation blocked: botRunners/{runnerUid}.enabled is ${String(runner.enabled)}; expected boolean true.`); return; }
