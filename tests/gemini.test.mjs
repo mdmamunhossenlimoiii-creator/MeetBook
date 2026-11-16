@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_GEMINI_MODEL, SMART_BOT_IDS, generateSmartBotText, updateSmartBotMemory } from '../scripts/lib/gemini.mjs';
 
-const bot = (id = 'bot_01') => ({ id });
+const BOT_NAMES = Object.freeze({ bot_01: 'TechTip Nova', bot_02: 'Pixel Pal', bot_03: 'Chef Byte' });
+const bot = (id = 'bot_01') => ({ id, name: BOT_NAMES[id] || id });
 test('only the first three bots are routed to Gemini', () => {
   assert.deepEqual([...SMART_BOT_IDS], ['bot_01', 'bot_02', 'bot_03']);
   assert.equal(DEFAULT_GEMINI_MODEL, 'gemini-3.8-flash');
@@ -35,6 +36,32 @@ test('uses the selected model and keeps the API key in a header', async () => {
   assert.deepEqual(generationConfig, { maxOutputTokens: 220 });
   assert.equal('temperature' in generationConfig, false);
 });
+test('unsafe generated self-identity and credential claims use the safe fallback', async () => {
+  const unsafeOutputs = [
+    'I am a licensed nutritionist.',
+    'As a professional photographer, I recommend this camera.',
+    'I am Taylor Swift.',
+    'I have a degree in medicine.',
+    'I worked at Google.'
+  ];
+  for (const output of unsafeOutputs) {
+    const result = await generateSmartBotText({
+      bot: bot(), kind: 'chat', source: 'hello', fallback: 'safe template', apiKey: 'x',
+      fetchImpl: async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: output }] } }] }) })
+    });
+    assert.equal(result, 'safe template', output);
+  }
+  const ownIdentity = await generateSmartBotText({
+    bot: bot('bot_01'), kind: 'chat', source: 'Who are you?', fallback: 'safe template', apiKey: 'x',
+    fetchImpl: async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'I am TechTip Nova, an AI bot.' }] } }] }) })
+  });
+  assert.equal(ownIdentity, 'I am TechTip Nova, an AI bot.');
+  await assert.rejects(generateSmartBotText({
+    bot: bot(), kind: 'chat', source: 'hello', fallback: 'safe template', apiKey: 'x', strict: true,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ candidates: [{ content: { parts: [{ text: 'I am a doctor.' }] } }] }) })
+  }), /Gemini generation failed/);
+});
+
 test('API errors and malformed responses use fallback without throwing', async () => {
   const args = { bot: bot(), kind: 'post', source: 'topic', fallback: 'safe fallback', apiKey: 'x' };
   assert.equal(await generateSmartBotText({ ...args, fetchImpl: async () => ({ ok: false, status: 429 }) }), 'safe fallback');
