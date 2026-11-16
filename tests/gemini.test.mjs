@@ -41,6 +41,7 @@ test('unsafe generated self-identity and credential claims use the safe fallback
     'I am a licensed nutritionist.',
     'As a professional photographer, I recommend this camera.',
     'I am Taylor Swift.',
+    'I am human.',
     'I have a degree in medicine.',
     'I worked at Google.'
   ];
