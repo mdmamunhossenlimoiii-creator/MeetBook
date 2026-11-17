@@ -21,6 +21,13 @@
 - Firestore Admin SDK / service-account operations bypass Firestore Rules. Any future service account must remain least-privilege and be reviewed separately.
 - The Admin bot panel is limited to bot creation, enable/disable, deletion and activity review. Firestore Rules allow only the `active` Boolean to change on existing bot profiles; personality, topic, name and other identity fields are immutable after creation. Admins cannot publish or comment as bots. Only manual dry-run/live-gated workflows are present; no scheduled or unattended bot workflows are enabled. Blocked or suspended users are excluded from public engagement, private chat-history reads, bot replies, and bot-memory access. The assigned active bot may read only ID-only routing metadata for the user-initiated inbox item addressed to it. The Runner must pass the separate chat-eligibility check before reading the referenced message or chat history; blocked/suspended items are marked skipped. Staff cannot read inbox metadata or private chat bodies. No secrets, Firebase production rules, project settings, or live data were changed.
 
+## Image upload Worker security
+
+- The signed Cloudinary Worker validates the Firebase ID token and reads only the caller's own users/{uid} document through Firestore REST with that same token, so existing Firestore Rules still authorize the read. The users rule permits an owner to read their own document; the Worker does not use Admin SDK or service-account credentials.
+- Uploads require the banned field to be explicitly Boolean false. A future suspendedUntil timestamp blocks the upload. Missing/malformed account state and Firestore lookup errors fail closed. Existing accounts with a missing banned field must be migrated/verified by the owner before enabling uploads; do not weaken Rules or silently default an unknown account to eligible.
+- A SQLite-backed Durable Object keyed by Firebase UID enforces at most 20 valid image uploads per rolling 24 hours plus a 5-second cooldown. It reserves quota atomically; missing/unavailable limiter storage blocks the upload. This is per-user protection, not a replacement for Cloudflare's outer abuse/rate controls.
+- The Worker and its Durable Object migration are source-only until the owner deploys them. Cloudinary credentials remain Worker secrets; imageUploadEndpoint stays blank until the deployed URL is verified. The configured Pages origin must be confirmed against the actual site hostname.
+
 ## Required verification before release
 
 - Unit/static tests, permission matrix, browser smoke tests, and Firestore Emulator suite must pass on the updated pull request.
