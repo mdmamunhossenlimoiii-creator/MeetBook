@@ -287,8 +287,10 @@ test("worker requires a Firebase bearer token", async () => {
 test("browser code never uploads directly to Cloudinary or exposes a video file uploader", async () => {
   const utils = await readFile(new URL("../js/utils.js", import.meta.url), "utf8");
   const reels = await readFile(new URL("../js/reels.js", import.meta.url), "utf8");
+  const wrangler = await readFile(new URL("../cloudflare/image-upload/wrangler.toml", import.meta.url), "utf8");
   assert.match(utils, /auth\.currentUser\.getIdToken\(\)/);
   assert.doesNotMatch(utils, /api\.cloudinary\.com/);
   assert.doesNotMatch(utils, /uploadVideoToCloudinary/);
   assert.doesNotMatch(reels, /uploadVideoToCloudinary|type=["']file["']/i);
+  assert.match(wrangler, /ALLOWED_ORIGIN = "https:\/\/mdmamunhossenlimoiii-creator\.github\.io"/);
 });
