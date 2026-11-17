@@ -22,14 +22,14 @@ async function makeIdentity(uid = "test-user", projectId = "demo-meetbook") {
   const now = Math.floor(Date.now() / 1000);
   const header = b64url(JSON.stringify({ alg: "RS256", kid: "test-kid" }));
   const payload = b64url(JSON.stringify({
-    aud: projectId, iss: \`https://securetoken.google.com/\${projectId}\`,
+    aud: projectId, iss: "https://securetoken.google.com/" + projectId,
     sub: uid, iat: now, exp: now + 3600, auth_time: now
   }));
-  const message = \`\${header}.\${payload}\`;
+  const message = header + "." + payload;
   const signature = await crypto.subtle.sign(
     "RSASSA-PKCS1-v1_5", pair.privateKey, new TextEncoder().encode(message)
   );
-  return { uid, projectId, jwk, token: \`\${message}.\${b64url(signature)}\` };
+  return { uid, projectId, jwk, token: message + "." + b64url(signature) };
 }
 
 function makeFetcher(identity, profile, cloudinaryResult = null) {
@@ -69,7 +69,7 @@ function makeUploadRequest(identity) {
     method: "POST",
     headers: {
       origin: "https://meetbook.example",
-      authorization: \`Bearer \${identity.token}\`
+      authorization: "Bearer " + identity.token
     },
     body: form
   });
@@ -112,8 +112,8 @@ test("account eligibility requires banned=false and accepts an absent suspension
     return new Response(JSON.stringify({ fields: activeProfile() }), { status: 200 });
   };
   assert.equal(await verifyAccountEligibility(identity.uid, identity.token, identity.projectId, fetcher), true);
-  assert.match(seen.url, /documents\\/users\\/test-user$/);
-  assert.equal(seen.options.headers.authorization, \`Bearer \${identity.token}\`);
+  assert.match(seen.url, /documents\/users\/test-user$/);
+  assert.equal(seen.options.headers.authorization, "Bearer " + identity.token);
 });
 
 test("account eligibility accepts an expired suspension", async () => {
@@ -161,7 +161,7 @@ test("worker rejects a banned account before reading the upload body", async () 
   const { fetcher, calls } = makeFetcher(identity, { banned: { booleanValue: true } });
   const request = new Request("https://worker.example/upload", {
     method: "POST",
-    headers: { origin: uploadEnv.ALLOWED_ORIGIN, authorization: \`Bearer \${identity.token}\` }
+    headers: { origin: uploadEnv.ALLOWED_ORIGIN, authorization: "Bearer " + identity.token }
   });
   const response = await handleUpload(request, uploadEnv, uploadEnv.ALLOWED_ORIGIN, fetcher);
   assert.equal(response.status, 403);
@@ -287,8 +287,8 @@ test("worker requires a Firebase bearer token", async () => {
 test("browser code never uploads directly to Cloudinary or exposes a video file uploader", async () => {
   const utils = await readFile(new URL("../js/utils.js", import.meta.url), "utf8");
   const reels = await readFile(new URL("../js/reels.js", import.meta.url), "utf8");
-  assert.match(utils, /auth\\.currentUser\\.getIdToken\\(\\)/);
-  assert.doesNotMatch(utils, /api\\.cloudinary\\.com/);
+  assert.match(utils, /auth\.currentUser\.getIdToken\(\)/);
+  assert.doesNotMatch(utils, /api\.cloudinary\.com/);
   assert.doesNotMatch(utils, /uploadVideoToCloudinary/);
   assert.doesNotMatch(reels, /uploadVideoToCloudinary|type=["']file["']/i);
 });
