@@ -35,7 +35,7 @@ async function verifyFirebaseToken(token, projectId, fetcher = fetch) {
   catch { throw new Error("unauthorized"); }
   const now = Math.floor(Date.now() / 1000);
   if (header.alg !== "RS256" || !header.kid || claims.aud !== projectId ||
-      claims.iss !== \`https://securetoken.google.com/\${projectId}\` ||
+      claims.iss !== "https://securetoken.google.com/" + projectId ||
       typeof claims.sub !== "string" || !claims.sub || claims.sub.length > 128 ||
       !Number.isFinite(claims.exp) || claims.exp <= now ||
       !Number.isFinite(claims.iat) || claims.iat > now + 60 ||
@@ -60,11 +60,12 @@ async function verifyFirebaseToken(token, projectId, fetcher = fetch) {
 
 async function verifyAccountEligibility(uid, token, projectId, fetcher = fetch) {
   if (!uid || !token || !projectId) throw new Error("account_status_unavailable");
-  const documentUrl = \`\${FIRESTORE_DOCUMENTS_BASE}\${encodeURIComponent(projectId)}/databases/(default)/documents/users/\${encodeURIComponent(uid)}\`;
+  const documentUrl = FIRESTORE_DOCUMENTS_BASE + encodeURIComponent(projectId) +
+    "/databases/(default)/documents/users/" + encodeURIComponent(uid);
   let response;
   try {
     response = await fetcher(documentUrl, {
-      headers: { authorization: \`Bearer \${token}\`, accept: "application/json" },
+      headers: { authorization: "Bearer " + token, accept: "application/json" },
       cache: "no-store"
     });
   } catch {
@@ -75,9 +76,9 @@ async function verifyAccountEligibility(uid, token, projectId, fetcher = fetch) 
   let document;
   try { document = await response.json(); }
   catch { throw new Error("account_status_unavailable"); }
-  const fields = document?.fields;
+  const fields = document && document.fields;
   // Missing or malformed account state is not treated as an eligible account.
-  if (!fields || fields.banned?.booleanValue !== false) {
+  if (!fields || !fields.banned || fields.banned.booleanValue !== false) {
     throw new Error("account_not_eligible");
   }
 
@@ -96,7 +97,7 @@ async function sha1Hex(value) {
 }
 
 async function cloudinarySignature(params, apiSecret) {
-  const canonical = Object.keys(params).sort().map((key) => \`\${key}=\${params[key]}\`).join("&");
+  const canonical = Object.keys(params).sort().map((key) => key + "=" + params[key]).join("&");
   return sha1Hex(canonical + apiSecret);
 }
 
@@ -128,7 +129,7 @@ async function handleUpload(request, env, origin, fetcher = fetch) {
     return json({ error: "upload_service_not_configured" }, 503, origin, allowedOrigin);
   }
   const authorization = request.headers.get("authorization") || "";
-  const match = authorization.match(/^Bearer\\s+(.+)$/i);
+  const match = authorization.match(/^Bearer\s+(.+)$/i);
   if (!match) return json({ error: "authentication_required" }, 401, origin, allowedOrigin);
   let uid;
   try { uid = await verifyFirebaseToken(match[1], env.FIREBASE_PROJECT_ID, fetcher); }
@@ -137,7 +138,7 @@ async function handleUpload(request, env, origin, fetcher = fetch) {
   try {
     await verifyAccountEligibility(uid, match[1], env.FIREBASE_PROJECT_ID, fetcher);
   } catch (error) {
-    if (error?.message === "account_not_eligible" || error?.message === "account_suspended") {
+    if (error && (error.message === "account_not_eligible" || error.message === "account_suspended")) {
       return json({ error: "account_not_eligible" }, 403, origin, allowedOrigin);
     }
     return json({ error: "account_status_unavailable" }, 503, origin, allowedOrigin);
@@ -189,7 +190,7 @@ async function handleUpload(request, env, origin, fetcher = fetch) {
   }
 
   const timestamp = Math.floor(Date.now() / 1000);
-  const publicId = \`user_\${uid.slice(0, 24)}_\${crypto.randomUUID().replace(/-/g, "")}\`;
+  const publicId = "user_" + uid.slice(0, 24) + "_" + crypto.randomUUID().replace(/-/g, "");
   const params = {
     allowed_formats: "jpg",
     folder: "MeetBook/images",
@@ -206,7 +207,7 @@ async function handleUpload(request, env, origin, fetcher = fetch) {
 
   let cloudResponse;
   try {
-    cloudResponse = await fetcher(\`\${CLOUDINARY_UPLOAD_BASE}\${encodeURIComponent(env.CLOUDINARY_CLOUD_NAME)}/image/upload\`, {
+    cloudResponse = await fetcher(CLOUDINARY_UPLOAD_BASE + encodeURIComponent(env.CLOUDINARY_CLOUD_NAME) + "/image/upload", {
       method: "POST", body: upload
     });
   } catch {
