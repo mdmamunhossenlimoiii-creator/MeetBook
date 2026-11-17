@@ -4,7 +4,7 @@ This Worker receives authenticated image uploads from MeetBook and signs the Clo
 
 ## Required configuration
 
-The checked-in wrangler.toml sets the MeetBook Firebase project ID, Cloudinary cloud name, and GitHub Pages origin. Confirm all three values before deploying.
+The checked-in wrangler.toml sets the MeetBook Firebase project ID, Cloudinary cloud name, and GitHub Pages origin. The expected origin for this repository site is https://mdmamunhossenlimoiii-creator.github.io (the origin does not include the /MeetBook/ path). Confirm the actual Pages domain before deploying.
 
 Add these two values as Worker secrets (never commit them):
 
