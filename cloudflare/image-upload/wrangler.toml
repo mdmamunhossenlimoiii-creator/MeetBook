@@ -6,3 +6,11 @@ compatibility_date = "2026-11-12"
 FIREBASE_PROJECT_ID = "meetbook-65d30"
 CLOUDINARY_CLOUD_NAME = "cvqfl3b9"
 ALLOWED_ORIGIN = "https://mdmamunhossenlimoiii-creator.github.io"
+
+[[durable_objects.bindings]]
+name = "UPLOAD_LIMITER"
+class_name = "UploadLimiter"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["UploadLimiter"]
