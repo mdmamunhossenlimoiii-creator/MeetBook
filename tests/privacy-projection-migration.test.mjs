@@ -81,21 +81,19 @@ test('bot profile builder fails closed on invalid visibility or malformed role f
   }, fallbackStamp), null);
 });
 
-test('admin migration writes the minimal directory and only creates missing bot profiles', async () => {
+test('admin migration repairs projections without listing privacy-filtered collections', async () => {
   const source = await readFile(new URL('../js/admin/public-profile-migration.js', import.meta.url), 'utf8');
-  assert.match(source, /collection\(db, 'publicDirectory'\)/);
-  assert.match(source, /if \(user\.isBot === true && !existingProfiles\.has\(snapshot\.id\)\)/);
-  assert.match(source, /buildDirectoryProjection\(user\)/);
-  assert.match(source, /buildBotPublicProfile\(user, serverTimestamp\(\)\)/);
+  assert.match(source, /getDocs\(collection\(db, 'users'\)\)/);
+  assert.doesNotMatch(source, /collection\(db, 'publicDirectory'\)|collection\(db, 'publicProfiles'\)/);
+  assert.match(source, /getDoc\(profileRef\)/);
+  assert.match(source, /error\?\.code !== 'permission-denied'/);
+  assert.match(source, /botProfileDeletes\.push\(profileRef\)/);
+  assert.match(source, /batch\.delete\(ref\)/);
+  assert.match(source, /batch\.set\(operation\.ref, operation\.data\)/);
+  assert.match(source, /directoryDeletes/);
+  assert.match(source, /botProfileRepairs/);
   assert.doesNotMatch(source, /collection\(db, 'botEngagement'\)/);
   assert.match(source, /index \+= 400/);
-});
-
-
-test('legacy directory projections with unexpected fields are replaced, not treated as unchanged', async () => {
-  const source = await readFile(new URL('../js/admin/public-profile-migration.js', import.meta.url), 'utf8');
-  assert.match(source, /Object\.keys\(current\)\.length === DIRECTORY_FIELDS\.length/);
-  assert.match(source, /batch\.set\(operation\.ref, operation\.data\);/);
 });
 
 test('sign-in and owner profile writes replace exact allowlisted projections', async () => {
