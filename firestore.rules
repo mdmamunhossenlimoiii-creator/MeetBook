@@ -102,6 +102,14 @@ service cloud.firestore {
       let bot = get(/databases/$(database)/documents/users/$(botUid)).data;
       return runnerMayActAs(botUid) && bot.get('chatEnabled', false) == true;
     }
+    // Malformed or missing account-status fields must never be interpreted as eligible.
+    function accountStatusOk(user) {
+      let banned = user.get('banned', null);
+      let suspendedUntil = user.get('suspendedUntil', null);
+      return banned is bool
+        && banned == false
+        && (suspendedUntil == null || (suspendedUntil is timestamp && suspendedUntil < request.time));
+    }
     // A bot must not read, reply to, or retain memory about a banned or suspended human.
     // Missing user records fail closed. This is separate from the user's opt-in to public engagement.
     function eligibleHumanForBotInteraction(uid) {
@@ -109,9 +117,8 @@ service cloud.firestore {
       let userExists = exists(userPath);
       let user = userExists ? get(userPath).data : {};
       return userExists
-        && user.get('isBot', false) != true
-        && user.get('banned', false) != true
-        && (user.get('suspendedUntil', null) == null || user.get('suspendedUntil', null) < request.time);
+        && user.get('isBot', false) == false
+        && accountStatusOk(user);
     }
     function runnerMayReadChat(chat) {
       let runner = get(/databases/$(database)/documents/botRunners/$(request.auth.uid)).data;
@@ -162,13 +169,15 @@ service cloud.firestore {
         && request.resource.data.reactions[botUid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry'];
     }
 
-    // Not blocked and not under a temporary suspension.
+    // Normal writes require an existing account with explicit, well-typed status fields.
     function notBanned() {
-      let u = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+      let userPath = /databases/$(database)/documents/users/$(request.auth.uid);
+      let userExists = exists(userPath);
+      let user = userExists ? get(userPath).data : {};
       return signedIn()
         && !isBotRunner()
-        && u.banned != true
-        && (u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time);
+        && userExists
+        && accountStatusOk(user);
     }
 
     function pairId(a, b) {
