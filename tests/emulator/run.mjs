@@ -134,7 +134,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'settings/overall': { botsEnabled: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
-    'users/u2': { isBot: false },
+    'users/u2': { isBot: false, banned: false },
     'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] }
   }, async (isolated) => {
     const db = isolated.authenticatedContext('run').firestore();
@@ -173,7 +173,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'settings/overall': { botsEnabled: true, botToBotComments: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
-    'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
+    'users/u2': { isBot: false, banned: false, settings: { allowBotEngagement: true } },
     'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
   }, async (isolated) => {
     const db = isolated.authenticatedContext('run').firestore();
