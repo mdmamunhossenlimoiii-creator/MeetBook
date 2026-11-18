@@ -170,10 +170,10 @@ cap('Users', 'Read friend-only profile metadata (owner, friend and staff)', 'get
 cap('Users', 'Read another friend-only profile without friendship', 'get', 'publicProfiles/u3', null, ['moderator', 'admin', 'super']);
 cap('Users', 'Read minimal public directory entry', 'get', 'publicDirectory/u3', null, SIGNED);
 cap('Users', 'Malformed directory projection is unreadable until repaired', 'get', 'publicDirectory/udir', null, []);
-cap('Users', 'Admin can replace malformed directory projection without reading it', 'update', 'publicDirectory/udir', { name: 'Legacy Directory', nameLower: 'legacy directory', isBot: false, roleEmoji: '', verified: false }, ADM);
+cap('Users', 'Admin can delete malformed directory projection for repair', 'delete', 'publicDirectory/udir', null, ADM);
 cap('Users', 'Malformed bot profile projection is unreadable even to staff', 'get', 'publicProfiles/bot_02', null, []);
 cap('Users', 'Admin can delete malformed bot profile projection for repair', 'delete', 'publicProfiles/bot_02', null, ADM);
-cap('Users', 'Admin can recreate malformed bot profile from canonical bot fields', 'create', 'publicProfiles/bot_02', { name: 'Pixel Pal', nameLower: 'pixel pal', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '📸', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, ADM);
+cap('Users', 'Admin can create a missing bot profile from canonical bot fields', 'create', 'publicProfiles/bot_03', { name: 'Chef Byte', nameLower: 'chef byte', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '🍳', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, ADM);
 cap('Users', 'Owner or Admin may backfill a minimal directory entry matching the user', 'create', 'publicDirectory/u4', { name: 'User Four', nameLower: 'user four', isBot: false, roleEmoji: '', verified: false }, ['third', ...ADM]);
 cap('Users', 'Admin cannot backfill full profile metadata for another human user', 'create', 'publicProfiles/u4', { name: 'User Four', nameLower: 'user four', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, ['third']);
 cap('Users', 'Cannot loosen profile visibility through projection alone', 'update', 'publicProfiles/u3', { profileVisibility: 'everyone' }, []);
