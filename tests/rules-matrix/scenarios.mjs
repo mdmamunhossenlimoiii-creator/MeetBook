@@ -14,6 +14,9 @@ export const ACTORS = {
   third: { uid: 'u4', label: 'Unrelated normal user (u4)' },
   banned: { uid: 'ub', label: 'Blocked user' },
   suspended: { uid: 'us', label: 'Suspended user' },
+  malformedBan: { uid: 'ubad', label: 'Malformed banned flag' },
+  missingBan: { uid: 'umissing', label: 'Missing banned flag' },
+  malformedSuspension: { uid: 'usbad', label: 'Malformed suspension timestamp' },
   fresh: { uid: 'u_new', label: 'New user without profile yet' },
   moderator: { uid: 'mod', label: 'Moderator' },
   admin: { uid: 'adm', label: 'Admin' },
@@ -43,26 +46,38 @@ export const SEED = {
   'users/u2': user({ name: 'User Two', nameLower: 'user two', active: true, chatEnabled: true, settings: { allowBotEngagement: true, allowBotMemory: true, allowMessages: 'friends', profileVisibility: 'friends' } }),
   'users/u3': user({ name: 'User Three', nameLower: 'user three', settings: { allowMessages: 'friends', profileVisibility: 'friends', allowBotMemory: false } }),
   'users/u4': user({ name: 'User Four', nameLower: 'user four' }),
+  'users/udir': user({ name: 'Legacy Directory', nameLower: 'legacy directory' }),
   'publicProfiles/u1': { name: 'User One', nameLower: 'user one', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
   'publicProfiles/u2': { name: 'User Two', nameLower: 'user two', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'friends', createdAt: T(-1000) },
   'publicProfiles/u3': { name: 'User Three', nameLower: 'user three', bio: 'Private bio', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'friends', createdAt: T(-1000) },
-  'publicProfiles/bot_01': { name: 'TechTip Nova', nameLower: 'techtip nova', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '🤖', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/bot_01': { name: 'TechTip Nova', nameLower: 'techtip nova', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '💻', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/bot_02': { name: 'Pixel Pal', nameLower: 'pixel pal', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '📸', verified: false, profileVisibility: 'everyone', createdAt: T(-1000), legacyPrivateField: 'must be removed' },
   'publicDirectory/u1': { name: 'User One', nameLower: 'user one', isBot: false, roleEmoji: '', verified: false },
   'publicDirectory/u2': { name: 'User Two', nameLower: 'user two', isBot: false, roleEmoji: '', verified: false },
   'publicDirectory/u3': { name: 'User Three', nameLower: 'user three', isBot: false, roleEmoji: '', verified: false },
+  'publicDirectory/udir': { name: 'Legacy Directory', nameLower: 'legacy directory', isBot: false, roleEmoji: '', verified: false, legacyPrivateField: 'must be removed' },
   'botEngagement/u1': { allowBotEngagement: false, allowBotMemory: false, updatedAt: T(-1000) },
   'botEngagement/u2': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
   'botEngagement/u3': { allowBotEngagement: false, allowBotMemory: false, updatedAt: T(-1000) },
   'botEngagement/ub': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
   'botEngagement/us': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
+  'botEngagement/ubad': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
+  'botEngagement/umissing': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
+  'botEngagement/usbad': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
   'botMemories/bot_01_u1': { ownerUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', summary: 'Private test memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_01_u2': { ownerUid: 'u2', botId: 'bot_01', chatId: 'bot_01_u2', summary: 'Likes photography', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_01_ub': { ownerUid: 'ub', botId: 'bot_01', chatId: 'bot_01_ub', summary: 'Blocked-user memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_01_us': { ownerUid: 'us', botId: 'bot_01', chatId: 'bot_01_us', summary: 'Suspended-user memory', createdAt: T(-1000), updatedAt: T(-1000) },
+  'botMemories/bot_01_ubad': { ownerUid: 'ubad', botId: 'bot_01', chatId: 'bot_01_ubad', summary: 'Malformed-ban memory', createdAt: T(-1000), updatedAt: T(-1000) },
+  'botMemories/bot_01_umissing': { ownerUid: 'umissing', botId: 'bot_01', chatId: 'bot_01_umissing', summary: 'Missing-ban memory', createdAt: T(-1000), updatedAt: T(-1000) },
+  'botMemories/bot_01_usbad': { ownerUid: 'usbad', botId: 'bot_01', chatId: 'bot_01_usbad', summary: 'Malformed-suspension memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'botMemories/bot_09_u2': { ownerUid: 'u2', botId: 'bot_09', chatId: 'bot_09_u2', summary: 'Private memory', createdAt: T(-1000), updatedAt: T(-1000) },
   'friendships/u1_u2': { members: ['u1', 'u2'] },
   'users/ub': user({ name: 'Blocked User', banned: true, settings: { allowBotEngagement: true, allowBotMemory: true } }),
   'users/us': user({ name: 'Suspended User', suspendedUntil: T(3600e3), settings: { allowBotEngagement: true, allowBotMemory: true } }),
+  'users/ubad': user({ name: 'Malformed Ban', banned: 'false', settings: { allowBotEngagement: true, allowBotMemory: true } }),
+  'users/umissing': { name: 'Missing Ban', nameLower: 'missing ban', bio: '', photo: '', cover: '', settings: { allowBotEngagement: true, allowBotMemory: true } },
+  'users/usbad': user({ name: 'Malformed Suspension', suspendedUntil: 0, settings: { allowBotEngagement: true, allowBotMemory: true } }),
   'users/mod': user({ name: 'Mod Person' }), 'users/adm': user({ name: 'Admin Person' }), 'users/adm2': user({ name: 'Second Admin' }),
   'users/sup': user({ name: 'Super Person' }), 'users/leg': user({ name: 'Legacy Admin' }), 'users/bad': user({ name: 'Badrole Admin' }),
   'users/bot_01': user({ name: 'TechTip Nova', isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, bio: 'I am an AI bot.' }),
@@ -100,6 +115,9 @@ export const SEED = {
   'posts/p2/comments/bot_01': { uid: 'bot_01', ai: true, text: 'existing bot comment' },
   'posts/pblocked': post('ub'),
   'posts/psuspended': post('us'),
+  'posts/pbadban': post('ubad'),
+  'posts/pmissingban': post('umissing'),
+  'posts/pbadsuspension': post('usbad'),
   'posts/pb': post('bot_01'),
   'posts/pf': post('u1', { visibility: 'friends', audience: ['u1'] }),
   'posts/pn': post('u2', { commentsDisabled: true }),
@@ -114,8 +132,14 @@ export const SEED = {
   'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] },
   'chats/bot_01_ub': { type: 'private', members: ['bot_01', 'ub'] },
   'chats/bot_01_us': { type: 'private', members: ['bot_01', 'us'] },
+  'chats/bot_01_ubad': { type: 'private', members: ['bot_01', 'ubad'] },
+  'chats/bot_01_umissing': { type: 'private', members: ['bot_01', 'umissing'] },
+  'chats/bot_01_usbad': { type: 'private', members: ['bot_01', 'usbad'] },
   'chats/bot_01_ub/messages/m1': { uid: 'ub', text: 'blocked private message' },
   'chats/bot_01_us/messages/m1': { uid: 'us', text: 'suspended private message' },
+  'chats/bot_01_ubad/messages/m1': { uid: 'ubad', text: 'malformed banned flag private message' },
+  'chats/bot_01_umissing/messages/m1': { uid: 'umissing', text: 'missing banned flag private message' },
+  'chats/bot_01_usbad/messages/m1': { uid: 'usbad', text: 'malformed suspension private message' },
   'chats/bot_09_u1': { type: 'private', members: ['bot_09', 'u1'] },
   'chats/bot_09_u2': { type: 'private', members: ['bot_09', 'u2'] },
   'chats/bot_09_u1/messages/m1': { uid: 'u1', text: 'hello' },
@@ -145,6 +169,11 @@ cap('Users', 'Read a bot user document', 'get', 'users/bot_01', null, SIGNED);
 cap('Users', 'Read friend-only profile metadata (owner, friend and staff)', 'get', 'publicProfiles/u2', null, ['user', 'other', 'moderator', 'admin', 'super']);
 cap('Users', 'Read another friend-only profile without friendship', 'get', 'publicProfiles/u3', null, ['moderator', 'admin', 'super']);
 cap('Users', 'Read minimal public directory entry', 'get', 'publicDirectory/u3', null, SIGNED);
+cap('Users', 'Malformed directory projection is unreadable until repaired', 'get', 'publicDirectory/udir', null, []);
+cap('Users', 'Admin can replace malformed directory projection without reading it', 'update', 'publicDirectory/udir', { name: 'Legacy Directory', nameLower: 'legacy directory', isBot: false, roleEmoji: '', verified: false }, ADM);
+cap('Users', 'Malformed bot profile projection is unreadable even to staff', 'get', 'publicProfiles/bot_02', null, []);
+cap('Users', 'Admin can delete malformed bot profile projection for repair', 'delete', 'publicProfiles/bot_02', null, ADM);
+cap('Users', 'Admin can recreate malformed bot profile from canonical bot fields', 'create', 'publicProfiles/bot_02', { name: 'Pixel Pal', nameLower: 'pixel pal', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '📸', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, ADM);
 cap('Users', 'Owner or Admin may backfill a minimal directory entry matching the user', 'create', 'publicDirectory/u4', { name: 'User Four', nameLower: 'user four', isBot: false, roleEmoji: '', verified: false }, ['third', ...ADM]);
 cap('Users', 'Admin cannot backfill full profile metadata for another human user', 'create', 'publicProfiles/u4', { name: 'User Four', nameLower: 'user four', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, ['third']);
 cap('Users', 'Cannot loosen profile visibility through projection alone', 'update', 'publicProfiles/u3', { profileVisibility: 'everyone' }, []);
@@ -157,6 +186,9 @@ cap('Bot memory', 'Suspended user can read own memory but Runner cannot', 'get',
 cap('Bot memory', 'Read another user bot memory only with owner consent and assigned runner', 'get', 'botMemories/bot_01_u2', null, ['other', 'runner']);
 cap('Bot memory', 'Create memory only for opted-in owner and assigned bot', 'create', 'botMemories/bot_03_u2', { ownerUid: 'u2', botId: 'bot_03', chatId: 'bot_03_u2', summary: 'Likes cooking', createdAt: { $srv: 1 }, updatedAt: { $srv: 1 } }, ['runner']);
 cap('Bot memory', 'Update memory only for opted-in owner and assigned bot', 'update', 'botMemories/bot_01_u2', { summary: 'Likes street photography', updatedAt: { $srv: 1 } }, ['runner']);
+cap('Bot memory', 'Malformed banned flag blocks Runner memory access', 'get', 'botMemories/bot_01_ubad', null, ['malformedBan']);
+cap('Bot memory', 'Missing banned flag blocks Runner memory access', 'get', 'botMemories/bot_01_umissing', null, ['missingBan']);
+cap('Bot memory', 'Malformed suspension timestamp blocks Runner memory access', 'get', 'botMemories/bot_01_usbad', null, ['malformedSuspension']);
 cap('Bot memory', 'Runner cannot read bot memory when chat is OFF', 'get', 'botMemories/bot_09_u2', null, ['other']);
 cap('Bot memory', 'Owner may delete own memory', 'delete', 'botMemories/bot_01_u2', null, ['other']);
 cap('Bot memory', 'Other users cannot delete someone else memory', 'delete', 'botMemories/bot_01_u2', null, ['other']);
@@ -276,6 +308,10 @@ cap('Comments', 'Delete a comment (author u2, post owner u1)', 'delete', 'posts/
 
 // ---------------------------------------------------------------- AI bots and consent
 const botComment = { uid: 'bot_01', authorName: 'TechTip Nova', text: 'Nice one.', ai: true, createdAt: { $srv: 1 } };
+cap('AI bots', 'Malformed account status cannot create normal posts', 'create', 'posts/new', (a) => newPost(a.uid), N);
+cap('AI bots', 'Bot comment on malformed banned flag is denied', 'create', 'posts/pbadban/comments/new', botComment, []);
+cap('AI bots', 'Bot comment on missing banned flag is denied', 'create', 'posts/pmissingban/comments/new', botComment, []);
+cap('AI bots', 'Bot comment on malformed suspension timestamp is denied', 'create', 'posts/pbadsuspension/comments/new', botComment, []);
 cap('AI bots', 'Bot comment on a post of a user who ALLOWED it (u2)', 'create', 'posts/p2/comments/new', botComment, ['runner']);
 cap('AI bots', 'Bot with autoComment OFF cannot comment', 'create', 'posts/p2/comments/new', { ...botComment, uid: 'bot_07' }, []);
 cap('AI bots', 'Runner cannot comment as an unassigned bot', 'create', 'posts/p2/comments/new', { ...botComment, uid: 'bot_02' }, []);
@@ -293,6 +329,9 @@ cap('AI bots', 'Runner cannot react as an unassigned bot', 'update', 'posts/p2',
 cap('AI bots', 'Bot reaction on a post of a user who did NOT allow it', 'update', 'posts/p1', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
 cap('AI bots', 'Bot reaction on a blocked user public post is denied', 'update', 'posts/pblocked', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
 cap('AI bots', 'Bot reaction on a suspended user public post is denied', 'update', 'posts/psuspended', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
+cap('AI bots', 'Bot reaction on malformed banned flag is denied', 'update', 'posts/pbadban', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
+cap('AI bots', 'Bot reaction on missing banned flag is denied', 'update', 'posts/pmissingban', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
+cap('AI bots', 'Bot reaction on malformed suspension timestamp is denied', 'update', 'posts/pbadsuspension', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, []);
 cap('AI bots', 'Bot reaction on a friends-only post', 'update', 'posts/pf', { 'reactions.bot_01': 'love' }, []);
 cap('AI bots', 'Bot reaction on a bot\'s post', 'update', 'posts/pb', { 'reactions.bot_01': 'love', lastBotReactionBy: 'bot_01' }, ['runner']);
 cap('AI bots', 'Runner writes a reaction under a human\'s key (u2)', 'update', 'posts/p2', { 'reactions.u2': 'wow' }, ['other']);
@@ -345,6 +384,9 @@ cap('AI bots', 'Register a new bot runner', 'create', 'botRunners/u1', { enabled
 cap('Chats', 'Open a chat between u1 and a bot', 'get', 'chats/c_bot', null, ['user', 'runner']);
 cap('Chats', 'Blocked user can read own bot chat but Runner cannot', 'get', 'chats/bot_01_ub', null, ['banned']);
 cap('Chats', 'Suspended user can read own bot chat but Runner cannot', 'get', 'chats/bot_01_us', null, ['suspended']);
+cap('Chats', 'Malformed banned flag blocks Runner chat access', 'get', 'chats/bot_01_ubad', null, ['malformedBan']);
+cap('Chats', 'Missing banned flag blocks Runner chat access', 'get', 'chats/bot_01_umissing', null, ['missingBan']);
+cap('Chats', 'Malformed suspension timestamp blocks Runner chat access', 'get', 'chats/bot_01_usbad', null, ['malformedSuspension']);
 cap('Chats', 'Open a chat between two people', 'get', 'chats/c_uu', null, ['user', 'other']);
 cap('Chats', 'Read messages of the bot chat', 'get', 'chats/c_bot/messages/m1', null, ['user', 'runner']);
 cap('Chats', 'Blocked user can read own messages but Runner cannot read history', 'get', 'chats/bot_01_ub/messages/m1', null, ['banned']);
