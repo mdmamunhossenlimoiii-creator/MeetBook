@@ -132,8 +132,11 @@ test('AI bots: only assigned Runner can act as bots, and only with the owner\'s 
   assert.match(block('botGeminiRateLimits'), /d\.count <= 60/);
   assert.match(block('botGlobalRateLimits'), /resource\.data\.count < 60/);
   assert.match(block('botGeminiRateLimits'), /resource\.data\.count < 60/);
-  assert.match(fn('eligibleHumanForBotInteraction'), /banned/);
-  assert.match(fn('eligibleHumanForBotInteraction'), /suspendedUntil/);
+  assert.match(fn('eligibleHumanForBotInteraction'), /accountStatusOk\(user\)/);
+  assert.match(fn('accountStatusOk'), /banned/);
+  assert.match(fn('accountStatusOk'), /is bool/);
+  assert.match(fn('accountStatusOk'), /suspendedUntil/);
+  assert.match(fn('accountStatusOk'), /is timestamp/);
   assert.match(fn('engagementOk'), /isBotUser\(ownerUid\)/);
   assert.match(fn('engagementOk'), /eligibleHumanForBotInteraction\(ownerUid\)/, 'blocked or suspended users cannot receive bot engagement');
   assert.match(fn('engagementOk'), /allowBotEngagement', false\) == true/, 'consent defaults to OFF');
@@ -187,8 +190,9 @@ test('comments can be switched off by staff and are enforced for everybody', () 
 
 test('suspension is enforced on every write through notBanned()', () => {
   assert.match(fn('notBanned'), /!isBotRunner\(\)/);
-  assert.match(fn('notBanned'), /suspendedUntil/);
-  assert.match(fn('notBanned'), /request\.time/);
+  assert.match(fn('notBanned'), /accountStatusOk\(user\)/);
+  assert.match(fn('accountStatusOk'), /suspendedUntil/);
+  assert.match(fn('accountStatusOk'), /request\.time/);
 });
 
 test('no approve / reject post system exists in rules', () => {
