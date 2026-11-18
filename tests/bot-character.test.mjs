@@ -3,6 +3,11 @@ import assert from 'node:assert/strict';
 import { BOTS, ROLE_EMOJIS } from '../js/bots-data.js';
 import { PERSONALITIES, chatReply, makeComment, nextPostText, relevance } from '../js/bots-brain.js';
 
+const EXPECTED_ROLE_EMOJIS = [
+  '💻', '📸', '👩‍🍳', '✨', '🔬', '✈️', '🏃', '📚', '🎵', '🎬', '👨‍💻', '🪴',
+  '📝', '📖', '🌿', '📱', '🔭', '🌳', '🧠', '😂', '📰', '🎮', '🏏'
+];
+
 const samples = {
   tech: 'phone app technology coding',
   photo: 'photo camera picture',
@@ -22,7 +27,8 @@ const samples = {
 };
 
 test('every built-in bot has a unique character marker and a known personality', () => {
-  assert.ok(BOTS.length > 0);
+  assert.equal(BOTS.length, 23, 'all built-in characters must be present');
+  assert.deepEqual(BOTS.map((bot) => bot.roleEmoji), EXPECTED_ROLE_EMOJIS, 'each character keeps its role-appropriate marker');
   assert.equal(new Set(BOTS.map((bot) => bot.id)).size, BOTS.length);
   assert.equal(new Set(BOTS.map((bot) => bot.roleEmoji)).size, BOTS.length);
   for (const bot of BOTS) {
