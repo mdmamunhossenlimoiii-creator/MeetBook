@@ -85,8 +85,11 @@ test('admin migration repairs projections without listing privacy-filtered colle
   const source = await readFile(new URL('../js/admin/public-profile-migration.js', import.meta.url), 'utf8');
   assert.match(source, /getDocs\(collection\(db, 'users'\)\)/);
   assert.doesNotMatch(source, /collection\(db, 'publicDirectory'\)|collection\(db, 'publicProfiles'\)/);
+  assert.match(source, /getDoc\(directoryRef\)/);
   assert.match(source, /getDoc\(profileRef\)/);
-  assert.match(source, /error\?\.code !== 'permission-denied'/);
+  assert.match(source, /directoryDeleteRefs\.push\(directoryRef\)/);
+  assert.match(source, /directoryRepairs/);
+  assert.match(source, /error\?\.code === 'permission-denied'/);
   assert.match(source, /botProfileDeletes\.push\(profileRef\)/);
   assert.match(source, /batch\.delete\(ref\)/);
   assert.match(source, /batch\.set\(operation\.ref, operation\.data\)/);
