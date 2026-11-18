@@ -46,13 +46,16 @@ export const SEED = {
   'users/u2': user({ name: 'User Two', nameLower: 'user two', active: true, chatEnabled: true, settings: { allowBotEngagement: true, allowBotMemory: true, allowMessages: 'friends', profileVisibility: 'friends' } }),
   'users/u3': user({ name: 'User Three', nameLower: 'user three', settings: { allowMessages: 'friends', profileVisibility: 'friends', allowBotMemory: false } }),
   'users/u4': user({ name: 'User Four', nameLower: 'user four' }),
+  'users/udir': user({ name: 'Legacy Directory', nameLower: 'legacy directory' }),
   'publicProfiles/u1': { name: 'User One', nameLower: 'user one', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
   'publicProfiles/u2': { name: 'User Two', nameLower: 'user two', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'friends', createdAt: T(-1000) },
   'publicProfiles/u3': { name: 'User Three', nameLower: 'user three', bio: 'Private bio', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'friends', createdAt: T(-1000) },
-  'publicProfiles/bot_01': { name: 'TechTip Nova', nameLower: 'techtip nova', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '🤖', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/bot_01': { name: 'TechTip Nova', nameLower: 'techtip nova', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '💻', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) },
+  'publicProfiles/bot_02': { name: 'Pixel Pal', nameLower: 'pixel pal', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '📸', verified: false, profileVisibility: 'everyone', createdAt: T(-1000), legacyPrivateField: 'must be removed' },
   'publicDirectory/u1': { name: 'User One', nameLower: 'user one', isBot: false, roleEmoji: '', verified: false },
   'publicDirectory/u2': { name: 'User Two', nameLower: 'user two', isBot: false, roleEmoji: '', verified: false },
   'publicDirectory/u3': { name: 'User Three', nameLower: 'user three', isBot: false, roleEmoji: '', verified: false },
+  'publicDirectory/udir': { name: 'Legacy Directory', nameLower: 'legacy directory', isBot: false, roleEmoji: '', verified: false, legacyPrivateField: 'must be removed' },
   'botEngagement/u1': { allowBotEngagement: false, allowBotMemory: false, updatedAt: T(-1000) },
   'botEngagement/u2': { allowBotEngagement: true, allowBotMemory: true, updatedAt: T(-1000) },
   'botEngagement/u3': { allowBotEngagement: false, allowBotMemory: false, updatedAt: T(-1000) },
@@ -166,6 +169,11 @@ cap('Users', 'Read a bot user document', 'get', 'users/bot_01', null, SIGNED);
 cap('Users', 'Read friend-only profile metadata (owner, friend and staff)', 'get', 'publicProfiles/u2', null, ['user', 'other', 'moderator', 'admin', 'super']);
 cap('Users', 'Read another friend-only profile without friendship', 'get', 'publicProfiles/u3', null, ['moderator', 'admin', 'super']);
 cap('Users', 'Read minimal public directory entry', 'get', 'publicDirectory/u3', null, SIGNED);
+cap('Users', 'Malformed directory projection is unreadable until repaired', 'get', 'publicDirectory/udir', null, []);
+cap('Users', 'Admin can replace malformed directory projection without reading it', 'update', 'publicDirectory/udir', { name: 'Legacy Directory', nameLower: 'legacy directory', isBot: false, roleEmoji: '', verified: false }, ADM);
+cap('Users', 'Malformed bot profile projection is unreadable even to staff', 'get', 'publicProfiles/bot_02', null, []);
+cap('Users', 'Admin can delete malformed bot profile projection for repair', 'delete', 'publicProfiles/bot_02', null, ADM);
+cap('Users', 'Admin can recreate malformed bot profile from canonical bot fields', 'create', 'publicProfiles/bot_02', { name: 'Pixel Pal', nameLower: 'pixel pal', bio: 'I am an AI bot.', photo: '', cover: '', isBot: true, roleEmoji: '📸', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, ADM);
 cap('Users', 'Owner or Admin may backfill a minimal directory entry matching the user', 'create', 'publicDirectory/u4', { name: 'User Four', nameLower: 'user four', isBot: false, roleEmoji: '', verified: false }, ['third', ...ADM]);
 cap('Users', 'Admin cannot backfill full profile metadata for another human user', 'create', 'publicProfiles/u4', { name: 'User Four', nameLower: 'user four', bio: '', photo: '', cover: '', isBot: false, roleEmoji: '', verified: false, profileVisibility: 'everyone', createdAt: T(-1000) }, ['third']);
 cap('Users', 'Cannot loosen profile visibility through projection alone', 'update', 'publicProfiles/u3', { profileVisibility: 'everyone' }, []);
