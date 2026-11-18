@@ -102,7 +102,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'settings/overall': { botsEnabled: true },
     'botRunners/emptyRunner': { enabled: true, botIds: [] },
     'botRunners/normalAsBot': { enabled: true, botIds: ['u2'] },
-    'users/u2': { isBot: false },
+    'users/u2': { isBot: false, banned: false },
     'chats/u1_u2': { type: 'private', members: ['u1', 'u2'] }
   }, async (isolated) => {
     await denied(getDoc(doc(isolated.authenticatedContext('emptyRunner').firestore(), 'botState/emptyRunner')),
@@ -115,7 +115,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'settings/overall': { botsEnabled: true },
     'botRunners/inactiveRunner': { enabled: true, botIds: ['bot_02'] },
     'users/bot_02': { isBot: true, active: false },
-    'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
+    'users/u2': { isBot: false, banned: false, settings: { allowBotEngagement: true } },
     'chats/bot_02_u2': { type: 'private', members: ['bot_02', 'u2'] },
     'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
   }, async (isolated) => {
@@ -155,7 +155,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'settings/overall': { botsEnabled: true },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, chatEnabled: true },
-    'users/u1': { isBot: false },
+    'users/u1': { isBot: false, banned: false },
     'botEngagement/u1': { allowBotEngagement: true, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) },
     'botEngagement/u2': { allowBotEngagement: false, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) }
   }, async (isolated) => {
