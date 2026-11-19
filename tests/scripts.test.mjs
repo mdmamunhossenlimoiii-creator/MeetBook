@@ -94,6 +94,37 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
   } finally { await m.close(); }
 });
 
+
+test('dry-run does not read persisted bot memory even when the user opted in', { skip: !botRunnerConfigured }, async () => {
+  const memoryId = 'bot_01_u1';
+  const m = await startMock({ seed: {
+    ...seedBots(),
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
+    'users/u1': { name: 'User One', banned: false, settings: { allowBotMemory: true } },
+    'botEngagement/u1': { allowBotEngagement: false, allowBotMemory: true },
+    'chats/bot_01_u1': { type: 'private', members: ['bot_01', 'u1'] },
+    'chats/bot_01_u1/messages/user-msg': { uid: 'u1', text: 'What can you help me learn?', image: '', createdAt: now },
+    'botInbox/dry-memory': { botId: 'bot_01', fromUid: 'u1', chatId: 'bot_01_u1', messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now },
+    ['botMemories/' + memoryId]: { ownerUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', summary: 'Prefers beginner technology tips.' }
+  } });
+  const env = {
+    BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret',
+    BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId,
+    AUTH_URL: m.url, FS_URL: m.url, BOT_RUNNER_MODE: 'chat',
+    BOT_RUNNER_BOT_ID: 'bot_01', BOT_POSTS: '0', BOT_COMMENTS: '0',
+    DRY_RUN: '1', GEMINI_API_KEY: 'mock-key', GEMINI_STRICT: '1'
+  };
+  try {
+    const result = await run('scripts/bot-runner.mjs', env);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.doesNotMatch(m.calls.join('\n'), /\/documents\/botMemories(?:\/|$)/,
+      'dry-run must not read or write persistent memory documents');
+    assert.equal(m.get('botMemories/' + memoryId).summary, 'Prefers beginner technology tips.');
+    assert.equal(m.get('botInbox/dry-memory').handled, false, 'dry-run leaves the inbox unchanged');
+    assert.match(result.stdout, /private text and Gemini calls suppressed/);
+  } finally { await m.close(); }
+});
+
 test('bot runner: global OFF, per-bot OFF and daily limit stop everything', { skip: !botRunnerConfigured }, async () => {
   for (const [name, seed] of [
     ['global document missing', { ...seedBots() }],
