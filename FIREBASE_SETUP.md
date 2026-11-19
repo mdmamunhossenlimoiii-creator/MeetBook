@@ -21,7 +21,7 @@ The current `projectId` must remain meetbook-65d30 unless an owner-approved migr
 
 ## 3. Firestore rules and indexes
 
-The repository contains `firestore.rules` and `firestore.indexes.json`. Review them before applying them. Confirm the Firebase Console project selector shows the new MeetBook project before publishing. The owner performs this operation.
+The repository contains `firestore.rules` and `firestore.indexes.json`. Review them before applying them. Confirm the Firebase Console project selector shows the existing MeetBook project meetbook-65d30 before publishing. The owner performs this operation.
 
 The local emulator configuration in `firebase.json` is for development/testing and uses the `demo-meetbook` project ID in the test workflow.
 
