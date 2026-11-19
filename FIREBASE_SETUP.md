@@ -2,22 +2,22 @@
 
 All Firebase Console work belongs to the repository owner. The Coding Agent must not log in to Firebase, create projects, change live settings, or deploy rules.
 
-## 1. Create a new project
+## 1. Confirm the dedicated MeetBook project
 
-1. Open Firebase Console and create a completely new project for MeetBook.
-2. Do not select, import, or reuse the MySocial project.
-3. Register a new Web App in the MeetBook project.
-4. Enable Email/Password and optionally Google sign-in.
-5. Create a Cloud Firestore database in Production mode.
+1. Open Firebase Console and select the existing dedicated MeetBook project meetbook-65d30.
+2. Do not select, import, or reuse the MySocial project mysocial-33681.
+3. Confirm the MeetBook Web App is registered; if it is missing, register it inside this same project.
+4. Confirm Email/Password and optionally Google sign-in are enabled.
+5. Confirm the project's Cloud Firestore database exists in Production mode; do not create a duplicate database.
 6. Configure any optional services only inside this MeetBook project.
 
 ## 2. Configure the frontend
 
-Open `js/firebase-config.js` and replace the empty strings in `firebaseConfig` with the values from the new MeetBook Web App.
+Verify that `js/firebase-config.js` matches the existing MeetBook Web App. Its current public configuration already points to meetbook-65d30; do not replace it or switch projects unless the owner explicitly approves a project migration.
 
 Required values: `apiKey`, `authDomain`, `projectId`, `storageBucket` (if used), `messagingSenderId`, and `appId`.
 
-The `projectId` must be the new MeetBook project ID. Do not use `mysocial-33681`. The web config is public client configuration; never put a service-account private key in this file.
+The current `projectId` must remain meetbook-65d30 unless an owner-approved migration changes it. Never use mysocial-33681. The web config is public client configuration; never put a service-account private key in this file.
 
 ## 3. Firestore rules and indexes
 
@@ -51,7 +51,7 @@ Use a least-privilege service account. Never commit its JSON key or paste it int
 
 ## 7. Verification checklist
 
-- [ ] Firebase Console project ID is the new MeetBook ID.
+- [ ] Firebase Console project ID is meetbook-65d30 and matches the existing frontend config.
 - [ ] `js/firebase-config.js` contains that project's web app values.
 - [ ] The project ID is not `mysocial-33681`.
 - [ ] Authentication providers are enabled in the MeetBook project.
@@ -75,6 +75,7 @@ MeetBook image uploads use Cloudinary through a separate authenticated Cloudflar
 6. Before enabling uploads, verify existing users/{uid} documents have banned explicitly set to Boolean false and suspendedUntil is absent, null, or expired. The Worker reads only the signed-in user's own document through Firestore Rules. Missing/malformed account status or a failed lookup intentionally blocks uploads; do not loosen Rules to bypass this.
 7. Deploy the Worker and Durable Object migration using cloudflare/image-upload/README.md. Configure Cloudflare outer abuse/rate controls in addition to the per-user 20-per-24-hour quota and 5-second cooldown.
 8. After deployment and a successful security review, add the deployed Worker URL to imageUploadEndpoint in js/firebase-config.js. It is public endpoint configuration, not a secret.
-9. Test post photos, profile photos, cover photos, stories, and message photos in isolated staging. Verify banned/suspended test accounts are denied and an eligible test account can upload.
+9. Before enabling uploads, decide whether profile photos/covers and other media are intentionally public. The current standard Cloudinary image/upload URLs are publicly deliverable; Firestore profileVisibility rules do not protect image bytes after a URL is known. If private media is required, implement signed/authenticated delivery first.
+10. Test post photos, profile photos, cover photos, stories, and message photos in isolated staging. Verify banned/suspended test accounts are denied and an eligible test account can upload.
 
 The Cloudinary upload preset is not used by this signed server-side flow. Keep the preset in Signed mode; do not switch it to Unsigned. The Worker and Durable Object are not deployed by repository CI, and imageUploadEndpoint remains blank until the owner completes the setup.
