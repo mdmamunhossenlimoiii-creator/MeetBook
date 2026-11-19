@@ -486,7 +486,7 @@ async function main() {
     const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
     let savedMemory = null;
-    if (memoryEnabled) {
+    if (!DRY && memoryEnabled) {
       try { savedMemory = await fs.get(`botMemories/${memoryId}`); }
       catch (error) {
         if (!isPermissionDenied(error)) throw error;
