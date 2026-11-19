@@ -43,7 +43,12 @@ test('unsafe generated self-identity and credential claims use the safe fallback
     'I am Taylor Swift.',
     'I am human.',
     'I have a degree in medicine.',
-    'I worked at Google.'
+    'I worked at Google.',
+    'আমি একজন লাইসেন্সপ্রাপ্ত ডাক্তার।',
+    'আমি পেশাদার ফটোগ্রাফার।',
+    'আমি একজন বাস্তব মানুষ।',
+    'আমি Taylor Swift।',
+    'আমার পেশাগত অভিজ্ঞতা আছে।'
   ];
   for (const output of unsafeOutputs) {
     const result = await generateSmartBotText({
