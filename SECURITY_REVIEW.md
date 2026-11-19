@@ -31,9 +31,9 @@
 
 ## Required verification before release
 
-- Latest PR #19 CI run #475 (2026-11-19, head 2d5d9ce) passed: 440/440 unit tests, 51 Browser/Admin checks, and 4,148 Firestore Emulator permission cases with 0 mismatches. The unit suite includes the Bengali identity-output guard and a regression proving dry-run never reads persisted memory even with consent enabled.
-- Earlier Emulator run #472 failed because two synthetic human fixtures omitted the required banned:false field. Rules correctly denied the writes; the fixtures were corrected, and runs #473 and #475 passed. This was a test-fixture correction, not a Rules relaxation.
-- PR #16's original feature branch is 186 commits ahead and 1 behind current main and remains non-mergeable; latest code is synchronized to the clean integration PR #19. The #475 CI run is on PR #19, not directly on the divergent PR #16 branch.
+- Latest PR #19 CI run #478 (2026-11-19, head 3ec85ea) passed: 440/440 unit tests, 51 Browser/Admin checks, and 4,148 Firestore Emulator permission cases with 0 mismatches. The unit suite includes the Bengali identity-output guard and a regression proving dry-run never reads persisted memory even with consent enabled.
+- Earlier Emulator run #472 failed because two synthetic human fixtures omitted the required banned:false field. Rules correctly denied the writes; the fixtures were corrected, and runs #473, #475, #477, and #478 passed. This was a test-fixture correction, not a Rules relaxation.
+- PR #16's original feature branch is 186 commits ahead and 1 behind current main and remains non-mergeable; latest code is synchronized to the clean integration PR #19. The #478 CI run is on PR #19, not directly on the divergent PR #16 branch.
 - Run a dedicated integration test with a real isolated MeetBook staging project before any production enablement. Main-branch Bot Chat Run #30's visible summary showed exit code 1, but the actual dispatch input and step-level error log were not available; its mode and root cause remain unverified. No live reply is verified.
 - Firestore transaction-backed rolling-window quotas and cooldowns are CI/emulator-tested. Isolated live staging verification and concurrency review remain required before exposing automated activity to users.
 - Confirm the publicDirectory discovery policy: display name and minimal account markers remain discoverable even when detailed profile visibility is set to friends.
