@@ -20,12 +20,12 @@ This document records repository source status and CI evidence only. Passing CI 
 ## Latest automated verification
 
 - PR #2, "Harden MeetBook bot identities and Runner permissions," is closed and merged. CI run 43384231456 passed its unit, browser, and Firestore Emulator jobs.
-- PR #19 is the clean integration candidate based on current main. Latest CI run #475 (2026-11-19, run ID 44455114804, head 2d5d9ce02ea8cde7a3fa76a194984502df1798ab) passed all three jobs:
+- PR #19 is the clean integration candidate based on current main. Latest CI run #478 (2026-11-19, run ID 44455675120, head 3ec85ea7fb4384ac2f6970e1f85719b35371a7d0) passed all three jobs:
   - Unit: **440/440 tests passed**, 0 failures, 0 skipped; import check passed. This includes the dry-run regression proving persisted bot memory is not read when memory consent is enabled, plus English/Bengali Gemini output-guard cases.
   - Browser/Admin smoke: **51 checks passed**.
   - Firestore Rules Emulator: **4,148 permission cases, 0 mismatches**.
-- Earlier Emulator run #472 failed because two synthetic human fixtures omitted the required banned:false field. The fail-closed Rules behavior was correct; the fixtures were corrected to state eligibility explicitly. Runs #473 and #475 passed afterward. No production Rules were loosened.
-- PR #16 is the original feature branch. At the latest comparison it is **186 commits ahead and 1 behind** current main, so GitHub reports it non-mergeable; no separate CI run is attached to its latest feature-branch head. Its latest changes are synchronized into PR #19, where the full run #475 passed.
+- Earlier Emulator run #472 failed because two synthetic human fixtures omitted the required banned:false field. The fail-closed Rules behavior was correct; the fixtures were corrected to state eligibility explicitly. Runs #473, #475, #477, and #478 passed afterward. No production Rules were loosened.
+- PR #16 is the original feature branch. At the latest comparison it is **186 commits ahead and 1 behind** current main, so GitHub reports it non-mergeable; no separate CI run is attached to its latest feature-branch head. Its latest changes are synchronized into PR #19, where the full run #478 passed.
 - Worker source and Durable Object unit tests are included in the unit suite. CI does not call the real Gemini API, use a production Firebase project, or deploy Cloudflare.
 - CI/emulator results are not live production evidence. No live Firebase Runner sign-in, user-initiated bot reply, consent-gated public engagement, real Gemini API request, Cloudflare upload, Firebase Console change, production Rules publish, or GitHub Pages deployment has been performed.
 - Main-branch Bot Chat Run #30's actual dispatch inputs and step-level error log remain unavailable; its mode and root cause are unverified.
