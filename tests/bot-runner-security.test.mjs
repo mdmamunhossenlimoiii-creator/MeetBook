@@ -75,6 +75,10 @@ test('blocked or suspended chat requests are skipped without aborting other elig
   assert.match(rules, /eligibleHumanForBotInteraction\(userUid\)/);
 });
 
+test('dry-run never reads persisted optional bot memory', () => {
+  assert.match(runner, /if \(!DRY && memoryEnabled\)/);
+});
+
 test('optional memory permission failures do not abort the chat runner', () => {
   assert.match(runner, /const isPermissionDenied = [\s\S]*?403[\s\S]*?PERMISSION_DENIED/);
   assert.match(runner, /if \(!isPermissionDenied\(error\)\) throw error;[\s\S]*Saved bot memory was unavailable; continuing without it\./);
