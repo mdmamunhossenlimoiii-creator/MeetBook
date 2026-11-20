@@ -13,6 +13,7 @@
 - Private chat reply text is no longer copied into bot audit logs. A missing or permission-denied optional memory document is treated as no saved memory; it must never abort an otherwise authorized chat reply.
 - Optional long-term memory processes only the last six user-authored messages, redacts obvious email/phone patterns, and excludes messages or summaries matching common credential, financial, ID, precise-address/location, health, political/religious, or sexuality/identity terms. This conservative heuristic cannot guarantee detection of every sensitive detail; memory remains off by default and users can disable or delete it.
 - The Runner can directly get only the minimal consent projection for a specific user when checking an eligible interaction; collection listing is denied. This is a per-document access boundary, not an anonymity guarantee for a UID already known to an authorized Runner.
+- The post Runner stores normalized SHA-256 fingerprints (up to 4,000) and compares its last 100 normalized post texts for near-duplicates across all bots assigned to that dedicated Runner. Repeated generated output falls back to a fresh role template or is skipped; the fingerprint is saved before post creation, and the manual bot workflows share a serialized concurrency group. This history is per Runner account, not shared between multiple Runner accounts.
 
 ## Important limitations
 
@@ -29,6 +30,8 @@
 - The Worker and its Durable Object migration are source-only until the owner deploys them. Cloudinary credentials remain Worker secrets; imageUploadEndpoint stays blank until the deployed URL is verified. The configured Pages origin must be confirmed against the actual site hostname.
 
 ## Required verification before release
+
+- The persistent duplicate-post fingerprint guard and its exact/near-duplicate regression were added on 2026-11-20. This feature-branch head has no confirmed CI result yet; the latest full CI evidence available is on PR #19 before this change.
 
 - Unit/static tests, permission matrix, browser smoke tests, and Firestore Emulator suite must pass on the updated pull request.
 - Run a dedicated integration test with a real isolated MeetBook staging project before any production enablement. Main-branch Bot Chat Run #30's visible summary showed exit code 1, but the actual dispatch input and step-level error log were not available; its mode and root cause remain unverified. The feature branch handles optional `botMemories` permission failures non-fatally and includes a regression test, but this has not been confirmed as Run #30's cause. No live reply is verified.
