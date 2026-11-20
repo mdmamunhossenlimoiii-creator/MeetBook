@@ -125,7 +125,7 @@ test('Admin bot panel does not provide manual posting or commenting as a bot', (
 });
 
 test('dry runs never call Gemini or print private reply text', () => {
-  assert.match(runner, /const postText = DRY \? pick\.text : await generateText/);
+  assert.match(runner, /let postText = DRY \? pick\.text : await generateText/);
   assert.match(runner, /text: DRY \? baseComment\.text : await generateText/);
   assert.match(runner, /const replyText = DRY \? reply\.text : await generateText/);
   assert.match(runner, /private text and Gemini calls suppressed/);
