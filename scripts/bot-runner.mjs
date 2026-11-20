@@ -108,7 +108,8 @@ async function loadState() {
     postHashes: (Array.isArray(parse(d.postHashes, [])) ? parse(d.postHashes, []) : [])
       .filter((value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)).slice(-MAX_POST_HASHES),
     postedTexts: (Array.isArray(parse(d.postedTexts, [])) ? parse(d.postedTexts, []) : [])
-      .filter((value) => typeof value === 'string' && value.length > 0).slice(-MAX_POST_TEXTS)
+      .filter((value) => typeof value === 'string' && value.length > 0)
+      .map((value) => value.slice(0, 400)).slice(-MAX_POST_TEXTS)
   };
   if (st.daily.date !== today()) st.daily = { date: today(), counts: {}, chat: {}, chatAt: {} };
   st.daily.counts ||= {}; st.daily.chat ||= {}; st.daily.chatAt ||= {};
