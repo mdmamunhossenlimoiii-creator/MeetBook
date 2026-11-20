@@ -8,8 +8,9 @@ name: Tests
 # Recommended: Settings -> Branches -> branch protection for main -> "Require status checks" -> select all three jobs.
 on:
   pull_request:
+  # Verify the active implementation branches directly as well as main.
   push:
-    branches: [main]
+    branches: [main, feature/character-bot-identities, integration/meetbook-mainline-repair]
 
 permissions:
   contents: read
