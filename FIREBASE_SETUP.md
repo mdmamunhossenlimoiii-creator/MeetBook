@@ -44,7 +44,7 @@ After GitHub Pages is enabled for this repository, add the actual MeetBook Pages
 Only configure these after the MeetBook project is created and the backup workflow has been reviewed:
 
 - `FIREBASE_SERVICE_ACCOUNT`: MeetBook-only service-account JSON.
-- `MEETBOOK_FIREBASE_PROJECT_ID`: exact project ID of the new MeetBook Firebase project.
+- `MEETBOOK_FIREBASE_PROJECT_ID`: exact existing MeetBook project ID (`meetbook-65d30`).
 - `BACKUP_PASSPHRASE`: unique high-entropy passphrase for MeetBook backup encryption.
 
 Use a least-privilege service account. Never commit its JSON key or paste it into public issues, chat, source files, or logs.
