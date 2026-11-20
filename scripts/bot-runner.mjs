@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 // Manual GitHub Actions job: the first three bots use server-side Gemini with safe template fallback; remaining bots retain template behavior.
 //
 // Security model
@@ -20,7 +22,7 @@
 // Env: BOT_RUNNER_EMAIL, BOT_RUNNER_PASSWORD (secrets), BOT_POSTS, BOT_COMMENTS (optional),
 //      DRY_RUN=1 (print only), AUTH_URL / FS_URL (override endpoints, used by tests).
 import { BOTS, isBotId } from '../js/bots-data.js';
-import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize } from '../js/bots-brain.js';
+import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize, isDuplicatePostText } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and, toFields } from './lib/firestore-rest.mjs';
 import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib/gemini.mjs';
@@ -40,6 +42,9 @@ const CHAT_MAX_REPLIES = 1;
 const BOT_TO_BOT_MAX_TURNS = 2;
 const GLOBAL_DAILY_ACTION_LIMIT = 60;
 const GEMINI_DAILY_REQUEST_LIMIT = 60;
+const MAX_POST_HASHES = 8000;
+const MAX_POST_TEXTS = 100;
+const postTextHash = (text) => createHash('sha256').update(normalize(text)).digest('hex');
 const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID || `local_${process.pid}_${Date.now()}`)
   .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
 const safeDocPart = (value) => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
@@ -99,7 +104,12 @@ async function loadState() {
   const parse = (v, fb) => { try { return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const st = {
     used: parse(d.used, {}), commented: parse(d.commented, []), engaged: parse(d.engaged, []),
-    daily: parse(d.daily, {}), usedComments: parse(d.usedComments, {})
+    daily: parse(d.daily, {}), usedComments: parse(d.usedComments, {}),
+    postHashes: (Array.isArray(parse(d.postHashes, [])) ? parse(d.postHashes, []) : [])
+      .filter((value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)).slice(-MAX_POST_HASHES),
+    postedTexts: (Array.isArray(parse(d.postedTexts, [])) ? parse(d.postedTexts, []) : [])
+      .filter((value) => typeof value === 'string' && value.length > 0)
+      .map((value) => value.slice(0, 400)).slice(-MAX_POST_TEXTS)
   };
   if (st.daily.date !== today()) st.daily = { date: today(), counts: {}, chat: {}, chatAt: {} };
   st.daily.counts ||= {}; st.daily.chat ||= {}; st.daily.chatAt ||= {};
@@ -112,6 +122,8 @@ async function saveState(st) {
     engaged: JSON.stringify(st.engaged.slice(-400)),
     daily: JSON.stringify(st.daily),
     usedComments: JSON.stringify(st.usedComments),
+    postHashes: JSON.stringify(st.postHashes.slice(-MAX_POST_HASHES)),
+    postedTexts: JSON.stringify(st.postedTexts.slice(-MAX_POST_TEXTS)),
     updatedAt: new Date()
   });
 }
@@ -305,7 +317,28 @@ async function main() {
     const postId = `post_${bot.id}_${RUN_ID}`;
     if (!pick) continue;
     if (!(await reserveBotAction(bot))) continue;
-    const postText = DRY ? pick.text : await generateText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    let postText = DRY ? pick.text : await generateText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    let fingerprint = postTextHash(postText);
+    if (st.postHashes.includes(fingerprint) || isDuplicatePostText(postText, st.postedTexts)) {
+      // A generated response can repeat an earlier idea. Prefer a fresh role template;
+      // if that is also repeated, stay silent rather than publish duplicate content.
+      const fallback = pick.text;
+      const fallbackHash = postTextHash(fallback);
+      if (st.postHashes.includes(fallbackHash) || isDuplicatePostText(fallback, st.postedTexts)) {
+        console.log(`Repeated or near-duplicate post skipped for ${bot.name}.`);
+        continue;
+      }
+      console.log(`Repeated generated content replaced with a fresh role template for ${bot.name}.`);
+      postText = fallback;
+      fingerprint = fallbackHash;
+    }
+    // Reserve the fingerprint before publishing. If the job is interrupted after the
+    // Firestore post succeeds, a later run still knows not to repeat this content.
+    st.postHashes.push(fingerprint);
+    st.postHashes = st.postHashes.slice(-MAX_POST_HASHES);
+    st.postedTexts.push(normalize(postText).slice(0, 400));
+    st.postedTexts = st.postedTexts.slice(-MAX_POST_TEXTS);
+    if (!DRY) await saveState(st);
     const id = await createPost(bot, postText, postId);
     if (!id) continue;
     spend(st, bot); stats.posts++;
