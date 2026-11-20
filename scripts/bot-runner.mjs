@@ -42,7 +42,7 @@ const CHAT_MAX_REPLIES = 1;
 const BOT_TO_BOT_MAX_TURNS = 2;
 const GLOBAL_DAILY_ACTION_LIMIT = 60;
 const GEMINI_DAILY_REQUEST_LIMIT = 60;
-const MAX_POST_HASHES = 8000;
+const MAX_POST_HASHES = 4000;
 const MAX_POST_TEXTS = 100;
 const postTextHash = (text) => createHash('sha256').update(normalize(text)).digest('hex');
 const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID || `local_${process.pid}_${Date.now()}`)
