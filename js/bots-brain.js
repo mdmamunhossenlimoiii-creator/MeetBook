@@ -24,6 +24,36 @@ export const TOPICS = ['tech', 'photo', 'travel', 'food', 'sports', 'gaming', 'n
 
 // ---------------------------------------------------------------- text helpers
 export const normalize = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
+
+/**
+ * Detect repeated or near-duplicate bot posts. Exact comparison is based on
+ * normalized text; the Jaccard check catches small wording changes that would
+ * otherwise make the same template look new.
+ */
+export function isDuplicatePostText(candidate, previousTexts = [], threshold = 0.82) {
+  const current = normalize(candidate);
+  if (!current) return true;
+  const currentWords = new Set(current.split(' ').filter(Boolean));
+
+  for (const previous of Array.isArray(previousTexts) ? previousTexts : []) {
+    const prior = normalize(previous);
+    if (!prior) continue;
+    if (current === prior) return true;
+
+    const minLength = Math.min(current.length, prior.length);
+    const maxLength = Math.max(current.length, prior.length);
+    if (maxLength && minLength / maxLength >= 0.9
+      && (current.includes(prior) || prior.includes(current))) return true;
+
+    const priorWords = new Set(prior.split(' ').filter(Boolean));
+    if (Math.min(currentWords.size, priorWords.size) < 5) continue;
+    let overlap = 0;
+    for (const word of currentWords) if (priorWords.has(word)) overlap++;
+    const union = currentWords.size + priorWords.size - overlap;
+    if (union > 0 && overlap / union >= threshold) return true;
+  }
+  return false;
+}
 export const firstName = (n) => String(n || '').trim().split(/\s+/)[0] || '';
 
 export function detectLang(text) {
