@@ -11,6 +11,7 @@ const adminSettings = readFileSync(new URL('../js/admin/settings.js', import.met
 const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
 const auth = readFileSync(new URL('../js/auth.js', import.meta.url), 'utf8');
 const rest = readFileSync(new URL('../scripts/lib/firestore-rest.mjs', import.meta.url), 'utf8');
+const postWorkflow = readFileSync(new URL('../.github/workflows/bot-runner.yml', import.meta.url), 'utf8');
 
 test('runner fails closed unless global botsEnabled and its own allowlist are explicit', () => {
   assert.match(runner, /global\.botsEnabled !== true/);
@@ -19,6 +20,18 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
   assert.match(runner, /new Set\(runner\.botIds\.filter\(\(id\) => isBotId\(id\)\)\)/);
   assert.match(rules, /function runnerEnabled\(\)/);
   assert.match(rules, /function runnerMayActAs\(botUid\)/);
+});
+
+test('Runner persists bot post fingerprints before publishing and serializes bot automation', () => {
+  assert.match(runner, /postHashes: \(Array\.isArray\(parse\(d\.postHashes, \[\]\)\)/);
+  assert.match(runner, /postedTexts: \(Array\.isArray\(parse\(d\.postedTexts, \[\]\)\)/);
+  assert.match(runner, /createHash\('sha256'\)/);
+  assert.match(runner, /isDuplicatePostText\(postText, st\.postedTexts\)/);
+  assert.match(runner, /st\.postHashes\.push\(fingerprint\)/);
+  assert.match(runner, /if \(!DRY\) await saveState\(st\);\s*const id = await createPost/s);
+  assert.match(postWorkflow, /concurrency:/);
+  assert.match(postWorkflow, /group: meetbook-bot-automation/);
+  assert.match(postWorkflow, /cancel-in-progress: false/);
 });
 
 test('Runner, Rules, and Admin use settings/overall and strict Boolean gates', () => {
