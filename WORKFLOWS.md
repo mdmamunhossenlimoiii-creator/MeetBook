@@ -2,7 +2,7 @@
 
 | Workflow | Policy | Notes |
 |---|---|---|
-| `tests.yml` | Enabled | Pull requests and pushes to `main`; no Firebase production credentials |
+| `tests.yml` | Enabled | Pull requests and pushes to `main` and the active MeetBook implementation branches; no Firebase production credentials |
 | `bot-runner.yml` | Manual-only; dry-run by default | One selected bot; at most one public post; live action requires protected environment approval and owner release flag |
 | `bot-engagement.yml` | Manual-only; dry-run by default | One selected bot; at most one relevant comment and optional reaction on a consenting user's public post; live action requires protected environment approval and owner release flag |
 | `bot-chat.yml` | Manual-only; dry-run by default | One selected bot; at most one user-initiated private chat reply; first three bots use Gemini, others use role templates; live action requires protected environment approval and owner release flag |
