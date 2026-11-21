@@ -2,26 +2,27 @@
 
 All Firebase Console work belongs to the repository owner. The Coding Agent must not log in to Firebase, create projects, change live settings, or deploy rules.
 
-## 1. Create a new project
+## 1. Confirm the dedicated MeetBook project
 
-1. Open Firebase Console and create a completely new project for MeetBook.
+1. Open Firebase Console and verify that the existing project `meetbook-65d30` is dedicated to MeetBook and is not shared with MySocial.
 2. Do not select, import, or reuse the MySocial project.
-3. Register a new Web App in the MeetBook project.
-4. Enable Email/Password and optionally Google sign-in.
-5. Create a Cloud Firestore database in Production mode.
-6. Configure any optional services only inside this MeetBook project.
+3. If `meetbook-65d30` is not the approved MeetBook project, the owner must create a separate dedicated project and update the MeetBook Web App configuration plus all project-ID variables consistently before live use. Do not create a second project unless this check fails.
+4. Register a Web App in the approved MeetBook project if one is not already registered.
+5. Enable Email/Password and optionally Google sign-in.
+6. Create a Cloud Firestore database in Production mode if it does not already exist.
+7. Configure any optional services only inside this MeetBook project.
 
 ## 2. Configure the frontend
 
-Open `js/firebase-config.js` and replace the empty strings in `firebaseConfig` with the values from the new MeetBook Web App.
+Verify `js/firebase-config.js` matches the approved MeetBook Web App. The current branch already contains public client configuration for `meetbook-65d30`; replace it only if the owner approves a different dedicated MeetBook project.
 
 Required values: `apiKey`, `authDomain`, `projectId`, `storageBucket` (if used), `messagingSenderId`, and `appId`.
 
-The `projectId` must be the new MeetBook project ID. Do not use `mysocial-33681`. The web config is public client configuration; never put a service-account private key in this file.
+The `projectId` must match the approved dedicated MeetBook project (currently `meetbook-65d30`, if confirmed). Do not use `mysocial-33681`. The web config is public client configuration; never put a service-account private key in this file.
 
 ## 3. Firestore rules and indexes
 
-The repository contains `firestore.rules` and `firestore.indexes.json`. Review them before applying them. Confirm the Firebase Console project selector shows the new MeetBook project before publishing. The owner performs this operation.
+The repository contains `firestore.rules` and `firestore.indexes.json`. Review them before applying them. Confirm the Firebase Console project selector shows the approved dedicated MeetBook project before publishing. The owner performs this operation.
 
 The local emulator configuration in `firebase.json` is for development/testing and uses the `demo-meetbook` project ID in the test workflow.
 
@@ -44,14 +45,14 @@ After GitHub Pages is enabled for this repository, add the actual MeetBook Pages
 Only configure these after the MeetBook project is created and the backup workflow has been reviewed:
 
 - `FIREBASE_SERVICE_ACCOUNT`: MeetBook-only service-account JSON.
-- `MEETBOOK_FIREBASE_PROJECT_ID`: exact existing MeetBook project ID (`meetbook-65d30`).
+- `MEETBOOK_FIREBASE_PROJECT_ID`: approved dedicated MeetBook project ID (currently `meetbook-65d30`, if confirmed). If the owner selects another project, update this variable and the frontend config consistently.
 - `BACKUP_PASSPHRASE`: unique high-entropy passphrase for MeetBook backup encryption.
 
 Use a least-privilege service account. Never commit its JSON key or paste it into public issues, chat, source files, or logs.
 
 ## 7. Verification checklist
 
-- [ ] Firebase Console project ID is the new MeetBook ID.
+- [ ] Firebase Console project ID is the approved dedicated MeetBook ID (currently configured as `meetbook-65d30`, if confirmed).
 - [ ] `js/firebase-config.js` contains that project's web app values.
 - [ ] The project ID is not `mysocial-33681`.
 - [ ] Authentication providers are enabled in the MeetBook project.
