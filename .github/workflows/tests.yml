@@ -1,6 +1,6 @@
 name: Tests
 
-# Runs on pull requests and on pushes to main. Uses NO secrets and cannot touch your Firebase project:
+# Runs on pull requests and pushes to main. Uses NO secrets and cannot touch your Firebase project:
 #  * unit      - rules interpreter + permission matrix + mutation tests, script tests against an in-memory Firestore
 #  * browser   - headless Chromium smoke test of the Admin panel (role handling, fail-closed)
 #  * rules-emulator - the SAME permission matrix executed against the REAL Firebase Firestore Emulator
@@ -8,9 +8,8 @@ name: Tests
 # Recommended: Settings -> Branches -> branch protection for main -> "Require status checks" -> select all three jobs.
 on:
   pull_request:
-  # Verify the active implementation branches directly as well as main.
   push:
-    branches: [main, feature/character-bot-identities, integration/meetbook-mainline-repair]
+    branches: [main]
 
 permissions:
   contents: read
