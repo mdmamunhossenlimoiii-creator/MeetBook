@@ -29,16 +29,16 @@ const MUTATIONS = [
   ['moderator can forge the role in a log', "        && request.resource.data.role == roleOf()\n", ""],
   ['logs can be back-dated', "        && request.resource.data.role == roleOf()\n        && request.resource.data.createdAt == request.time\n        && textOk(request.resource.data.action, 120)", "        && request.resource.data.role == roleOf()\n        && textOk(request.resource.data.action, 120)"],
   ['logs can be edited', "allow update, delete: if false;\n    }\n\n    // ---------- site settings", "allow update, delete: if isStaff();\n    }\n\n    // ---------- site settings"],
-  ['a moderator can change global settings', "allow write: if isAdmin() && id == 'global'", "allow write: if isStaff() && id == 'global'"],
+  ['a moderator can change global settings', "allow write: if isAdmin() && id == 'overall'", "allow write: if isStaff() && id == 'overall'"],
   ['settings accept any field', "request.resource.data.keys().hasOnly(['maintenance', 'maintenanceMessage', 'registrationOpen', 'botsEnabled', 'botToBotComments', 'updatedBy', 'updatedAt'])", "true"],
   ['users can verify or block themselves', "!request.resource.data.diff(resource.data).affectedKeys().hasAny(['banned', 'isBot', 'verified', 'suspendedUntil'])", "true"],
   ['a user may become a bot on creation', "&& request.resource.data.get('isBot', false) == false\n          && request.resource.data.get('verified', false) == false", "&& request.resource.data.get('verified', false) == false"],
-  ['suspension is ignored', "(u.get('suspendedUntil', null) == null || u.get('suspendedUntil', null) < request.time)", "true"],
-  ['blocked users can write', "u.banned != true", "true"],
+  ['missing or malformed banned flags are accepted', "return banned is bool\n        && banned == false", "return banned != true"],
+  ['malformed suspension values are treated as expired', "(suspendedUntil == null || (suspendedUntil is timestamp && suspendedUntil < request.time))", "(suspendedUntil == null || true)"],
   ['bot posts may contain video', "&& request.resource.data.videoUrl == ''", ""],
   ['runner reaction must validate the active assigned bot', "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return runnerMayReactAs(botUid)", "function runnerMayReact() {\n      let botUid = request.resource.data.lastBotReactionBy;\n      return true"],
   ['runner comment counter must require a new atomic comment', "&& existsAfter(commentPath)\n        && !exists(commentPath)", "&& existsAfter(commentPath)"],
-  ['bot-runner may read every chat', "&& chat.members.size() == 2\n        && ((chat.members[0] in runner.get('botIds', [])\n              && runnerMayChatAs(chat.members[0]))\n          || (chat.members[1] in runner.get('botIds', [])\n              && runnerMayChatAs(chat.members[1])));", "&& chat.members.size() == 2\n        && true;"],
+  ['bot-runner may read blocked or suspended chat history', "&& eligibleHumanForBotInteraction(userUid);", "&& true;"],
   ['comments stay possible when switched off', "return p.get('commentsDisabled', false) == false && canSeePost(p);", "return canSeePost(p);"],
   ['any reaction value is accepted', "|| request.resource.data.reactions[request.auth.uid] in ['like', 'love', 'haha', 'wow', 'sad', 'angry']", "|| true"],
   ['a report can be edited freely by staff', "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt'])\n        && request.resource.data.status in ['open', 'resolved']", "hasOnly(['status', 'action', 'resolvedBy', 'resolvedAt', 'targetUid'])\n        && request.resource.data.status in ['open', 'resolved']"],
@@ -50,6 +50,10 @@ const MUTATIONS = [
   ['bot reactions bypass autoReaction switch', "return runnerMayActAs(botUid) && bot.get('autoReaction', false) == true;", "return runnerMayActAs(botUid);"],
   ['bot chats bypass chatEnabled switch', "return runnerMayActAs(botUid) && bot.get('chatEnabled', false) == true;", "return runnerMayActAs(botUid);"],
 
+  ['bot interaction skips strict account-status validation', "&& user.get('isBot', false) == false\n        && accountStatusOk(user);", "&& user.get('isBot', false) == false\n        && true;"],
+  ['staff can read private bot inbox metadata', "allow get: if isOwner(resource.data.fromUid) || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));", "allow get: if isStaff() || (validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId));"],
+  ['admins can delete private bot inbox messages', "allow delete: if isOwner(resource.data.fromUid);", "allow delete: if isAdmin();"],
+  ['admins can mark private inbox items handled', "allow update: if validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId)\n        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])", "allow update: if isAdmin() || validInboxMetadata(resource.data) && runnerMayChatAs(resource.data.botId)\n        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['handled', 'handledAt', 'skipped'])"],
   ['normal users can hide posts', "affectedKeys().hasOnly(['hidden', 'commentsDisabled']))", "affectedKeys().hasOnly(['hidden', 'commentsDisabled', 'text']))"]
 ];
 

@@ -7,7 +7,7 @@
 import { readFileSync } from 'node:fs';
 import assert from 'node:assert/strict';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
-import { doc, getDoc, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, writeBatch, serverTimestamp, increment, deleteField, Timestamp } from 'firebase/firestore';
 import { ACTORS, CAPS, SEED } from '../rules-matrix/scenarios.mjs';
 
 const PROJECT = 'demo-meetbook';
@@ -99,10 +99,10 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'Runner must not decrement a post comment counter');
 
   await isolatedRunnerCase('demo-meetbook-empty-runner', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/emptyRunner': { enabled: true, botIds: [] },
     'botRunners/normalAsBot': { enabled: true, botIds: ['u2'] },
-    'users/u2': { isBot: false },
+    'users/u2': { isBot: false, banned: false },
     'chats/u1_u2': { type: 'private', members: ['u1', 'u2'] }
   }, async (isolated) => {
     await denied(getDoc(doc(isolated.authenticatedContext('emptyRunner').firestore(), 'botState/emptyRunner')),
@@ -112,10 +112,10 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-inactive-bot', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/inactiveRunner': { enabled: true, botIds: ['bot_02'] },
     'users/bot_02': { isBot: true, active: false },
-    'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
+    'users/u2': { isBot: false, banned: false, settings: { allowBotEngagement: true } },
     'chats/bot_02_u2': { type: 'private', members: ['bot_02', 'u2'] },
     'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
   }, async (isolated) => {
@@ -131,10 +131,10 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-global-stop', {
-    'settings/global': { botsEnabled: false },
+    'settings/overall': { botsEnabled: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
-    'users/u2': { isBot: false },
+    'users/u2': { isBot: false, banned: false },
     'chats/bot_01_u2': { type: 'private', members: ['bot_01', 'u2'] }
   }, async (isolated) => {
     const db = isolated.authenticatedContext('run').firestore();
@@ -148,15 +148,32 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
     'botRunners/run': { enabled: true, botIds: ['bot_01'] }
   }, async (isolated) => {
     await denied(getDoc(doc(isolated.authenticatedContext('run').firestore(), 'botState/run')),
-      'missing settings/global must fail closed and deny Runner access');
+      'missing settings/overall must fail closed and deny Runner access');
   });
-  console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/global, and counter decrement');
+
+  await isolatedRunnerCase('demo-meetbook-consent-projection', {
+    'settings/overall': { botsEnabled: true },
+    'botRunners/run': { enabled: true, botIds: ['bot_01'] },
+    'users/bot_01': { isBot: true, active: true, chatEnabled: true },
+    'users/u1': { isBot: false, banned: false },
+    'botEngagement/u1': { allowBotEngagement: true, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) },
+    'botEngagement/u2': { allowBotEngagement: false, allowBotMemory: false, updatedAt: Timestamp.fromMillis(Date.now()) }
+  }, async (isolated) => {
+    const runnerDb = isolated.authenticatedContext('run').firestore();
+    const ownDb = isolated.authenticatedContext('u1').firestore();
+    const consent = await getDoc(doc(runnerDb, 'botEngagement/u1'));
+    assert.equal(consent.data().allowBotEngagement, true, 'Runner may get a single target consent projection');
+    assert.equal((await getDoc(doc(ownDb, 'botEngagement/u1'))).data().allowBotMemory, false, 'owner retains direct access');
+    await denied(getDocs(collection(runnerDb, 'botEngagement')),
+      'Runner must not list the bot-consent projection collection');
+  });
+  console.log('Runner negative security tests passed: disabled, unknown UID, empty allowlist, non-bot allowlist, inactive bot comment/reaction, global kill switch, missing settings/overall, and counter decrement');
 
   await isolatedRunnerCase('demo-meetbook-runner-atomic-actions', {
-    'settings/global': { botsEnabled: true, botToBotComments: false },
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
     'botRunners/run': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
-    'users/u2': { isBot: false, settings: { allowBotEngagement: true } },
+    'users/u2': { isBot: false, banned: false, settings: { allowBotEngagement: true } },
     'posts/p2': { uid: 'u2', visibility: 'public', reactions: {}, commentCount: 0 }
   }, async (isolated) => {
     const db = isolated.authenticatedContext('run').firestore();
@@ -186,6 +203,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   let inboxNumber = 0;
   const submit = async () => {
     const inboxRef = doc(db, 'botInbox', `atomic-${++inboxNumber}`);
+    const messageRef = doc(db, 'chats', 'bot_01_u1', 'messages', `emulator-user-${inboxNumber}`);
     const snap = await getDoc(quotaRef);
     const count = snap.exists() ? snap.data().count : 0;
     const windowAt = snap.exists() ? snap.data().windowStartedAt.toMillis() : 0;
@@ -195,8 +213,9 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
       senderUid: 'u1', botId: 'bot_01', count: expired ? 1 : count + 1,
       windowStartedAt: expired ? serverTimestamp() : snap.data().windowStartedAt, lastAt: serverTimestamp()
     });
+    batch.set(messageRef, { uid: 'u1', text: 'hello', image: '', createdAt: serverTimestamp() });
     batch.set(inboxRef, {
-      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', text: 'hello',
+      fromUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', messageId: messageRef.id, schemaVersion: 2,
       handled: false, createdAt: serverTimestamp()
     });
     await batch.commit();
@@ -284,7 +303,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-configured-bot-daily-limit', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/limitRunner': { enabled: true, botIds: ['bot_28'] },
     'users/bot_28': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, dailyLimit: 2 },
     'botRateLimits/bot_28': {
@@ -301,7 +320,7 @@ if (process.env.FIRESTORE_EMULATOR_HOST !== 'fake:0') {
   });
 
   await isolatedRunnerCase('demo-meetbook-global-activity-and-gemini-budgets', {
-    'settings/global': { botsEnabled: true },
+    'settings/overall': { botsEnabled: true },
     'botRunners/globalRunner': { enabled: true, botIds: ['bot_01'] },
     'users/bot_01': { isBot: true, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true },
     'botGlobalRateLimits/global': {

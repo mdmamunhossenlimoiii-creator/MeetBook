@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 // Manual GitHub Actions job: the first three bots use server-side Gemini with safe template fallback; remaining bots retain template behavior.
 //
 // Security model
@@ -7,12 +9,12 @@
 //    comments, a reaction under a bot's own key, chat replies). It cannot touch real users' data.
 //
 // What it does each run (all limits are enforced here AND in Firestore Rules):
-//  1. Global switch  settings/global.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
+//  1. Global switch  settings/overall.botsEnabled (must be explicitly true). Missing/off = the job exits immediately.
 //  2. Auto posts     bots with autoPost on, within their daily limit.
 //  3. Auto engagement on REAL users' posts: ONLY when the author turned on
 //                    Settings -> "Allow AI bots to react and comment" (Runner reads the minimal botEngagement projection; Firestore Rules verify users/{uid}.settings.allowBotEngagement).
 //                    At most one bot per post, a relevant comment + a reaction, always shown as AI.
-//  4. Bot-to-bot comments: only if settings/global.botToBotComments is on (default OFF, to avoid
+//  4. Bot-to-bot comments: only if settings/overall.botToBotComments is on (default OFF, to avoid
 //                    staged conversations that look like real popularity).
 //  5. Chat replies   answers messages users sent to a bot (botInbox).
 //  Every action is written to botLogs.
@@ -20,7 +22,7 @@
 // Env: BOT_RUNNER_EMAIL, BOT_RUNNER_PASSWORD (secrets), BOT_POSTS, BOT_COMMENTS (optional),
 //      DRY_RUN=1 (print only), AUTH_URL / FS_URL (override endpoints, used by tests).
 import { BOTS, isBotId } from '../js/bots-data.js';
-import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize } from '../js/bots-brain.js';
+import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize, isDuplicatePostText } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and, toFields } from './lib/firestore-rest.mjs';
 import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib/gemini.mjs';
@@ -40,9 +42,13 @@ const CHAT_MAX_REPLIES = 1;
 const BOT_TO_BOT_MAX_TURNS = 2;
 const GLOBAL_DAILY_ACTION_LIMIT = 60;
 const GEMINI_DAILY_REQUEST_LIMIT = 60;
+const MAX_POST_HASHES = 4000;
+const MAX_POST_TEXTS = 100;
+const postTextHash = (text) => createHash('sha256').update(normalize(text)).digest('hex');
 const RUN_ID = String(process.env.GITHUB_RUN_ID || process.env.BOT_RUNNER_RUN_ID || `local_${process.pid}_${Date.now()}`)
   .replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 48);
 const safeDocPart = (value) => String(value || '').replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 80);
+const isPermissionDenied = (error) => /(?:->\s*403\b|PERMISSION_DENIED|Missing or insufficient permissions)/i.test(String(error?.message || error));
 
 if (!['all', 'post', 'engage', 'chat'].includes(MODE)) {
   console.error('BOT_RUNNER_MODE must be all, post, engage, or chat.');
@@ -98,7 +104,12 @@ async function loadState() {
   const parse = (v, fb) => { try { return v ? JSON.parse(v) : fb; } catch { return fb; } };
   const st = {
     used: parse(d.used, {}), commented: parse(d.commented, []), engaged: parse(d.engaged, []),
-    daily: parse(d.daily, {}), usedComments: parse(d.usedComments, {})
+    daily: parse(d.daily, {}), usedComments: parse(d.usedComments, {}),
+    postHashes: (Array.isArray(parse(d.postHashes, [])) ? parse(d.postHashes, []) : [])
+      .filter((value) => typeof value === 'string' && /^[a-f0-9]{64}$/.test(value)).slice(-MAX_POST_HASHES),
+    postedTexts: (Array.isArray(parse(d.postedTexts, [])) ? parse(d.postedTexts, []) : [])
+      .filter((value) => typeof value === 'string' && value.length > 0)
+      .map((value) => value.slice(0, 400)).slice(-MAX_POST_TEXTS)
   };
   if (st.daily.date !== today()) st.daily = { date: today(), counts: {}, chat: {}, chatAt: {} };
   st.daily.counts ||= {}; st.daily.chat ||= {}; st.daily.chatAt ||= {};
@@ -111,6 +122,8 @@ async function saveState(st) {
     engaged: JSON.stringify(st.engaged.slice(-400)),
     daily: JSON.stringify(st.daily),
     usedComments: JSON.stringify(st.usedComments),
+    postHashes: JSON.stringify(st.postHashes.slice(-MAX_POST_HASHES)),
+    postedTexts: JSON.stringify(st.postedTexts.slice(-MAX_POST_TEXTS)),
     updatedAt: new Date()
   });
 }
@@ -274,9 +287,9 @@ async function main() {
 
   await signIn();
   console.log(`Activation check: DRY_RUN=${DRY ? '1 (no writes)' : '0 (live writes)'}, mode=${MODE}, project=${firebaseConfig.projectId}.`);
-  const global = await fs.get('settings/global');
-  if (!global) { console.error('Activation blocked: settings/global document is missing.'); return; }
-  if (global.botsEnabled !== true) { console.error(`Activation blocked: settings/global.botsEnabled is ${String(global.botsEnabled)}; expected boolean true.`); return; }
+  const global = await fs.get('settings/overall');
+  if (!global) { console.error('Activation blocked: settings/overall document is missing.'); return; }
+  if (global.botsEnabled !== true) { console.error(`Activation blocked: settings/overall.botsEnabled is ${String(global.botsEnabled)}; expected boolean true.`); return; }
   const runner = await fs.get(`botRunners/${runnerUid}`);
   if (!runner) { console.error('Activation blocked: botRunners registration document is missing for the authenticated runner.'); return; }
   if (runner.enabled !== true) { console.error(`Activation blocked: botRunners/{runnerUid}.enabled is ${String(runner.enabled)}; expected boolean true.`); return; }
@@ -304,7 +317,28 @@ async function main() {
     const postId = `post_${bot.id}_${RUN_ID}`;
     if (!pick) continue;
     if (!(await reserveBotAction(bot))) continue;
-    const postText = DRY ? pick.text : await generateText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    let postText = DRY ? pick.text : await generateText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    let fingerprint = postTextHash(postText);
+    if (st.postHashes.includes(fingerprint) || isDuplicatePostText(postText, st.postedTexts)) {
+      // A generated response can repeat an earlier idea. Prefer a fresh role template;
+      // if that is also repeated, stay silent rather than publish duplicate content.
+      const fallback = pick.text;
+      const fallbackHash = postTextHash(fallback);
+      if (st.postHashes.includes(fallbackHash) || isDuplicatePostText(fallback, st.postedTexts)) {
+        console.log(`Repeated or near-duplicate post skipped for ${bot.name}.`);
+        continue;
+      }
+      console.log(`Repeated generated content replaced with a fresh role template for ${bot.name}.`);
+      postText = fallback;
+      fingerprint = fallbackHash;
+    }
+    // Reserve the fingerprint before publishing. If the job is interrupted after the
+    // Firestore post succeeds, a later run still knows not to repeat this content.
+    st.postHashes.push(fingerprint);
+    st.postHashes = st.postHashes.slice(-MAX_POST_HASHES);
+    st.postedTexts.push(normalize(postText).slice(0, 400));
+    st.postedTexts = st.postedTexts.slice(-MAX_POST_TEXTS);
+    if (!DRY) await saveState(st);
     const id = await createPost(bot, postText, postId);
     if (!id) continue;
     spend(st, bot); stats.posts++;
@@ -378,55 +412,123 @@ async function main() {
   }
   if (MODE !== 'post' && MODE !== 'engage') {
   // 5. chat replies
-  const inboxByBot = await Promise.all(bots.filter((b) => b.chatEnabled === true).map((bot) =>
-    fs.query({ from: [{ collectionId: 'botInbox' }], where: and(eq('handled', false), eq('botId', bot.id)), limit: 25 })
+  const inboxByBot = await Promise.all(bots.filter((b) => b.active === true && b.chatEnabled === true).map((bot) =>
+    fs.query({
+      from: [{ collectionId: 'botInbox' }],
+      where: and(eq('handled', false), eq('botId', bot.id), eq('schemaVersion', 2)),
+      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'ASCENDING' }], limit: 25
+    })
   ));
   const inbox = inboxByBot.flat()
     .sort((a, b) => (a.createdAt?.getTime?.() || 0) - (b.createdAt?.getTime?.() || 0))
     .slice(0, CHAT_MAX_REPLIES);
   for (const m of inbox) {
     const bot = botMap.get(m.botId);
-    const mark = (skipped) => (DRY ? null : fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) }));
+    const mark = async (skipped) => {
+      if (DRY) return;
+      try {
+        await fs.patch(`botInbox/${m.id}`, { handled: true, handledAt: new Date(), ...(skipped ? { skipped } : {}) });
+      } catch {
+        console.warn('Could not update a bot inbox status; the request remains pending.');
+      }
+    };
     if (!bot || bot.active !== true || bot.chatEnabled !== true) { await mark('chat-disabled'); continue; }
-    const chat = await fs.get(`chats/${m.chatId}`);
-    if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) { await mark('no-chat'); continue; }
+
+    // Inbox access alone is not permission to read a private chat or send a reply.
+    // Firestore Rules re-check recipient eligibility on the chat and message reads/writes.
+    let chat;
+    try {
+      chat = await fs.get(`chats/${m.chatId}`);
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        await mark('not-eligible');
+        console.log(`Skipped a private chat request for ${bot.name}; the recipient is not eligible for bot replies.`);
+        continue;
+      }
+      throw error;
+    }
+    if (!chat || chat.type !== 'private' || !(chat.members || []).includes(m.fromUid) || !(chat.members || []).includes(bot.id)) {
+      await mark('no-chat');
+      continue;
+    }
+
+    // Inbox entries contain no message body. Only after Firestore Rules authorize this exact
+    // private chat do we fetch the user-authored message referenced by the inbox item.
+    const messageId = typeof m.messageId === 'string'
+      && m.messageId.length > 0 && m.messageId.length <= 128 && !m.messageId.includes('/')
+      ? m.messageId : '';
+    if (!messageId) { await mark('message-not-found'); continue; }
+    let userMessage;
+    try {
+      userMessage = await fs.get(`chats/${m.chatId}/messages/${messageId}`);
+    } catch (error) {
+      if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+      throw error;
+    }
+    if (!userMessage || userMessage.uid !== m.fromUid || userMessage.ai === true
+      || typeof userMessage.text !== 'string' || !userMessage.text.trim()) {
+      await mark('message-not-found');
+      continue;
+    }
+    const userText = userMessage.text.slice(0, 4000);
+
     const replyMessageId = `reply_${safeDocPart(bot.id)}_${safeDocPart(m.id)}`;
     const replyPath = `chats/${m.chatId}/messages/${replyMessageId}`;
-    const previousReply = DRY ? null : await fs.get(replyPath);
+    let previousReply = null;
+    if (!DRY) {
+      try {
+        previousReply = await fs.get(replyPath);
+      } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+        throw error;
+      }
+    }
     if (previousReply) {
-      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: previousReply.text, uid: bot.id }, lastAt: new Date() });
+      try {
+        await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: previousReply.text, uid: bot.id }, lastAt: new Date() });
+      } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+        throw error;
+      }
       await mark();
       console.log(`Existing reply recovered for ${bot.name}; duplicate reply prevented.`);
       continue;
     }
+
+    let hist;
+    try {
+      hist = (await fs.query({
+        from: [{ collectionId: 'messages' }],
+        orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
+      }, `chats/${m.chatId}`)).reverse();
+    } catch (error) {
+      if (isPermissionDenied(error)) {
+        await mark('not-eligible');
+        console.log(`Skipped a private chat request for ${bot.name}; chat history is not available to the Runner.`);
+        continue;
+      }
+      throw error;
+    }
     if (!(await reserveBotAction(bot)) || !(await reserveChatReply(bot, m.fromUid))) { await mark('rate-limited'); continue; }
-    const hist = (await fs.query({
-      from: [{ collectionId: 'messages' }],
-      orderBy: [{ field: { fieldPath: 'createdAt' }, direction: 'DESCENDING' }], limit: 6
-    }, `chats/${m.chatId}`)).reverse();
-    const reply = chatReply({ bot, text: m.text, history: hist });
-    // Long-term memory is isolated by bot + user and is completely disabled without explicit opt-in.
-    const memoryConsent = await fs.get(`botEngagement/${m.fromUid}`);
+
+    const reply = chatReply({ bot, text: userText, history: hist });
+    // Memory is optional; a missing/denied consent projection never blocks a normal chat reply.
+    let memoryConsent = null;
+    try { memoryConsent = await fs.get(`botEngagement/${m.fromUid}`); }
+    catch (error) { if (!isPermissionDenied(error)) throw error; }
     const memoryEnabled = hasBotMemoryConsent(memoryConsent) && SMART_BOT_IDS.has(bot.id);
     const memoryId = botMemoryDocId(bot.id, m.fromUid);
-    // Dry runs never need persisted memory. In live mode, a missing or unreadable
-    // optional memory record must not prevent a consented private chat reply.
     let savedMemory = null;
     if (!DRY && memoryEnabled) {
-      try {
-        savedMemory = await fs.get(`botMemories/${memoryId}`);
-      } catch (error) {
-        const message = String(error?.message || error);
-        if (/403|PERMISSION_DENIED|Missing or insufficient permissions/i.test(message)) {
-          console.warn(`Bot memory unavailable for ${bot.id}; continuing without long-term memory.`);
-        } else {
-          throw error;
-        }
+      try { savedMemory = await fs.get(`botMemories/${memoryId}`); }
+      catch (error) {
+        if (!isPermissionDenied(error)) throw error;
+        console.warn('Saved bot memory was unavailable; continuing without it.');
       }
     }
     const replyText = DRY ? reply.text : await generateText({
-      bot, kind: 'chat', source: m.text,
-      history: hist.filter((item, index) => !(index === hist.length - 1 && item.uid === m.fromUid && item.text === m.text)).map(({ uid, text }) => ({ uid, text })),
+      bot, kind: 'chat', source: userText,
+      history: hist.filter((item) => item.id !== messageId).map(({ uid, text }) => ({ uid, text })),
       memoryContext: savedMemory?.summary || '',
       fallback: reply.text
     });
@@ -436,11 +538,18 @@ async function main() {
       try {
         await fs.create(`chats/${m.chatId}/messages`, { uid: bot.id, text: replyText, image: '', ai: true, createdAt: new Date() }, replyMessageId);
       } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
         const existing = await fs.get(replyPath);
         if (!existing) throw error;
         storedReplyText = existing.text;
       }
-      await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: storedReplyText, uid: bot.id }, lastAt: new Date() });
+      try {
+        await fs.patch(`chats/${m.chatId}`, { lastMessage: { text: storedReplyText, uid: bot.id }, lastAt: new Date() });
+      } catch (error) {
+        if (isPermissionDenied(error)) { await mark('not-eligible'); continue; }
+        throw error;
+      }
+
       // Persist only a bounded, non-sensitive summary after an explicit user opt-in.
       // Other bots/users cannot read this document; the raw transcript is never copied here.
       if (memoryEnabled && process.env.GEMINI_API_KEY && ['bot_01', 'bot_02', 'bot_03'].includes(bot.id)) {
@@ -448,19 +557,20 @@ async function main() {
           if (await reserveGeminiRequest()) {
             const summary = await updateSmartBotMemory({
               bot, existingSummary: savedMemory?.summary || '',
-              messages: [...hist, { uid: bot.id, text: storedReplyText }]
+              messages: [...hist.filter((item) => item.id !== messageId), userMessage, { uid: bot.id, text: storedReplyText }]
             });
             if (summary || savedMemory) {
               const memoryData = { ownerUid: m.fromUid, botId: bot.id, chatId: m.chatId, summary, updatedAt: new Date() };
               if (savedMemory) await fs.patch(`botMemories/${memoryId}`, memoryData);
               else await fs.create('botMemories', { ...memoryData, createdAt: new Date() }, memoryId).catch(async () => {
-                // Another run may have created the same isolated record concurrently.
+                // Another run may have created it concurrently; update the same isolated record.
                 await fs.patch(`botMemories/${memoryId}`, memoryData);
               });
             }
           } else console.warn('Gemini daily request budget reached; memory update skipped.');
         } catch (error) {
-          console.warn(`Optional bot memory update failed for ${bot.id}; chat reply was retained: ${error?.message || error}`);
+          if (isPermissionDenied(error)) console.warn('Bot memory update skipped because access or consent is no longer available.');
+          else console.warn('Bot memory update failed; the chat reply remains saved.');
         }
       }
       // Never put private conversation text in audit logs.

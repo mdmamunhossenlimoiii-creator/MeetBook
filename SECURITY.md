@@ -5,7 +5,7 @@
 - MeetBook and MySocial must use different Firebase projects, Authentication tenants, Firestore databases, Storage buckets, administrator records, and credentials.
 - Firebase web configuration is public client configuration; Firestore rules and trusted server authorization provide access control.
 - Service-account credentials are private and belong only in MeetBook GitHub Actions Secrets when a reviewed workflow requires them.
-- No AI bot workflow may run in this project during this stage.
+- Bot Runner, Engagement, and Chat workflows are manual-only and dry-run by default, with no scheduled or unattended triggers. No live dispatch or activation is authorized without a separate owner approval.
 - Long-term bot memory is opt-in and off by default. Only the first three Gemini-powered bots can use it. Each memory is isolated by bot and user and stores a bounded summary, not a raw transcript. Recent user-authored messages may be sent to Gemini again for summarization when enabled; this can consume additional API quota.
 - Users can inspect and delete individual summaries, clear all summaries, or disable memory. Disabling memory revokes Runner access and deletes stored summaries in the same batch. The account-deletion job also purges all `botMemories` owned by the deleted user and removes their `publicDirectory` projection. The Runner can read/write one exact memory only for an assigned bot while the user's consent projection is enabled; only the owner can list or delete memory records.
 
@@ -21,7 +21,7 @@
 
 - Private one-to-one chat creation and every normal private-message write are checked against the recipient's `settings.allowMessages` preference in Firestore rules. A friends-only recipient requires an existing friendship.
 - Some moderation and maintenance behavior is enforced in the client UI.
-- Full `publicProfiles/{uid}` metadata is restricted by Firestore Rules when `profileVisibility == 'friends'`; only the owner, friends, staff, or bot-profile viewers can read it. `publicDirectory/{uid}` remains searchable by signed-in users but contains only a display name, normalized name, and minimal account markers (no bio, photo, cover, or settings). Public posts remain governed by their own audience and may still appear in feeds. Existing accounts need the directory projection bootstrap on next sign-in before this experience is complete.
+- Full `publicProfiles/{uid}` metadata is restricted by Firestore Rules when `profileVisibility == 'friends'`; only the owner, friends, staff, or bot-profile viewers can read it. `publicDirectory/{uid}` remains searchable by signed-in users but contains only a display name, normalized name, and minimal account markers (no bio, photo, cover, or settings). Public posts remain governed by their own audience and may still appear in feeds. The safe admin backfill may create/update only the minimal directory projection and missing bot profiles; it cannot create human detailed profiles or bot-consent projections. Human detailed profiles and consent projections are owner-created on the next successful sign-in, so the owner must verify the existing-account migration before release.
 - Current messaging is not end-to-end encrypted.
 - Backup excludes Firebase Authentication credentials and may omit large embedded images.
 

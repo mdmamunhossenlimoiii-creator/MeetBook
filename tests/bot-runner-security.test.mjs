@@ -7,7 +7,11 @@ import { existsSync, readFileSync } from 'node:fs';
 const runner = readFileSync(new URL('../scripts/bot-runner.mjs', import.meta.url), 'utf8');
 const rules = readFileSync(new URL('../firestore.rules', import.meta.url), 'utf8');
 const adminBots = readFileSync(new URL('../js/admin/bots.js', import.meta.url), 'utf8');
+const adminSettings = readFileSync(new URL('../js/admin/settings.js', import.meta.url), 'utf8');
+const app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+const auth = readFileSync(new URL('../js/auth.js', import.meta.url), 'utf8');
 const rest = readFileSync(new URL('../scripts/lib/firestore-rest.mjs', import.meta.url), 'utf8');
+const postWorkflow = readFileSync(new URL('../.github/workflows/bot-runner.yml', import.meta.url), 'utf8');
 
 test('runner fails closed unless global botsEnabled and its own allowlist are explicit', () => {
   assert.match(runner, /global\.botsEnabled !== true/);
@@ -16,6 +20,38 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
   assert.match(runner, /new Set\(runner\.botIds\.filter\(\(id\) => isBotId\(id\)\)\)/);
   assert.match(rules, /function runnerEnabled\(\)/);
   assert.match(rules, /function runnerMayActAs\(botUid\)/);
+});
+
+test('Runner persists bot post fingerprints before publishing and serializes bot automation', () => {
+  assert.match(runner, /postHashes: \(Array\.isArray\(parse\(d\.postHashes, \[\]\)\)/);
+  assert.match(runner, /postedTexts: \(Array\.isArray\(parse\(d\.postedTexts, \[\]\)\)/);
+  assert.match(runner, /createHash\('sha256'\)/);
+  assert.match(runner, /const MAX_POST_HASHES = 4000/);
+  assert.match(runner, /postHashes: JSON\.stringify\(st\.postHashes\.slice\(-MAX_POST_HASHES\)\)/);
+  assert.match(runner, /\.filter\(\(value\) => typeof value === 'string' && \/\^\[a-f0-9\]\{64\}\$\/\.test\(value\)\)\.slice\(-MAX_POST_HASHES\)/);
+  assert.match(runner, /isDuplicatePostText\(postText, st\.postedTexts\)/);
+  assert.match(runner, /st\.postHashes\.push\(fingerprint\)/);
+  assert.match(runner, /if \(!DRY\) await saveState\(st\);\s*const id = await createPost/s);
+  assert.match(postWorkflow, /concurrency:/);
+  assert.match(postWorkflow, /group: meetbook-bot-automation/);
+  assert.match(postWorkflow, /cancel-in-progress: false/);
+});
+
+test('Runner, Rules, and Admin use settings/overall and strict Boolean gates', () => {
+  assert.ok(runner.includes("fs.get('settings/overall')"));
+  assert.ok(!runner.includes('settings/global'));
+  assert.ok(runner.includes('global.botsEnabled !== true'));
+  assert.ok(runner.includes('runner.enabled !== true'));
+  assert.ok(rules.includes('/documents/settings/overall'));
+  assert.ok(!rules.includes('/documents/settings/global'));
+  assert.ok(adminBots.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(!adminBots.includes('settings/global'));
+  assert.ok(adminSettings.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(adminSettings.includes('s.botsEnabled === true'));
+  assert.ok(app.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(auth.includes("doc(db, 'settings', 'overall')"));
+  assert.ok(!app.includes("doc(db, 'settings', 'global')"));
+  assert.ok(!auth.includes("doc(db, 'settings', 'global')"));
 });
 
 test('runner applies conservative per-bot and per-user limits', () => {
@@ -45,6 +81,36 @@ test('private chat message bodies are not copied into bot audit logs', () => {
   assert.doesNotMatch(runner, /await log\(bot, 'chat', m\.chatId, reply\.text\)/);
 });
 
+test('blocked or suspended chat requests are skipped without aborting other eligible bot work', () => {
+  assert.match(runner, /const isPermissionDenied =/);
+  assert.match(runner, /bots\.filter\(\(b\) => b\.active === true && b\.chatEnabled === true\)/);
+  assert.match(runner, /if \(isPermissionDenied\(error\)\)/);
+  assert.match(runner, /await mark\('not-eligible'\)/);
+  assert.match(runner, /message-not-found/);
+  assert.match(rules, /function eligibleHumanForBotInteraction\(uid\)/);
+  assert.match(rules, /eligibleHumanForBotInteraction\(userUid\)/);
+});
+
+test('dry-run never reads persisted optional bot memory', () => {
+  assert.match(runner, /if \(!DRY && memoryEnabled\)/);
+});
+
+test('optional memory permission failures do not abort the chat runner', () => {
+  assert.match(runner, /const isPermissionDenied = [\s\S]*?403[\s\S]*?PERMISSION_DENIED/);
+  assert.match(runner, /if \(!isPermissionDenied\(error\)\) throw error;[\s\S]*Saved bot memory was unavailable; continuing without it\./);
+});
+
+test('private inbox stores only message IDs and reads message bodies after chat eligibility', () => {
+  assert.match(rules, /request\.resource\.data\.keys\(\)\.hasOnly\(\['fromUid', 'botId', 'chatId', 'messageId', 'schemaVersion', 'handled', 'createdAt'\]\)/);
+  assert.match(rules, /function inboxMessageOk\(\)/);
+  assert.match(rules, /function validInboxMetadata\(d\)/);
+  assert.match(runner, /eq\('schemaVersion', 2\)/);
+  assert.match(runner, /const messageId = typeof m\.messageId === 'string'/);
+  assert.match(runner, /userMessage = await fs\.get\(\`chats\/\$\{m\.chatId\}\/messages\/\$\{messageId\}\`\)/);
+  assert.ok(runner.indexOf('chat = await fs.get') < runner.indexOf('userMessage = await fs.get'),
+    'the private chat eligibility gate must run before the message body is fetched');
+});
+
 test('runner inbox and private chat access are limited to assigned bots', () => {
   assert.match(rules, /runnerMayChatAs\(resource\.data\.botId\)/);
   assert.match(rules, /function runnerMayReadChat\(chat\)/);
@@ -62,7 +128,7 @@ test('Admin bot panel does not provide manual posting or commenting as a bot', (
 });
 
 test('dry runs never call Gemini or print private reply text', () => {
-  assert.match(runner, /const postText = DRY \? pick\.text : await generateText/);
+  assert.match(runner, /let postText = DRY \? pick\.text : await generateText/);
   assert.match(runner, /text: DRY \? baseComment\.text : await generateText/);
   assert.match(runner, /const replyText = DRY \? reply\.text : await generateText/);
   assert.match(runner, /private text and Gemini calls suppressed/);
@@ -128,7 +194,7 @@ test('Admin, Runner, and Firestore Rules treat missing bot switches as OFF', () 
   assert.match(runner, /b\.autoComment === true/);
   assert.match(runner, /bot\.autoReaction === true/);
   assert.match(runner, /b\.chatEnabled === true/);
-  assert.match(runner, /Activation blocked: settings\/global document is missing/);
+  assert.match(runner, /Activation blocked: settings\/overall document is missing/);
   assert.match(rules, /bot\.get\('active', false\) == true/);
   assert.match(rules, /get\('chatEnabled', false\) == true/);
   assert.match(rules, /get\('active', false\) == true/);

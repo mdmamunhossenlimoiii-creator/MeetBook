@@ -11,8 +11,8 @@ import { startMock } from './mock-firestore.mjs';
 import { BOTS } from '../js/bots-data.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 
-// Bot runner integration tests require an owner-configured Firebase Web App. They are skipped
-// while MeetBook intentionally has blank Firebase placeholders; bot automation remains out of scope.
+// Bot runner integration tests use the in-memory Auth/Firestore mock below; they never sign in
+// to the live Firebase project. They are skipped only if the public Web App config is missing.
 const botRunnerConfigured = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
 // async on purpose: the mock server lives in this process, so a blocking spawnSync would deadlock it
@@ -39,7 +39,7 @@ const post = (uid, text, more = {}) => ({ uid, authorName: uid, text, image: '',
 test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfigured }, async () => {
   const m = await startMock({ seed: {
     ...seedBots(),
-    'settings/global': { botsEnabled: true, botToBotComments: false },
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
     'users/u2': { name: 'Sam', banned: false, settings: { allowBotEngagement: false } },
     'botEngagement/u1': { allowBotEngagement: true },
@@ -49,7 +49,8 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
     'posts/p3': post('u1', 'My grandfather passed away today'),
     'posts/p4': post('bot_01', 'Tech tip: update your phone and apps regularly.'),
     'chats/bot_06_u1': { type: 'private', members: ['bot_06', 'u1'] },
-    'botInbox/i1': { botId: 'bot_06', fromUid: 'u1', chatId: 'bot_06_u1', text: 'তুমি কি রোবট?', handled: false, createdAt: now }
+    'chats/bot_06_u1/messages/user-msg': { uid: 'u1', text: 'তুমি কি রোবট?', image: '', createdAt: now },
+    'botInbox/i1': { botId: 'bot_06', fromUid: 'u1', chatId: 'bot_06_u1', messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now }
   } });
   const env = { BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '2', BOT_COMMENTS: '6' };
   try {
@@ -75,10 +76,12 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
 
     // chat
     const msgs = m.ids('chats/bot_06_u1/messages');
-    assert.equal(msgs.length, 1);
-    const reply = m.get(`chats/bot_06_u1/messages/${msgs[0]}`);
+    const botReplies = msgs.filter((id) => m.get(`chats/bot_06_u1/messages/${id}`).uid === 'bot_06');
+    assert.equal(botReplies.length, 1);
+    const reply = m.get(`chats/bot_06_u1/messages/${botReplies[0]}`);
     assert.equal(reply.uid, 'bot_06'); assert.match(reply.text, /এআই বট/, 'answers honestly that it is an AI bot');
     assert.equal(m.get('botInbox/i1').handled, true);
+    assert.equal(Object.hasOwn(m.get('botInbox/i1'), 'text'), false, 'the inbox must not duplicate private message text');
     assert.equal(m.get('chats/bot_06_u1').lastMessage.uid, 'bot_06');
 
     assert.ok(m.ids('botLogs').length >= 4, 'activity logged');
@@ -91,11 +94,52 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
   } finally { await m.close(); }
 });
 
+
+test('dry-run does not read persisted bot memory even when the user opted in', { skip: !botRunnerConfigured }, async () => {
+  const memoryId = 'bot_01_u1';
+  const m = await startMock({ seed: {
+    ...seedBots(),
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
+    'users/u1': { name: 'User One', banned: false, settings: { allowBotMemory: true } },
+    'botEngagement/u1': { allowBotEngagement: false, allowBotMemory: true },
+    'chats/bot_01_u1': { type: 'private', members: ['bot_01', 'u1'] },
+    'chats/bot_01_u1/messages/user-msg': { uid: 'u1', text: 'What can you help me learn?', image: '', createdAt: now },
+    'botInbox/dry-memory': { botId: 'bot_01', fromUid: 'u1', chatId: 'bot_01_u1', messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now },
+    ['botMemories/' + memoryId]: { ownerUid: 'u1', botId: 'bot_01', chatId: 'bot_01_u1', summary: 'Prefers beginner technology tips.' }
+  } });
+  const env = {
+    BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret',
+    BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId,
+    AUTH_URL: m.url, FS_URL: m.url, BOT_RUNNER_MODE: 'chat',
+    BOT_RUNNER_BOT_ID: 'bot_01', BOT_POSTS: '0', BOT_COMMENTS: '0',
+    DRY_RUN: '1', GEMINI_API_KEY: 'mock-key', GEMINI_STRICT: '1'
+  };
+  try {
+    const result = await run('scripts/bot-runner.mjs', env);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.doesNotMatch(m.calls.join('\n'), /\/documents\/botMemories(?:\/|$)/,
+      'dry-run must not read or write persistent memory documents');
+    assert.equal(m.get('botMemories/' + memoryId).summary, 'Prefers beginner technology tips.');
+    assert.equal(m.get('botInbox/dry-memory').handled, false, 'dry-run leaves the inbox unchanged');
+    assert.match(result.stdout, /private text and Gemini calls suppressed/);
+  } finally { await m.close(); }
+});
+
 test('bot runner: global OFF, per-bot OFF and daily limit stop everything', { skip: !botRunnerConfigured }, async () => {
   for (const [name, seed] of [
-    ['global off', { ...seedBots(), 'settings/global': { botsEnabled: false } }],
-    ['bots inactive', { ...seedBots({ active: false }) }],
-    ['limit 0', { ...seedBots({ dailyLimit: 0 }) }]
+    ['global document missing', { ...seedBots() }],
+    ['global off', { ...seedBots(), 'settings/overall': { botsEnabled: false } }],
+    ['global missing botsEnabled', { ...seedBots(), 'settings/overall': {} }],
+    ['global string true', { ...seedBots(), 'settings/overall': { botsEnabled: 'true' } }],
+    ['global string false', { ...seedBots(), 'settings/overall': { botsEnabled: 'false' } }],
+    ['global fake string', { ...seedBots(), 'settings/overall': { botsEnabled: 'fake' } }],
+    ['runner false', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: false, botIds: ['bot_01'] } }],
+    ['runner string true', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'true', botIds: ['bot_01'] } }],
+    ['runner string false', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'false', botIds: ['bot_01'] } }],
+    ['runner fake string', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { enabled: 'fake', botIds: ['bot_01'] } }],
+    ['runner missing enabled', { ...seedBots(), 'settings/overall': { botsEnabled: true }, 'botRunners/runner1': { botIds: ['bot_01'] } }],
+    ['bots inactive', { ...seedBots({ active: false }), 'settings/overall': { botsEnabled: true } }],
+    ['limit 0', { ...seedBots({ dailyLimit: 0 }), 'settings/overall': { botsEnabled: true } }]
   ]) {
     const m = await startMock({ seed: { ...seed, 'users/u1': { name: 'R', settings: { allowBotEngagement: true } }, 'posts/p1': post('u1', 'trip to the beach') } });
     try {

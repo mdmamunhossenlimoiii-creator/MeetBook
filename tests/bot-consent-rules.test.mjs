@@ -28,7 +28,7 @@ const seed = () => {
   return {
     ...s,
     'botRunners/runner1': { enabled: true, botIds: BOTS.map((bot) => bot.id) },
-    'settings/global': { botsEnabled: true, botToBotComments: false },
+    'settings/overall': { botsEnabled: true, botToBotComments: false },
     'users/runner1': { name: 'Runner account', banned: false },
     'users/u1': { name: 'Rina Akter', banned: false, settings: { allowBotEngagement: true } },
     'users/u2': { name: 'Sam', banned: false, settings: { allowBotEngagement: false } },
@@ -40,7 +40,8 @@ const seed = () => {
     'posts/p2': post('u2', 'Lovely travel photo from my trip to the beach'),
     'posts/p3': post('u3', 'Amazing travel trip to the sea with friends'),
     'chats/bot_06_u2': { type: 'private', members: ['bot_06', 'u2'] },
-    'botInbox/i1': { botId: 'bot_06', fromUid: 'u2', chatId: 'bot_06_u2', text: 'hello', handled: false, createdAt: now }
+    'chats/bot_06_u2/messages/user-msg': { uid: 'u2', text: 'hello', image: '', createdAt: now },
+    'botInbox/i1': { botId: 'bot_06', fromUid: 'u2', chatId: 'bot_06_u2', messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now }
   };
 };
 const env = (m, more = {}) => ({ BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret', BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId, AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '1', BOT_COMMENTS: '10', ...more });
@@ -70,7 +71,10 @@ test('rules + runner: the full run is never denied, and only consenting users ar
     assert.deepEqual(m.get('posts/p2').reactions, {});
     assert.deepEqual(m.get('posts/p3').reactions, {});
     assert.equal(m.get('posts/p2').commentCount + m.get('posts/p3').commentCount, 0);
-    assert.equal(m.ids('chats/bot_06_u2/messages').length, 1, 'bot chat reply passes the rules (runner may read private chats with a bot)');
+    const chatMessages = m.ids('chats/bot_06_u2/messages');
+    assert.equal(chatMessages.filter((id) => m.get(`chats/bot_06_u2/messages/${id}`).uid === 'bot_06').length, 1,
+      'bot chat reply passes the rules after validating the referenced user message');
+    assert.equal(Object.hasOwn(m.get('botInbox/i1'), 'text'), false, 'the inbox must not duplicate private message text');
     assert.ok(m.ids('posts').length >= 4, 'bot post created under rules');
   } finally { await m.close(); }
 });
@@ -89,7 +93,7 @@ test('engagement mode comments only on a relevant opted-in public post and does 
     assert.deepEqual(m.denied, [], 'a valid engagement must pass the Firestore rules simulator');
     assert.equal(m.ids('posts').length, beforePosts, 'engagement mode must not create posts');
     assert.equal(m.ids('posts/p4/comments').length, 1, 'the relevant opted-in post receives one bot comment');
-    assert.equal(m.ids('chats/bot_06_u2/messages').length, 0, 'engagement mode must not answer private chats');
+    assert.equal(m.ids('chats/bot_06_u2/messages').filter((id) => m.get(`chats/bot_06_u2/messages/${id}`).uid === 'bot_06').length, 0, 'engagement mode must not answer private chats');
   } finally { await m.close(); }
 });
 
@@ -142,11 +146,37 @@ test('rules: runner allowlist and global emergency stop are enforced server-side
       'runner cannot comment on another bot while botToBotComments is OFF');
     assert.equal(await call('GET', 'botInbox/i1'), 403,
       'runner cannot read inbox entries for a bot outside its allowlist');
-    m.put('settings/global', { botsEnabled: false, botToBotComments: false });
+    m.put('settings/overall', { botsEnabled: false, botToBotComments: false });
     assert.equal(await call('POST', 'posts/p1/comments?documentId=stopped', comment('bot_01')), 403,
       'global emergency stop blocks bot writes in Firestore Rules');
     assert.equal(await call('GET', 'botState/runner1'), 403,
       'global emergency stop blocks runner state access too');
+  } finally { await m.close(); }
+});
+
+test('a missing optional bot memory does not block a consented chat reply', { skip: !botRunnerConfigured }, async () => {
+  const data = seed();
+  data['users/u2'].settings.allowBotMemory = true;
+  data['botEngagement/u2'] = { allowBotEngagement: false, allowBotMemory: true, updatedAt: now };
+  data['chats/bot_01_u2'] = { type: 'private', members: ['bot_01', 'u2'] };
+  data['chats/bot_01_u2/messages/user-msg'] = {
+    uid: 'u2', text: 'Can you share a beginner phone tip?', image: '', createdAt: now
+  };
+  data['botInbox/i_memory'] = {
+    botId: 'bot_01', fromUid: 'u2', chatId: 'bot_01_u2',
+    messageId: 'user-msg', schemaVersion: 2, handled: false, createdAt: now
+  };
+  const m = await startMock({ seed: data, rules: true });
+  try {
+    const result = await exec(['scripts/bot-runner.mjs'], env(m, {
+      GITHUB_RUN_ID: 'missing-memory-001', BOT_RUNNER_MODE: 'chat', BOT_RUNNER_BOT_ID: 'bot_01',
+      BOT_POSTS: '0', BOT_COMMENTS: '0', DRY_RUN: '0', GEMINI_API_KEY: '', GEMINI_STRICT: '0'
+    }));
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    const messages = m.ids('chats/bot_01_u2/messages');
+    assert.equal(messages.filter((id) => m.get(`chats/bot_01_u2/messages/${id}`).uid === 'bot_01').length, 1,
+      'the chat reply must be saved even when an optional memory document is absent');
+    assert.equal(m.get('botInbox/i_memory').handled, true);
   } finally { await m.close(); }
 });
 
@@ -189,7 +219,7 @@ test('an unhandled inbox item with an existing deterministic reply is recovered 
       GITHUB_RUN_ID: 'retry-chat-001', BOT_POSTS: '0', BOT_COMMENTS: '0'
     }));
     assert.equal(result.status, 0, result.stderr + result.stdout);
-    assert.equal(m.ids('chats/bot_06_u2/messages').length, 1, 'existing reply is reused, not duplicated');
+    assert.equal(m.ids('chats/bot_06_u2/messages').filter((id) => m.get(`chats/bot_06_u2/messages/${id}`).uid === 'bot_06').length, 1, 'existing reply is reused, not duplicated');
     assert.equal(m.get('botInbox/i1').handled, true, 'recovered inbox item is marked handled');
     assert.equal(m.get('chats/bot_06_u2').lastMessage.text, 'Existing reply');
   } finally { await m.close(); }

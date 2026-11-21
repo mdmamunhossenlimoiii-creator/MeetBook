@@ -14,7 +14,7 @@ export async function render(body) {
   let bots = [], site = {};
   const draw = async () => {
     try {
-      [bots, site] = await Promise.all([listBots(), getDoc(doc(db, 'settings', 'global')).then((s) => (s.exists() ? s.data() : {}))]);
+      [bots, site] = await Promise.all([listBots(), getDoc(doc(db, 'settings', 'overall')).then((s) => (s.exists() ? s.data() : {}))]);
     } catch (e) { body.innerHTML = errorBox(e); return; }
     const botsOn = site.botsEnabled === true;
     body.innerHTML = `<h2 class="page-title">AI Bots</h2>
@@ -52,7 +52,7 @@ export async function render(body) {
     switch (b.dataset.do) {
       case 'global': {
         const next = site.botsEnabled !== true;
-        if (await act(b, () => setDoc(doc(db, 'settings', 'global'), { botsEnabled: next, updatedBy: state.user.uid, updatedAt: serverTimestamp() }, { merge: true }), { ok: next ? 'Bots are ON' : 'Bots are OFF', log: ['bots global switch', 'settings/global', next ? 'on' : 'off'] })) draw();
+        if (await act(b, () => setDoc(doc(db, 'settings', 'overall'), { botsEnabled: next, updatedBy: state.user.uid, updatedAt: serverTimestamp() }, { merge: true }), { ok: next ? 'Bots are ON' : 'Bots are OFF', log: ['bots global switch', 'settings/overall', next ? 'on' : 'off'] })) draw();
         break;
       }
       case 'seed': if (await act(b, async () => { const r = await seedBots(); toast(`${r.created} created, ${r.existing} already existed`, 'success'); }, { ok: '', log: ['built-in bots created', '', ''] })) draw(); break;
@@ -85,7 +85,7 @@ export async function render(body) {
       <div class="field"><label for="b-name">Name</label><input id="b-name" maxlength="60" value="${esc(v.name)}"></div>
       <div class="field"><label for="b-user">Username</label><input id="b-user" maxlength="30" value="${esc(v.username || '')}" placeholder="e.g. travel_buddy"></div>
       <div class="field"><label for="b-emoji">Character symbol</label><select id="b-emoji">${ROLE_EMOJIS.map((emoji) => `<option value="${emoji}" ${v.roleEmoji === emoji ? 'selected' : ''}>${emoji}</option>`).join('')}</select><small class="muted">Choose a symbol that matches the bot's fictional character.</small></div>
-      <div class="field"><label for="b-bio">Bio (mention that it is an AI bot)</label><textarea id="b-bio" rows="2" maxlength="300">${esc(v.bio || '')}</textarea></div>
+      <div class="field"><label for="b-bio">Bio (mention that it is an AI bot)</label><textarea id="b-bio" rows="2" maxlength="300">${esc(v.bio || '')}</textarea><small class="muted">Use a fictional character identity only. Never impersonate a real person or claim real-world professional credentials.</small></div>
       <div class="row gap wrap">
         <div class="field grow"><label for="b-pers">Personality</label><select id="b-pers">${Object.entries(PERSONALITIES).map(([k, p]) => `<option value="${k}" ${v.personality === k ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
         <div class="field grow"><label for="b-lang">Language</label><select id="b-lang">${Object.entries(LANGUAGES).map(([k, l]) => `<option value="${k}" ${v.lang === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>

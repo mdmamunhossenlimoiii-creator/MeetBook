@@ -11,7 +11,7 @@ MeetBook is an independent social platform built from the existing application c
 - Never reuse MySocial Firebase project IDs, credentials, user accounts, administrator identities, backup files, or backup secrets.
 - The owner performs all Firebase Console operations. Repository code and documentation are prepared here; the agent must not log in to or deploy Firebase.
 - Never publish the site, deploy Firebase rules, run a production backup/restore, or activate bot automation without explicit authorization.
-- AI bot implementation is present, including separate bot identities and a server-side Gemini adapter for the first three bots. Bot Runner and Bot Chat workflows remain archived/disabled; no live bot activity is authorized by code or CI.
+- AI bot implementation is present, including separate bot identities and a server-side Gemini adapter for the first three bots. Bot Runner, Bot Engagement, and Bot Chat workflows are manual-only and dry-run by default. They have no scheduled or unattended triggers; live actions require protected-environment review and separate owner approval.
 
 ## Existing application features
 
@@ -36,15 +36,16 @@ Feature presence in source code is not proof of production readiness. See [FEATU
 
 ## Firebase setup — owner performs these steps
 
-1. Create a brand-new Firebase project exclusively for MeetBook. Do not select or reuse the MySocial project.
-2. Register a new Web App inside that MeetBook project.
-3. Enable the sign-in providers you intend to support (Email/Password and, optionally, Google).
-4. Create the MeetBook Firestore database in Production mode.
+1. Confirm that the existing Firebase project `meetbook-65d30` is dedicated to MeetBook and is not shared with MySocial. Do not create a second project unless this check fails.
+2. If `meetbook-65d30` is not the approved MeetBook project, the owner must create a separate dedicated project and update the MeetBook Web App configuration and project-ID variables consistently before live use.
+3. Register a Web App inside the approved MeetBook project if one is not already registered.
+4. Enable the sign-in providers you intend to support (Email/Password and, optionally, Google).
+5. Create the MeetBook Firestore database in Production mode if it does not already exist.
 5. Add the GitHub Pages domain to Authentication's authorized domains after Pages is configured.
-6. Verify that `js/firebase-config.js` points only to the intended MeetBook Web App (`meetbook-65d30` in the current branch); replace it with the owner's newly created MeetBook Web App configuration if that project is not the approved target.
+6. Verify that `js/firebase-config.js` points only to the approved MeetBook Web App (currently `meetbook-65d30`); if the owner selects a different dedicated MeetBook project, update the public Web App config and all corresponding project-ID variables consistently.
 7. Review and publish `firestore.rules` and `firestore.indexes.json) yourself from the Firebase Console or Firebase CLI after confirming the target project ID.
 8. Configure the Super Admin using the instructions in [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
-9. Configure GitHub Actions secrets only after checking that each credential belongs to the new MeetBook project.
+9. Configure GitHub Actions secrets only after checking that each credential belongs to the approved dedicated MeetBook project.
 
 Full instructions: [FIREBASE_SETUP.md](FIREBASE_SETUP.md).
 
@@ -65,8 +66,8 @@ Deployment notes: [DEPLOYMENT.md](DEPLOYMENT.md).
 | Workflow | Current policy |
 |---|---|
 | Tests | Retained; runs on pull requests and pushes to `main`; no secrets required |
-| AI bot activity | Archived outside `.github/workflows/` as `.disabled`; GitHub Actions cannot execute it |
-| AI bot chat replies | Archived outside `.github/workflows/` as `.disabled`; GitHub Actions cannot execute it |
+| AI bot posts and engagement | Manual-only under `.github/workflows/`; dry-run by default, no schedule, live actions require protected-environment approval and the explicit owner release flag |
+| AI bot chat replies | Manual-only under `.github/workflows/`; dry-run by default, only user-initiated inbox replies, live actions require protected-environment approval and the explicit owner release flag |
 | MeetBook encrypted backup | Manual dispatch only; requires explicit confirmation and MeetBook-only secrets |
 | Account deletion queue (`maintenance.yml`) | Archived outside `.github/workflows/`; destructive deletion requires separate owner review |
 
@@ -82,7 +83,7 @@ The app uses browser ES modules and does not require a build step. Run a local s
 python3 -m http.server 8000
 ```
 
-Then open http://localhost:8000. Firebase features remain unavailable until the owner supplies the new MeetBook Web App configuration. Use a dedicated non-production Firebase project or the configured local emulator for tests.
+Then open http://localhost:8000. Firebase features remain unavailable until the owner confirms the current MeetBook Web App configuration is approved or replaces it with the approved dedicated project's values. Use a dedicated non-production Firebase project or the configured local emulator for tests.
 
 ## Tests
 
