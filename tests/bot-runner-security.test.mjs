@@ -26,6 +26,9 @@ test('Runner persists bot post fingerprints before publishing and serializes bot
   assert.match(runner, /postHashes: \(Array\.isArray\(parse\(d\.postHashes, \[\]\)\)/);
   assert.match(runner, /postedTexts: \(Array\.isArray\(parse\(d\.postedTexts, \[\]\)\)/);
   assert.match(runner, /createHash\('sha256'\)/);
+  assert.match(runner, /const MAX_POST_HASHES = 4000/);
+  assert.match(runner, /postHashes: JSON\.stringify\(st\.postHashes\.slice\(-MAX_POST_HASHES\)\)/);
+  assert.match(runner, /\.filter\(\(value\) => typeof value === 'string' && \/\^\[a-f0-9\]\{64\}\$\/\.test\(value\)\)\.slice\(-MAX_POST_HASHES\)/);
   assert.match(runner, /isDuplicatePostText\(postText, st\.postedTexts\)/);
   assert.match(runner, /st\.postHashes\.push\(fingerprint\)/);
   assert.match(runner, /if \(!DRY\) await saveState\(st\);\s*const id = await createPost/s);
