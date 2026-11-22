@@ -81,6 +81,12 @@ async function verifyAccountEligibility(uid, token, projectId, fetcher = fetch) 
   if (!fields || !fields.banned || fields.banned.booleanValue !== false) {
     throw new Error("account_not_eligible");
   }
+  // Bot profile documents are not eligible for authenticated human image uploads.
+  // Legacy human profiles may omit isBot; if present, it must be a well-typed false.
+  if (fields.isBot) {
+    if (typeof fields.isBot.booleanValue !== "boolean") throw new Error("account_status_unavailable");
+    if (fields.isBot.booleanValue === true) throw new Error("account_not_eligible");
+  }
 
   const suspension = fields.suspendedUntil;
   if (suspension && !Object.prototype.hasOwnProperty.call(suspension, "nullValue")) {
