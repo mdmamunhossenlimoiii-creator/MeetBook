@@ -124,6 +124,14 @@ test("account eligibility accepts an expired suspension", async () => {
   assert.equal(await verifyAccountEligibility(identity.uid, identity.token, identity.projectId, fetcher), true);
 });
 
+test("legacy human profiles without an isBot field remain eligible when banned=false", async () => {
+  const identity = await makeIdentity();
+  const fetcher = async () => new Response(JSON.stringify({
+    fields: { banned: { booleanValue: false } }
+  }), { status: 200 });
+  assert.equal(await verifyAccountEligibility(identity.uid, identity.token, identity.projectId, fetcher), true);
+});
+
 test("account eligibility rejects banned and malformed legacy account state", async () => {
   const identity = await makeIdentity();
   const bannedFetcher = async () => new Response(JSON.stringify({
