@@ -1,6 +1,6 @@
 name: Tests
 
-# Runs on pushes to main and the two active implementation branches. PR heads are tested by their branch push.
+# Runs on pull requests and pushes to main. PR updates on the feature branch receive the same full suite.
 # Uses NO secrets and cannot touch your Firebase project:
 #  * unit      - rules interpreter + permission matrix + mutation tests, script tests against an in-memory Firestore
 #  * browser   - headless Chromium smoke test of the Admin panel (role handling, fail-closed)
@@ -8,8 +8,9 @@ name: Tests
 #                     (local process on the runner, demo project, no network to your real project)
 # Recommended: Settings -> Branches -> branch protection for main -> "Require status checks" -> select all three jobs.
 on:
+  pull_request:
   push:
-    branches: [main, feature/character-bot-identities, integration/meetbook-mainline-repair]
+    branches: [main]
 
 permissions:
   contents: read
