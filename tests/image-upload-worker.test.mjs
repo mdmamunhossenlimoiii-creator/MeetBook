@@ -57,7 +57,7 @@ function makeFetcher(identity, profile, cloudinaryResult = null) {
 }
 
 function activeProfile(extra = {}) {
-  return { banned: { booleanValue: false }, ...extra };
+  return { banned: { booleanValue: false }, isBot: { booleanValue: false }, ...extra };
 }
 
 function makeUploadRequest(identity) {
@@ -140,6 +140,24 @@ test("account eligibility rejects banned and malformed legacy account state", as
   );
 });
 
+test("account eligibility rejects bot profiles and malformed isBot values", async () => {
+  const identity = await makeIdentity();
+  const botFetcher = async () => new Response(JSON.stringify({
+    fields: activeProfile({ isBot: { booleanValue: true } })
+  }), { status: 200 });
+  await assert.rejects(
+    () => verifyAccountEligibility(identity.uid, identity.token, identity.projectId, botFetcher),
+    /account_not_eligible/
+  );
+  const malformedFetcher = async () => new Response(JSON.stringify({
+    fields: activeProfile({ isBot: { stringValue: "false" } })
+  }), { status: 200 });
+  await assert.rejects(
+    () => verifyAccountEligibility(identity.uid, identity.token, identity.projectId, malformedFetcher),
+    /account_status_unavailable/
+  );
+});
+
 test("account eligibility rejects a currently suspended account and fails closed on lookup errors", async () => {
   const identity = await makeIdentity();
   const suspendedFetcher = async () => new Response(JSON.stringify({
@@ -159,6 +177,19 @@ test("account eligibility rejects a currently suspended account and fails closed
 test("worker rejects a banned account before reading the upload body", async () => {
   const identity = await makeIdentity();
   const { fetcher, calls } = makeFetcher(identity, { banned: { booleanValue: true } });
+  const request = new Request("https://worker.example/upload", {
+    method: "POST",
+    headers: { origin: uploadEnv.ALLOWED_ORIGIN, authorization: "Bearer " + identity.token }
+  });
+  const response = await handleUpload(request, uploadEnv, uploadEnv.ALLOWED_ORIGIN, fetcher);
+  assert.equal(response.status, 403);
+  assert.equal(calls.length, 2);
+  assert.equal(calls.some((call) => call.url.startsWith("https://api.cloudinary.com/")), false);
+});
+
+test("worker rejects a bot profile before reading the upload body", async () => {
+  const identity = await makeIdentity();
+  const { fetcher, calls } = makeFetcher(identity, activeProfile({ isBot: { booleanValue: true } }));
   const request = new Request("https://worker.example/upload", {
     method: "POST",
     headers: { origin: uploadEnv.ALLOWED_ORIGIN, authorization: "Bearer " + identity.token }
