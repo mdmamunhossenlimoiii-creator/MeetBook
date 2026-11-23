@@ -11,7 +11,7 @@
 
 ## Required owner actions
 
-- Create a new MeetBook Firebase project.
+- Confirm that the existing Firebase project `meetbook-65d30` is dedicated to MeetBook and is not shared with MySocial; create a separate project only if this check fails.
 - Review and publish MeetBook rules/indexes.
 - Configure a MeetBook Super Admin identity.
 - Add only MeetBook-specific secrets.
