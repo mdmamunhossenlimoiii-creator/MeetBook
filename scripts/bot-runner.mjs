@@ -21,7 +21,7 @@ import { createHash } from 'node:crypto';
 //
 // Env: BOT_RUNNER_EMAIL, BOT_RUNNER_PASSWORD (secrets), BOT_POSTS, BOT_COMMENTS (optional),
 //      DRY_RUN=1 (print only), AUTH_URL / FS_URL (override endpoints, used by tests).
-import { BOTS, isBotId } from '../js/bots-data.js';
+import { BOTS, isBotId, botProfileRoleIssues } from '../js/bots-data.js';
 import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize, isDuplicatePostText } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and, toFields } from './lib/firestore-rest.mjs';
@@ -214,21 +214,29 @@ async function tell(bot, toUid, type, postId, extra) {
 
 // ------------------------------------------------------------ bots + limits
 async function loadBots() {
-  // Live profile docs (so admin edits apply); fall back to the built-in data for fields a doc lacks.
+  // Built-in role metadata is canonical. Read live controls and post ideas, but never silently
+  // accept a stored emoji/personality/topic mismatch or rewrite the owner's Firestore document.
   const docs = await fs.query({ from: [{ collectionId: 'users' }], where: eq('isBot', true), limit: 60 });
   const out = [];
   for (const d of docs) {
     const base = BOTS.find((b) => b.id === d.id);
-    if (!base && !isBotId(d.id)) continue;
+    if (!base || !isBotId(d.id)) continue;
+    const roleIssues = botProfileRoleIssues(d.id, d);
+    if (roleIssues.length) {
+      console.warn(`Skipping ${d.id}: stored role metadata mismatch (${roleIssues.join(', ')}). Owner review is required; the profile was not changed.`);
+      continue;
+    }
     out.push({
-      ...(base || { posts: [], postsBn: [] }),
+      ...base,
       ...d,
-      // post ideas: the ones an admin typed in the panel win over the built-in list
-      posts: Array.isArray(d.ideas) && d.ideas.length ? d.ideas : (base && base.posts) || [],
-      postsBn: Array.isArray(d.ideasBn) && d.ideasBn.length ? d.ideasBn : (base && base.postsBn) || [],
-      interests: Array.isArray(d.interests) && d.interests.length ? d.interests : (base && base.interests) || [],
-      personality: d.personality || (base && base.personality) || 'friendly',
-      lang: d.lang || (base && base.lang) || 'both'
+      // A profile may omit optional role fields; always use the built-in values at runtime.
+      roleEmoji: base.roleEmoji,
+      personality: base.personality,
+      interests: [...base.interests],
+      // owner-authored post ideas may vary while staying within the built-in role
+      posts: Array.isArray(d.ideas) && d.ideas.length ? d.ideas : base.posts,
+      postsBn: Array.isArray(d.ideasBn) && d.ideasBn.length ? d.ideasBn : base.postsBn,
+      lang: d.lang || base.lang
     });
   }
   return out;
