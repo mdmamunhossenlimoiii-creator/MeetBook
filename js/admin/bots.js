@@ -3,11 +3,18 @@ import { db, doc, getDoc, setDoc, collection, query, where, orderBy, limit, getD
 import { state } from '../state.js';
 import { $, $$, esc, avatarHtml, botBadge, errorBox, confirmBox, modal, closeModal, toast, errMsg, resizeImage, emptyState } from '../utils.js';
 import { listBots, seedBots, createBot, saveBot, deleteBot, MAX_BOTS } from '../bots.js';
-import { BOTS, ROLE_EMOJIS, botAvatar, botCover } from '../bots-data.js';
+import { BOTS, ROLE_EMOJIS, botAvatar, botCover, botProfileRoleIssues } from '../bots-data.js';
 import { PERSONALITIES, LANGUAGES, TOPICS } from '../bots-brain.js';
 import { act, loading, tagHtml, when, short } from './common.js';
 
 const lines = (s) => String(s || '').split('\n').map((x) => x.trim()).filter(Boolean).slice(0, 30);
+
+const roleAuditNotice = (bot) => {
+  const issues = botProfileRoleIssues(bot.id, bot);
+  return issues.length
+    ? `<div class="small">${tagHtml('Role mismatch', 'danger')} Runner will skip this bot until the owner reviews: ${esc(issues.join(', '))}.</div>`
+    : '';
+};
 
 export async function render(body) {
   body.innerHTML = `<h2 class="page-title">AI Bots</h2>${loading()}`;
@@ -29,7 +36,7 @@ export async function render(body) {
     </section>
     <div data-cards>${bots.length ? bots.map((b) => `<div class="card pad bot-card" data-id="${esc(b.id)}"><div class="row gap wrap">
       ${avatarHtml(b.name, b.photo, 48)}<div class="grow"><b>${esc(b.name)}</b>${botBadge(b)} <span class="muted small">@${esc(b.username || b.id)} · ${esc(b.id)}</span>
-        <div class="small">${esc(PERSONALITIES[b.personality]?.label || b.personality || '—')} · ${esc(LANGUAGES[b.lang] || 'Both')} · limit ${b.dailyLimit ?? 6}/day</div>
+        <div class="small">${esc(PERSONALITIES[b.personality]?.label || b.personality || '—')} · ${esc(LANGUAGES[b.lang] || 'Both')} · limit ${b.dailyLimit ?? 6}/day</div>${roleAuditNotice(b)}
         <div class="small">${b.active === true ? tagHtml('Active') : tagHtml('Inactive', 'danger')}</div></div>
       <div class="row gap wrap"><button class="btn" data-do="logs">Activity</button><button class="btn" data-do="toggle">${b.active === true ? "Turn OFF" : "Turn ON"}</button><button class="btn btn-danger" data-do="delete">Delete</button></div></div></div>`).join('') : emptyState('No bots yet', 'Use "Create missing built-in bots" to start.')}</div>
     <section class="card pad"><h3>Latest bot activity (all bots)</h3><div data-log>${loading()}</div></section>`;
