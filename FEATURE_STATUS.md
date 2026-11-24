@@ -29,6 +29,7 @@ This document records repository source status and CI evidence only. Passing CI 
 - The available GitHub Actions connector did not expose runs for the latest feature head. A local clone/test attempt was also blocked because the runtime could not resolve `github.com`; no local rerun is claimed.
 - CI/emulator results are not live production evidence. No live Firebase Runner sign-in, user-initiated bot reply, consent-gated public engagement, real Gemini API request, Cloudflare upload, Firebase Console change, production Rules publish, or GitHub Pages deployment has been performed.
 - Main-branch Bot Chat Run #30's actual dispatch inputs and step-level error log remain unavailable; its mode and root cause are unverified.
+- Feature branch head `c3d2282de88517dda24b022b34b304e90fb24b32` adds a read-only built-in role-profile audit: the Runner skips a bot whose explicit stored emoji, personality, or topic list conflicts with canonical metadata; missing optional fields fall back to built-ins. The Admin dashboard shows a warning, and no live profile is rewritten. Unit/static regressions were added. The available PR-workflow-run and combined-status lookups expose no run/check for this head, so these new changes are **not yet CI-verified**.
 
 ## Release decision
 
