@@ -29,7 +29,7 @@ test('Runner skips mismatched built-in role metadata and uses canonical emoji/pe
   assert.match(runner, /roleEmoji: base\.roleEmoji/);
   assert.match(runner, /personality: base\.personality/);
   assert.match(runner, /interests: \[\.\.\.base\.interests\]/);
-  assert.doesNotMatch(runner, /fs\.patch\(\`users\/\$\{d\.id\}/);
+  assert.equal(runner.includes('fs.patch(`users/${d.id}'), false, 'role audit must never rewrite live bot profiles');
 });
 
 test('Runner persists bot post fingerprints before publishing and serializes bot automation', () => {
