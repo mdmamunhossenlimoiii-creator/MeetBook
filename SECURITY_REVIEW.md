@@ -22,6 +22,11 @@
 - Firestore Admin SDK / service-account operations bypass Firestore Rules. Any future service account must remain least-privilege and be reviewed separately.
 - The Admin bot panel is limited to bot creation, enable/disable, deletion and activity review. Firestore Rules allow only the `active` Boolean to change on existing bot profiles; personality, topic, name and other identity fields are immutable after creation. Admins cannot publish or comment as bots. Only manual dry-run/live-gated workflows are present; no scheduled or unattended bot workflows are enabled. Blocked or suspended users are excluded from public engagement, private chat-history reads, bot replies, and bot-memory access. The assigned active bot may read only ID-only routing metadata for the user-initiated inbox item addressed to it. The Runner must pass the separate chat-eligibility check before reading the referenced message or chat history; blocked/suspended items are marked skipped. Staff cannot read inbox metadata or private chat bodies. No secrets, Firebase production rules, project settings, or live data were changed.
 
+## Built-in bot role-profile integrity
+
+- The Runner treats each of the 23 built-in bots' role emoji, personality, and interest list as canonical. Missing optional profile fields fall back to built-in metadata; explicit malformed or conflicting values cause that bot to be skipped with a warning. Owner-authored post ideas and language preferences remain supported.
+- The Admin dashboard surfaces a read-only mismatch warning. This check never repairs or overwrites a live profile. The owner must review all 23 existing bot documents and resolve any warning before activation; preserve intentional custom values for separate review rather than silently replacing them.
+
 ## Image upload Worker security
 
 - The signed Cloudinary Worker validates the Firebase ID token and reads only the caller's own users/{uid} document through Firestore REST with that same token, so existing Firestore Rules still authorize the read. The users rule permits an owner to read their own document; the Worker does not use Admin SDK or service-account credentials.
