@@ -190,6 +190,36 @@ BOTS.forEach((b) => {
   b.active = true; b.autoPost = true; b.autoComment = true; b.autoReaction = true; b.chatEnabled = true; b.dailyLimit = 6;
 });
 
+// Read-only validation for live built-in bot profiles. Missing optional metadata falls back
+// to the built-in role; explicit malformed or conflicting values are reported, never rewritten.
+export function botProfileRoleIssues(botId, profile) {
+  const base = BOTS.find((bot) => bot.id === botId);
+  if (!base || !profile || typeof profile !== 'object' || Array.isArray(profile)) return ['unknown_bot'];
+
+  const issues = [];
+  if (profile.roleEmoji !== undefined && profile.roleEmoji !== base.roleEmoji) issues.push('roleEmoji');
+
+  if (profile.personality !== undefined && profile.personality !== null && profile.personality !== ''
+      && profile.personality !== base.personality) {
+    issues.push('personality');
+  }
+
+  if (profile.interests !== undefined && profile.interests !== null) {
+    if (!Array.isArray(profile.interests) || !profile.interests.every((topic) => typeof topic === 'string')) {
+      issues.push('interests');
+    } else if (profile.interests.length > 0) {
+      const expected = [...base.interests].sort();
+      const actual = [...profile.interests].sort();
+      if (new Set(actual).size !== actual.length || actual.length !== expected.length
+          || actual.some((topic, index) => topic !== expected[index])) {
+        issues.push('interests');
+      }
+    }
+  }
+
+  return issues;
+}
+
 export const BOT_COMMENTS = [
   'Thanks for sharing this.', 'Good reminder!', 'Nice one!', 'Well said.', 'That is a fun fact!',
   'This is worth a try.', 'Simple but useful.', 'Interesting, thank you.', 'Great topic.', 'I like this idea.',
