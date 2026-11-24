@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { BOTS, ROLE_EMOJIS } from '../js/bots-data.js';
+import { BOTS, ROLE_EMOJIS, botProfileRoleIssues } from '../js/bots-data.js';
 import { PERSONALITIES, chatReply, makeComment, nextPostText, relevance, isDuplicatePostText } from '../js/bots-brain.js';
 
 const EXPECTED_ROLE_EMOJIS = [
@@ -36,6 +36,42 @@ test('every built-in bot has a unique character marker and a known personality',
     assert.ok(PERSONALITIES[bot.personality], `${bot.id} has a known personality`);
     assert.ok(Array.isArray(bot.posts) && bot.posts.length > 0, `${bot.id} has post ideas`);
   }
+});
+
+test('live built-in bot profiles must match their canonical role metadata without being mutated', () => {
+  for (const bot of BOTS) {
+    const profile = {
+      roleEmoji: bot.roleEmoji,
+      personality: bot.personality,
+      interests: [...bot.interests]
+    };
+    assert.deepEqual(botProfileRoleIssues(bot.id, profile), [], `${bot.id} accepts its exact role metadata`);
+    assert.deepEqual(botProfileRoleIssues(bot.id, {}), [], `${bot.id} falls back when optional role fields are absent`);
+
+    const before = structuredClone(profile);
+    assert.deepEqual(
+      botProfileRoleIssues(bot.id, { ...profile, roleEmoji: '❓' }),
+      ['roleEmoji'],
+      `${bot.id} rejects a mismatched character marker`
+    );
+    assert.deepEqual(
+      botProfileRoleIssues(bot.id, { ...profile, personality: '__unknown_personality__' }),
+      ['personality'],
+      `${bot.id} rejects a conflicting role personality`
+    );
+    assert.deepEqual(
+      botProfileRoleIssues(bot.id, { ...profile, interests: ['unrelated'] }),
+      ['interests'],
+      `${bot.id} rejects a conflicting topic list`
+    );
+    assert.deepEqual(
+      botProfileRoleIssues(bot.id, { ...profile, interests: 'tech' }),
+      ['interests'],
+      `${bot.id} rejects malformed topic metadata`
+    );
+    assert.deepEqual(profile, before, 'the audit must not mutate the stored profile');
+  }
+  assert.deepEqual(botProfileRoleIssues('bot_99', {}), ['unknown_bot']);
 });
 
 test('every public bot bio is transparent and does not claim real professional credentials', () => {
