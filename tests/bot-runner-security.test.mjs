@@ -22,6 +22,16 @@ test('runner fails closed unless global botsEnabled and its own allowlist are ex
   assert.match(rules, /function runnerMayActAs\(botUid\)/);
 });
 
+test('Runner skips mismatched built-in role metadata and uses canonical emoji/personality/topics', () => {
+  assert.match(runner, /botProfileRoleIssues\(d\.id, d\)/);
+  assert.match(runner, /stored role metadata mismatch/);
+  assert.match(runner, /Owner review is required; the profile was not changed/);
+  assert.match(runner, /roleEmoji: base\.roleEmoji/);
+  assert.match(runner, /personality: base\.personality/);
+  assert.match(runner, /interests: \[\.\.\.base\.interests\]/);
+  assert.doesNotMatch(runner, /fs\.patch\(\`users\/\$\{d\.id\}/);
+});
+
 test('Runner persists bot post fingerprints before publishing and serializes bot automation', () => {
   assert.match(runner, /postHashes: \(Array\.isArray\(parse\(d\.postHashes, \[\]\)\)/);
   assert.match(runner, /postedTexts: \(Array\.isArray\(parse\(d\.postedTexts, \[\]\)\)/);
