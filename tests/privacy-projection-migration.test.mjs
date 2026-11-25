@@ -89,6 +89,12 @@ test('bot public profile projection uses the canonical fictional name, bio and r
   ]);
 });
 
+test('bot public profile builder rejects malformed visibility settings', () => {
+  assert.equal(buildBotPublicProfile({
+    isBot: true, settings: { profileVisibility: null }, createdAt: stamp
+  }, fallbackStamp, 'bot_01'), null);
+});
+
 test('bot profile builder fails closed for humans and unknown bot IDs', () => {
   assert.equal(buildBotPublicProfile({
     name: 'Asha Rahman', isBot: false, bio: 'private bio'
