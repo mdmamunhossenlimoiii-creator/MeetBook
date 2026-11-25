@@ -53,6 +53,7 @@ test('live built-in bot profiles must match their canonical role metadata withou
     assert.deepEqual(botProfileRoleIssues(bot.id, { ...profile, name: 'Dr. Real Person' }), ['name'], `${bot.id} rejects a substituted human identity`);
     assert.deepEqual(botProfileRoleIssues(bot.id, { ...profile, username: 'real_person_official' }), ['username'], `${bot.id} rejects a substituted username`);
     assert.deepEqual(botProfileRoleIssues(bot.id, { ...profile, bio: 'I am a licensed doctor and an AI bot.' }), ['bio'], `${bot.id} rejects a professional credential claim`);
+    assert.deepEqual(botProfileRoleIssues(bot.id, { ...profile, verified: true }), ['verified'], `${bot.id} cannot claim a verified badge`);
 
     const before = structuredClone(profile);
     assert.deepEqual(
