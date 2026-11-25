@@ -49,6 +49,7 @@
 - Regression tests cover substituted human-style names and professional-credential bios. This does not replace the owner audit of live bot profiles or isolated staging verification.
 
 ## Public bot identity projection hardening — 2026-11-25
-- The searchable directory and detailed public profile for each built-in bot ID are now built from canonical BOTS metadata, not mutable stored name/bio/role fields. Bot profiles are always marked as AI, use the canonical role emoji, never receive a verified badge, and remain public as bot accounts.
-- The admin migration repairs stale or malformed built-in bot public projections by deleting and recreating only those bot projection documents. Human detailed profiles are not deleted or rewritten.
-- This does not change the canonical users/{botId} document. A mismatched source identity still causes the Runner to skip the bot and the Admin UI to warn the owner. Live account audit remains required.
+- Built-in bot IDs are excluded from publicDirectory so mutable bot names cannot appear in the human-like searchable directory. User lookup falls back to the canonical publicProfiles document for bot IDs.
+- Bot publicProfiles use canonical BOTS name, name key, bio and role emoji; verified is always false. profileVisibility continues to match the source settings required by the existing Firestore Rules.
+- The admin migration repairs stale or malformed built-in bot public profiles only. Human detailed profiles are never deleted or rewritten.
+- This does not change users/{botId}. A mismatched source identity still causes the Runner to skip the bot and the Admin UI to warn the owner. Live account audit remains required.
