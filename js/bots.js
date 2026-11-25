@@ -6,7 +6,7 @@ import {
 } from './firebase.js';
 import { DEFAULT_SETTINGS } from './auth.js';
 import { invalidateUser } from './utils.js';
-import { BOTS, BOT_DEFAULTS, botAvatar, botCover } from './bots-data.js';
+import { BOTS, BOT_DEFAULTS, botAvatar, botCover, botProfileRoleIssues } from './bots-data.js';
 
 export const MAX_BOTS = 23; // Must match the Firestore Rules bot_01 .. bot_23 allowlist.
 
@@ -64,11 +64,22 @@ export async function createBot(existing, data) {
   const id = nextBotId(existing);
   if (!id) throw new Error(`The limit is ${MAX_BOTS} bots.`);
   const n = Number(id.slice(4));
+  const base = BOTS.find((bot) => bot.id === id);
+  if (!base) throw new Error('No approved built-in bot role exists for this slot.');
+
+  // The next available slot always receives its pre-approved fictional identity.
+  // Only language, post ideas, controls, and uploaded artwork may vary.
   const profile = {
-    ...BOT_DEFAULTS, ideas: [], ideasBn: [], interests: [], username: id, bio: 'AI bot.', roleEmoji: data.roleEmoji || '✨',
-    photo: botAvatar(n), cover: botCover(n), ...data,
-    nameLower: String(data.name).toLowerCase(), banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
+    ...BOT_DEFAULTS, ...data,
+    name: base.name, nameLower: base.name.toLowerCase(), username: base.username, bio: base.bio,
+    roleEmoji: base.roleEmoji, personality: base.personality, interests: [...base.interests],
+    ideas: Array.isArray(data.ideas) ? data.ideas : [],
+    ideasBn: Array.isArray(data.ideasBn) ? data.ideasBn : [],
+    photo: data.photo || botAvatar(n), cover: data.cover || botCover(n),
+    banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
   };
+  const identityIssues = botProfileRoleIssues(id, profile);
+  if (identityIssues.length) throw new Error(`Built-in bot identity validation failed: ${identityIssues.join(', ')}.`);
   await setDoc(doc(db, 'users', id), profile);
   await setDoc(doc(db, 'publicProfiles', id), publicProfileData(profile));
   return id;
@@ -87,7 +98,13 @@ export async function deleteBot(id) {
 }
 
 // Manual actions (an admin account writes as the bot; rules verify the admin role).
+function assertApprovedBotIdentity(bot) {
+  const issues = botProfileRoleIssues(bot?.id, bot);
+  if (issues.length) throw new Error(`Bot identity is not approved for posting: ${issues.join(', ')}.`);
+}
+
 export async function postAsBot(bot, text, image = '') {
+  assertApprovedBotIdentity(bot);
   const clean = String(text || '').trim();
   if (!clean && !image) throw new Error('Write something or add a photo.');
   return addDoc(collection(db, 'posts'), {
@@ -99,6 +116,7 @@ export async function postAsBot(bot, text, image = '') {
 }
 
 export async function commentAsBot(bot, postId, text) {
+  assertApprovedBotIdentity(bot);
   const clean = String(text || '').trim();
   if (!clean) throw new Error('Write a comment first.');
   // Consent rule (also enforced by firestore.rules): bots only comment on bot posts or on posts of people who allowed it.
