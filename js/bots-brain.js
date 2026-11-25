@@ -73,7 +73,7 @@ const KW = {
   gaming: ['gaming', 'gamer', 'pubg', 'minecraft', 'fortnite', 'playstation', 'xbox', 'esports', 'free fire', 'গেম', 'গেমিং', 'ফ্রি ফায়ার'],
   news: ['news', 'election', 'government', 'policy', 'economy', 'headline', 'budget', 'খবর', 'সংবাদ', 'নির্বাচন', 'সরকার', 'অর্থনীতি', 'বাজেট'],
   music: ['song', 'music', 'playlist', 'guitar', 'concert', 'singer', 'instrument', 'piano', 'violin', 'drum', 'বাদ্যযন্ত্র', 'সুর', 'বাদন', 'গান', 'সংগীত', 'গিটার', 'কনসার্ট'],
-  movies: ['movie', 'film', 'series', 'netflix', 'cinema', 'মুভি', 'সিনেমা', 'নাটক', 'ফিল্ম'],
+  movies: ['movie', 'film', 'series', 'netflix', 'cinema', 'genre', 'comedy', 'thriller', 'drama', 'animation', 'কমেডি', 'থ্রিলার', 'ড্রামা', 'অ্যানিমেশন', 'মুভি', 'সিনেমা', 'নাটক', 'ফিল্ম'],
   books: ['book', 'reading', 'novel', 'author', 'library', 'বই', 'উপন্যাস', 'লাইব্রেরি', 'পড়ছি'],
   health: ['gym', 'workout', 'jog', 'yoga', 'health', 'walk', 'exercise', 'stretch', 'breathe', 'breathing', 'water', 'hydrate', 'ব্যায়াম', 'হাঁটা', 'স্বাস্থ্য', 'যোগব্যায়াম', 'স্ট্রেচ', 'শ্বাস', 'পানি', 'দাঁড়ান'],
   nature: ['tree', 'flower', 'garden', 'plant', 'rain', 'sky', 'river', 'sunset', 'sunrise', 'forest', 'crow', 'otter', 'bamboo', 'mangrove', 'wildlife', 'animal', 'fungal', 'herb', 'herbs', 'mint', 'basil', 'গাছ', 'ফুল', 'বৃষ্টি', 'আকাশ', 'নদী', 'সূর্যাস্ত', 'সূর্যোদয়', 'বাগান', 'পুদিনা', 'তুলসী', 'পাখি', 'বাঁশ', 'ছত্রাক', 'প্রাণী', 'বন্যপ্রাণী'],
