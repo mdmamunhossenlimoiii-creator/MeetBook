@@ -13,11 +13,15 @@ export const MAX_BOTS = 23; // Must match the Firestore Rules bot_01 .. bot_23 a
 function publicProfileData(data, botId) {
   const base = BOTS.find((bot) => bot.id === botId);
   if (!base) throw new Error('No approved built-in bot identity exists for this profile.');
+  const profileVisibility = data.settings?.profileVisibility || 'everyone';
+  if (!['everyone', 'friends'].includes(profileVisibility)) {
+    throw new Error('Bot profile visibility must match an allowed account setting.');
+  }
   return {
     name: base.name, nameLower: base.name.toLowerCase(),
     bio: base.bio.slice(0, 500), photo: data.photo || '', cover: data.cover || '',
     isBot: true, roleEmoji: base.roleEmoji, verified: false,
-    profileVisibility: 'everyone',
+    profileVisibility,
     createdAt: data.createdAt || serverTimestamp()
   };
 }
