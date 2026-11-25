@@ -56,3 +56,5 @@
 ## Bot avatar/cover safeguard — 2026-11-25
 - Public bot profile artwork is generated from the canonical built-in character slot. The Admin form no longer accepts uploaded bot photos or covers, reducing real-person impersonation risk.
 - Only built-in bot publicProfiles are rebuilt by the migration; source user documents and human profiles remain untouched until an owner-approved audit.
+## Role relevance enforcement — 2026-11-25
+- Custom post ideas are accepted only when topic detection matches the bot's canonical interests; duplicate ideas are removed. Generated posts that do not match the bot's topics fall back to the approved role template. Comment selection continues to require positive relevance.
