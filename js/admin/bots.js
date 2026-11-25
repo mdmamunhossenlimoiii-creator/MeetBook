@@ -2,7 +2,7 @@
 import { db, doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp } from '../firebase.js';
 import { state } from '../state.js';
 import { $, $$, esc, avatarHtml, botBadge, errorBox, confirmBox, modal, closeModal, toast, errMsg, resizeImage, emptyState } from '../utils.js';
-import { listBots, seedBots, createBot, saveBot, deleteBot, MAX_BOTS } from '../bots.js';
+import { listBots, seedBots, createBot, saveBot, deleteBot, nextBotId, MAX_BOTS } from '../bots.js';
 import { BOTS, ROLE_EMOJIS, botAvatar, botCover, botProfileRoleIssues } from '../bots-data.js';
 import { PERSONALITIES, LANGUAGES, TOPICS } from '../bots-brain.js';
 import { act, loading, tagHtml, when, short } from './common.js';
@@ -86,18 +86,22 @@ export async function render(body) {
 
   function editBot(bot) {
     const isNew = !bot;
-    const v = bot || { name: '', username: '', bio: '', roleEmoji: '✨', personality: 'friendly', lang: 'both', interests: [], dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
+    const nextId = isNew ? nextBotId(bots) : bot.id;
+    const builtIn = BOTS.find((item) => item.id === nextId);
+    if (isNew && !builtIn) { toast('No approved built-in bot role is available.', 'error'); return; }
+    const v = bot || { ...builtIn, dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
     const tog = (k, label) => `<label class="row gap small"><input type="checkbox" data-k="${k}" ${v[k] === true ? 'checked' : ''}> ${label}</label>`;
-    const m = modal(`<h3>${isNew ? 'New AI bot' : `Edit ${esc(v.name)}`}</h3>
-      <div class="field"><label for="b-name">Name</label><input id="b-name" maxlength="60" value="${esc(v.name)}"></div>
-      <div class="field"><label for="b-user">Username</label><input id="b-user" maxlength="30" value="${esc(v.username || '')}" placeholder="e.g. travel_buddy"></div>
-      <div class="field"><label for="b-emoji">Character symbol</label><select id="b-emoji">${ROLE_EMOJIS.map((emoji) => `<option value="${emoji}" ${v.roleEmoji === emoji ? 'selected' : ''}>${emoji}</option>`).join('')}</select><small class="muted">Choose a symbol that matches the bot's fictional character.</small></div>
-      <div class="field"><label for="b-bio">Bio (mention that it is an AI bot)</label><textarea id="b-bio" rows="2" maxlength="300">${esc(v.bio || '')}</textarea><small class="muted">Use a fictional character identity only. Never impersonate a real person or claim real-world professional credentials.</small></div>
+    const m = modal(`<h3>${isNew ? 'New AI bot · ' + esc(v.roleEmoji) + ' ' + esc(v.name) : `Edit ${esc(v.name)}`}</h3>
+      <p class="muted small">Built-in bot identity fields are locked to the approved fictional role. Only language, post ideas, activity controls and artwork can vary.</p>
+      <div class="field"><label for="b-name">Name</label><input id="b-name" maxlength="60" value="${esc(v.name)}" disabled></div>
+      <div class="field"><label for="b-user">Username</label><input id="b-user" maxlength="30" value="${esc(v.username || '')}" placeholder="e.g. travel_buddy" disabled></div>
+      <div class="field"><label for="b-emoji">Character symbol</label><select id="b-emoji" disabled>${ROLE_EMOJIS.map((emoji) => `<option value="${emoji}" ${v.roleEmoji === emoji ? 'selected' : ''}>${emoji}</option>`).join('')}</select><small class="muted">The symbol is fixed for this fictional role.</small></div>
+      <div class="field"><label for="b-bio">AI bot bio</label><textarea id="b-bio" rows="2" maxlength="300" disabled>${esc(v.bio || '')}</textarea><small class="muted">Bots never impersonate real people or claim real-world professional credentials.</small></div>
       <div class="row gap wrap">
-        <div class="field grow"><label for="b-pers">Personality</label><select id="b-pers">${Object.entries(PERSONALITIES).map(([k, p]) => `<option value="${k}" ${v.personality === k ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
+        <div class="field grow"><label for="b-pers">Personality</label><select id="b-pers" disabled>${Object.entries(PERSONALITIES).map(([k, p]) => `<option value="${k}" ${v.personality === k ? 'selected' : ''}>${esc(p.label)}</option>`).join('')}</select></div>
         <div class="field grow"><label for="b-lang">Language</label><select id="b-lang">${Object.entries(LANGUAGES).map(([k, l]) => `<option value="${k}" ${v.lang === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select></div>
 </div>
-      <div class="field"><label>Interests</label><div class="row gap wrap">${TOPICS.map((t) => `<label class="small row gap"><input type="checkbox" data-int="${t}" ${(v.interests || []).includes(t) ? 'checked' : ''}> ${t}</label>`).join('')}</div></div>
+      <div class="field"><label>Interests</label><div class="row gap wrap">${TOPICS.map((t) => `<label class="small row gap"><input type="checkbox" data-int="${t}" ${(v.interests || []).includes(t) ? 'checked' : ''} disabled> ${t}</label>`).join('')}</div></div>
       <div class="row gap wrap">${tog('active', 'Start this AI bot immediately')}</div>
       <div class="field"><label for="b-ideas">Post ideas, English (one per line; used by auto post)</label><textarea id="b-ideas" rows="3">${esc((v.ideas || []).join('\n'))}</textarea></div>
       <div class="field"><label for="b-ideasbn">Post ideas, Bengali (one per line)</label><textarea id="b-ideasbn" rows="3">${esc((v.ideasBn || []).join('\n'))}</textarea></div>
@@ -132,7 +136,7 @@ export async function render(body) {
       };
       $$('[data-k]', m).forEach((c) => { data[c.dataset.k] = c.checked; });
       if (isNew) Object.assign(data, { autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true });
-      if (!/AI/i.test(data.bio)) data.bio = `${data.bio} I am an AI bot.`.trim(); // bots are always openly AI
+      if (!/\\bAI\\s+bot\\b|এআই\\s*বট/i.test(data.bio)) data.bio = `${data.bio} I am an AI bot.`.trim(); // bots are always openly AI
       const ok = isNew
         ? await act(b, () => createBot(bots, data), { ok: 'Bot created', log: ['bot created', '', name] })
         : await act(b, () => saveBot(bot.id, data), { ok: 'Bot saved', log: ['bot edited', bot.id, name] });
