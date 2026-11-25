@@ -19,7 +19,7 @@ function publicProfileData(data, botId) {
   }
   return {
     name: base.name, nameLower: base.name.toLowerCase(),
-    bio: base.bio.slice(0, 500), photo: data.photo || '', cover: data.cover || '',
+    bio: base.bio.slice(0, 500), photo: botAvatar(Number(botId.slice(4)) - 1), cover: botCover(Number(botId.slice(4)) - 1),
     isBot: true, roleEmoji: base.roleEmoji, verified: false,
     profileVisibility,
     createdAt: data.createdAt || serverTimestamp()
@@ -81,7 +81,7 @@ export async function createBot(existing, data) {
     roleEmoji: base.roleEmoji, personality: base.personality, interests: [...base.interests],
     ideas: Array.isArray(data.ideas) ? data.ideas : [],
     ideasBn: Array.isArray(data.ideasBn) ? data.ideasBn : [],
-    photo: data.photo || botAvatar(n), cover: data.cover || botCover(n),
+    photo: botAvatar(n - 1), cover: botCover(n - 1),
     banned: false, isBot: true, settings: { ...DEFAULT_SETTINGS }, createdAt: serverTimestamp()
   };
   const identityIssues = botProfileRoleIssues(id, profile);
