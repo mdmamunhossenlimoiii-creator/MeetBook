@@ -59,3 +59,6 @@ No credentials or secrets are requested or added here. No Firebase or production
 - The admin projection migration repairs valid-but-stale bot public profiles as well as missing/malformed ones. It only repairs built-in bot projections and never rewrites human detailed profiles.
 - Bot profile seeding creates canonical public profiles even when an existing source user document has a conflicting identity. The Runner still skips that source profile and the Admin dashboard reports the mismatch; the owner must review the live source document.
 - These changes are code-only and have not been run against live Firebase accounts.
+## Bot artwork identity safeguard — 2026-11-25
+- Public bot avatars and covers are generated from the canonical fictional bot slot. The Admin creation form no longer accepts uploaded photos for bot identities; this avoids presenting a real person's photo as an automated character.
+- Existing source user documents are not rewritten. The public-profile migration will replace only built-in bot publicProfiles with generated character artwork; the owner still needs to run and verify that migration in staging.
