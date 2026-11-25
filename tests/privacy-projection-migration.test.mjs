@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { BOTS } from '../js/bots-data.js';
+import { BOTS, botAvatar, botCover } from '../js/bots-data.js';
 import {
   buildBotPublicProfile,
   buildDirectoryProjection
@@ -80,7 +80,8 @@ test('bot public profile projection uses the canonical fictional name, bio and r
   assert.equal(projection.roleEmoji, BOTS[0].roleEmoji);
   assert.equal(projection.verified, false);
   assert.equal(projection.profileVisibility, 'friends', 'bot projection visibility must match the source setting for Firestore Rules');
-  assert.equal(projection.photo, bot.photo);
+  assert.equal(projection.photo, botAvatar(0), 'public bot avatars are generated character art, not uploaded photos');
+  assert.equal(projection.cover, botCover(0), 'public bot covers are generated character art');
   assert.equal(projection.createdAt, stamp);
   assert.deepEqual(Object.keys(projection).sort(), [
     'bio', 'cover', 'createdAt', 'isBot', 'name', 'nameLower',
