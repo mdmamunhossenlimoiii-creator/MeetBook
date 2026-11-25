@@ -23,7 +23,7 @@ export async function backfillPublicProfiles() {
   for (const snapshot of users.docs) {
     const user = snapshot.data();
     const directoryRef = doc(db, 'publicDirectory', snapshot.id);
-    const directory = buildDirectoryProjection(user);
+    const directory = buildDirectoryProjection(user, snapshot.id);
 
     if (!directory) {
       directoryDeleteRefs.push(directoryRef);
@@ -53,26 +53,38 @@ export async function backfillPublicProfiles() {
     }
 
     if (user.isBot === true) {
-      const profile = buildBotPublicProfile(user, serverTimestamp());
+      const profile = buildBotPublicProfile(user, serverTimestamp(), snapshot.id);
       if (!profile) continue;
 
       const profileRef = doc(db, 'publicProfiles', snapshot.id);
-      let needsCreate = false;
+      let needsWrite = false;
       try {
         const current = await getDoc(profileRef);
-        needsCreate = !current.exists();
+        if (!current.exists()) {
+          needsWrite = true;
+          botProfileCreates += 1;
+        } else {
+          const data = current.data();
+          const profileFields = ['name', 'nameLower', 'bio', 'photo', 'cover', 'isBot', 'roleEmoji', 'verified', 'profileVisibility', 'createdAt'];
+          const unchanged = Object.keys(data).length === profileFields.length
+            && profileFields.filter((field) => field !== 'createdAt').every((field) => data[field] === profile[field])
+            && data.createdAt && typeof data.createdAt.toDate === 'function';
+          if (!unchanged) {
+            // Only built-in bot projections are repaired here. Human detailed profiles are untouched.
+            botProfileDeletes.push(profileRef);
+            needsWrite = true;
+            botProfileRepairs += 1;
+          }
+        }
       } catch (error) {
         if (!isPermissionDenied(error)) throw error;
         // Rules intentionally hide malformed projections. Admin can delete and rebuild
         // this bot-only derived document; human detailed profiles are never touched.
         botProfileDeletes.push(profileRef);
-        needsCreate = true;
+        needsWrite = true;
         botProfileRepairs += 1;
       }
-      if (needsCreate) {
-        operations.push({ kind: 'set', ref: profileRef, data: profile });
-        botProfileCreates += 1;
-      }
+      if (needsWrite) operations.push({ kind: 'set', ref: profileRef, data: profile });
     }
   }
 
