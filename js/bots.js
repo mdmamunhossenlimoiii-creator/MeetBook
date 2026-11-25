@@ -10,12 +10,14 @@ import { BOTS, BOT_DEFAULTS, botAvatar, botCover, botProfileRoleIssues } from '.
 
 export const MAX_BOTS = 23; // Must match the Firestore Rules bot_01 .. bot_23 allowlist.
 
-function publicProfileData(data) {
+function publicProfileData(data, botId) {
+  const base = BOTS.find((bot) => bot.id === botId);
+  if (!base) throw new Error('No approved built-in bot identity exists for this profile.');
   return {
-    name: data.name, nameLower: String(data.name || '').toLowerCase(),
-    bio: String(data.bio || '').slice(0, 500), photo: data.photo || '', cover: data.cover || '',
-    isBot: true, roleEmoji: data.roleEmoji || '', verified: data.verified === true,
-    profileVisibility: data.settings?.profileVisibility === 'friends' ? 'friends' : 'everyone',
+    name: base.name, nameLower: base.name.toLowerCase(),
+    bio: base.bio.slice(0, 500), photo: data.photo || '', cover: data.cover || '',
+    isBot: true, roleEmoji: base.roleEmoji, verified: false,
+    profileVisibility: 'everyone',
     createdAt: data.createdAt || serverTimestamp()
   };
 }
@@ -42,13 +44,13 @@ export async function seedBots() {
     if (snaps[i].exists()) {
       const publicSnap = await getDoc(doc(db, 'publicProfiles', BOTS[i].id));
       if (!publicSnap.exists()) {
-        await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(snaps[i].data()));
+        await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(snaps[i].data(), BOTS[i].id));
       }
       continue;
     }
     const profile = profileFromBuiltIn(BOTS[i], i);
     await setDoc(doc(db, 'users', BOTS[i].id), profile);
-    await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(profile), { merge: true });
+    await setDoc(doc(db, 'publicProfiles', BOTS[i].id), publicProfileData(profile, BOTS[i].id), { merge: true });
     created++;
   }
   return { created, existing: BOTS.length - created };
@@ -81,7 +83,7 @@ export async function createBot(existing, data) {
   const identityIssues = botProfileRoleIssues(id, profile);
   if (identityIssues.length) throw new Error(`Built-in bot identity validation failed: ${identityIssues.join(', ')}.`);
   await setDoc(doc(db, 'users', id), profile);
-  await setDoc(doc(db, 'publicProfiles', id), publicProfileData(profile));
+  await setDoc(doc(db, 'publicProfiles', id), publicProfileData(profile, id));
   return id;
 }
 
