@@ -52,3 +52,9 @@ No credentials or secrets are requested or added here. No Firebase or production
 - Creating the next missing bot slot now uses the pre-approved identity for that slot. Admin identity fields are read-only; only language, post ideas, activity controls and artwork may vary.
 - Manual post/comment helpers reject a bot profile whose identity audit fails. Regression coverage includes a substituted human-style name and a professional-credential bio; the mock Runner must skip that profile in dry-run.
 - This is a local code/test change only. It does not inspect or modify live Firebase bot profiles. The owner must still audit all 23 live bot documents before activation.
+
+## Canonical public bot identity projections — 2026-11-25
+- Bot publicDirectory and publicProfiles projections now use the built-in fictional name, name key, bio and role emoji for the matching bot ID; bot verification badges are always false and bot profile visibility is public by design.
+- The admin projection migration now repairs valid-but-stale bot public profiles as well as missing/malformed ones. It only repairs built-in bot projections and never rewrites human detailed profiles.
+- Bot profile seeding also creates canonical public projections even when an existing source user document has a conflicting identity. The Runner still skips that source profile and the Admin dashboard reports the mismatch; the owner must review the live source document.
+- These changes are code-only and have not been run against live Firebase accounts.
