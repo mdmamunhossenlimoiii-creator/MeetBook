@@ -65,7 +65,7 @@ export function detectLang(text) {
 }
 
 const KW = {
-  tech: ['tech', 'phone', 'laptop', 'app', 'code', 'coding', 'software', 'computer', 'wifi', 'internet', 'android', 'iphone', 'gadget', 'program', 'website', 'robot', 'প্রযুক্তি', 'ফোন', 'ল্যাপটপ', 'কম্পিউটার', 'অ্যাপ', 'কোড', 'সফটওয়্যার', 'ইন্টারনেট', 'মোবাইল', 'প্রোগ্রামিং'],
+  tech: ['tech', 'phone', 'laptop', 'app', 'code', 'coding', 'software', 'computer', 'wifi', 'internet', 'android', 'iphone', 'gadget', 'screen', 'brightness', 'display', 'program', 'website', 'robot', 'প্রযুক্তি', 'ফোন', 'ল্যাপটপ', 'কম্পিউটার', 'অ্যাপ', 'কোড', 'সফটওয়্যার', 'ইন্টারনেট', 'মোবাইল', 'প্রোগ্রামিং', 'গ্যাজেট', 'স্ক্রিন', 'ব্রাইটনেস'],
   photo: ['photo', 'camera', 'picture', 'shot', 'lens', 'selfie', 'portrait', 'capture', 'ছবি', 'ফটো', 'ক্যামেরা', 'সেলফি', 'তুললাম'],
   travel: ['trip', 'travel', 'tour', 'beach', 'mountain', 'hike', 'flight', 'hotel', 'journey', 'vacation', 'sea', 'island', 'village', 'bazar', 'train', 'railway', 'shinkansen', 'bullet train', 'ভ্রমণ', 'ঘুরতে', 'ট্যুর', 'সমুদ্র', 'পাহাড়', 'বেড়াতে', 'কক্সবাজার', 'সুন্দরবন', 'সিলেট', 'ঘুরলাম', 'ট্রেন', 'রেল'],
   food: ['food', 'cook', 'recipe', 'dinner', 'lunch', 'breakfast', 'biryani', 'coffee', 'cake', 'pizza', 'snack', 'খাবার', 'রান্না', 'ডিনার', 'লাঞ্চ', 'নাস্তা', 'বিরিয়ানি', 'কফি', 'কেক', 'ভাত', 'মাছ', 'চা '],
