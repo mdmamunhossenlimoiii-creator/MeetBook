@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { BOTS } from '../js/bots-data.js';
 import {
   buildBotPublicProfile,
   buildDirectoryProjection
@@ -45,26 +46,48 @@ test('admin profile builder never creates a detailed projection for a human acco
   }, fallbackStamp), null);
 });
 
-test('missing bot profile projection retains the AI identity and bounded public fields', () => {
+test('bot directory projection ignores stored identity overrides and never shows a verified badge', () => {
+  const projection = buildDirectoryProjection({
+    name: 'Dr. Real Person',
+    nameLower: 'dr real person',
+    isBot: true,
+    roleEmoji: '🤖',
+    verified: true
+  }, 'bot_01');
+
+  assert.deepEqual(projection, {
+    name: BOTS[0].name,
+    nameLower: BOTS[0].name.toLowerCase(),
+    isBot: true,
+    roleEmoji: BOTS[0].roleEmoji,
+    verified: false
+  });
+  assert.equal(buildDirectoryProjection({ name: 'Unknown Bot', isBot: true }, 'bot_99'), null);
+});
+
+test('bot public profile projection uses the canonical fictional name, bio and role marker', () => {
   const bot = {
-    name: 'TechTip Nova',
-    nameLower: 'techtip nova',
-    bio: 'I am an AI bot. '.repeat(80),
-    photo: '',
+    name: 'Dr. Real Person',
+    nameLower: 'dr real person',
+    bio: 'I am a licensed doctor and an AI bot.',
+    photo: 'https://example.test/bot.jpg',
     cover: '',
     isBot: true,
     roleEmoji: '🤖',
-    verified: false,
-    settings: { profileVisibility: 'everyone' },
+    verified: true,
+    settings: { profileVisibility: 'friends' },
     createdAt: stamp
   };
-  const projection = buildBotPublicProfile(bot, fallbackStamp);
+  const projection = buildBotPublicProfile(bot, fallbackStamp, 'bot_01');
 
-  assert.equal(projection.name, 'TechTip Nova');
+  assert.equal(projection.name, BOTS[0].name);
+  assert.equal(projection.nameLower, BOTS[0].name.toLowerCase());
+  assert.equal(projection.bio, BOTS[0].bio);
   assert.equal(projection.isBot, true);
-  assert.equal(projection.roleEmoji, '🤖');
+  assert.equal(projection.roleEmoji, BOTS[0].roleEmoji);
+  assert.equal(projection.verified, false);
   assert.equal(projection.profileVisibility, 'everyone');
-  assert.equal(projection.bio.length, 500);
+  assert.equal(projection.photo, bot.photo);
   assert.equal(projection.createdAt, stamp);
   assert.deepEqual(Object.keys(projection).sort(), [
     'bio', 'cover', 'createdAt', 'isBot', 'name', 'nameLower',
@@ -72,13 +95,13 @@ test('missing bot profile projection retains the AI identity and bounded public 
   ]);
 });
 
-test('bot profile builder fails closed on invalid visibility or malformed role fields', () => {
+test('bot profile builder fails closed for humans and unknown bot IDs', () => {
   assert.equal(buildBotPublicProfile({
-    name: 'TechTip Nova', isBot: true, settings: { profileVisibility: 'private' }
-  }, fallbackStamp), null);
+    name: 'Asha Rahman', isBot: false, bio: 'private bio'
+  }, fallbackStamp, 'user-1'), null);
   assert.equal(buildBotPublicProfile({
-    name: 'TechTip Nova', isBot: true, roleEmoji: null, settings: {}
-  }, fallbackStamp), null);
+    name: 'Unknown Bot', isBot: true
+  }, fallbackStamp, 'bot_99'), null);
 });
 
 test('admin migration repairs projections without listing privacy-filtered collections', async () => {
@@ -95,6 +118,9 @@ test('admin migration repairs projections without listing privacy-filtered colle
   assert.match(source, /batch\.set\(operation\.ref, operation\.data\)/);
   assert.match(source, /directoryDeletes/);
   assert.match(source, /botProfileRepairs/);
+  assert.match(source, /buildDirectoryProjection\(user, snapshot\.id\)/);
+  assert.match(source, /buildBotPublicProfile\(user, serverTimestamp\(\), snapshot\.id\)/);
+  assert.match(source, /profileFields\.filter\(\(field\) => field !== 'createdAt'\)/);
   assert.doesNotMatch(source, /collection\(db, 'botEngagement'\)/);
   assert.match(source, /index \+= 400/);
 });
