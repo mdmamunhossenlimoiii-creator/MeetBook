@@ -23,7 +23,15 @@ const samples = {
   sports: 'cricket football sports',
   gaming: 'gaming video game',
   news: 'news headline report',
-  celebration: 'birthday congratulations'
+  celebration: 'birthday congratulations',
+  quotes: 'quote of the day small steps and progress',
+  science: 'science fact octopus and photosynthesis',
+  reading: 'reading a book with pages and novels',
+  language: 'word of the day vocabulary and language',
+  wellness: 'pause breathe and mindfulness reset',
+  astronomy: 'astronomy stargazing Saturn and stars',
+  trivia: 'trivia quiz capital city hexagon',
+  jokes: 'jokes puns and a clean impasta joke'
 };
 
 test('every built-in bot has a unique character marker and a known personality', () => {
