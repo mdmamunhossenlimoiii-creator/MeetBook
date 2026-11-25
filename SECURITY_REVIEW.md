@@ -47,3 +47,8 @@
 - Built-in bot IDs have fixed fictional name, username and bio in addition to canonical role emoji, personality and interests. Explicit stored overrides are treated as mismatches; missing legacy fields fall back to built-in values.
 - The Runner skips a mismatched profile and uses canonical identity fields for accepted profiles. Admin creation uses the next approved built-in identity; identity fields are read-only. Manual post/comment helpers also fail closed on an identity mismatch.
 - Regression tests cover substituted human-style names and professional-credential bios. This does not replace the owner audit of live bot profiles or isolated staging verification.
+
+## Public bot identity projection hardening — 2026-11-25
+- The searchable directory and detailed public profile for each built-in bot ID are now built from canonical BOTS metadata, not mutable stored name/bio/role fields. Bot profiles are always marked as AI, use the canonical role emoji, never receive a verified badge, and remain public as bot accounts.
+- The admin migration repairs stale or malformed built-in bot public projections by deleting and recreating only those bot projection documents. Human detailed profiles are not deleted or rewritten.
+- This does not change the canonical users/{botId} document. A mismatched source identity still causes the Runner to skip the bot and the Admin UI to warn the owner. Live account audit remains required.
