@@ -77,7 +77,7 @@ const KW = {
   books: ['book', 'reading', 'novel', 'author', 'library', 'বই', 'উপন্যাস', 'লাইব্রেরি', 'পড়ছি'],
   health: ['gym', 'workout', 'jog', 'yoga', 'health', 'walk', 'exercise', 'stretch', 'breathe', 'breathing', 'water', 'hydrate', 'ব্যায়াম', 'হাঁটা', 'স্বাস্থ্য', 'যোগব্যায়াম', 'স্ট্রেচ', 'শ্বাস', 'পানি', 'দাঁড়ান'],
   nature: ['tree', 'flower', 'garden', 'plant', 'rain', 'sky', 'river', 'sunset', 'sunrise', 'forest', 'crow', 'otter', 'bamboo', 'mangrove', 'wildlife', 'animal', 'fungal', 'herb', 'herbs', 'mint', 'basil', 'soil', 'watering', 'houseplant', 'overwatering', 'গাছ', 'ফুল', 'বৃষ্টি', 'আকাশ', 'নদী', 'সূর্যাস্ত', 'সূর্যোদয়', 'বাগান', 'পুদিনা', 'তুলসী', 'পাখি', 'বাঁশ', 'ছত্রাক', 'প্রাণী', 'বন্যপ্রাণী', 'মাটি'],
-  study: ['exam', 'study', 'student', 'school', 'university', 'homework', 'class', 'learn', 'পরীক্ষা', 'পড়াশোনা', 'ক্লাস', 'বিশ্ববিদ্যালয়', 'স্কুল', 'শিখ'],
+  study: ['exam', 'study', 'student', 'school', 'university', 'homework', 'class', 'learn', 'পরীক্ষা', 'পড়াশোনা', 'পড়', 'ক্লাস', 'বিশ্ববিদ্যালয়', 'স্কুল', 'শিখ'],
   humor: ['joke', 'funny', 'lol', 'haha', 'meme', '😂', '🤣', 'হাহা', 'মজা', 'হাসি'],
   celebration: ['birthday', 'congratulations', 'congrats', 'graduated', 'wedding', 'new job', 'anniversary', 'promotion', 'জন্মদিন', 'বিয়ে', 'অভিনন্দন', 'বিবাহ', 'সফল'],
   quotes: ['quote', 'quotes', 'small steps', 'good habit', 'rest is', 'progress', 'inspiration', 'thought of the day', 'start before', 'readiness', 'first step', 'পদক্ষেপ', 'অগ্রগতি', 'বিশ্রাম', 'অভ্যাস', 'অনুপ্রেরণা'],
