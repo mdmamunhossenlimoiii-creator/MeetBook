@@ -1,7 +1,7 @@
 // AI Bots admin: global switches, create / edit / delete, per-bot controls and activity logs.
 import { db, doc, getDoc, setDoc, collection, query, where, orderBy, limit, getDocs, serverTimestamp } from '../firebase.js';
 import { state } from '../state.js';
-import { $, $$, esc, avatarHtml, botBadge, errorBox, confirmBox, modal, closeModal, toast, errMsg, resizeImage, emptyState } from '../utils.js';
+import { $, $$, esc, avatarHtml, botBadge, errorBox, confirmBox, modal, closeModal, toast, errMsg, emptyState } from '../utils.js';
 import { listBots, seedBots, createBot, saveBot, deleteBot, nextBotId, MAX_BOTS } from '../bots.js';
 import { BOTS, ROLE_EMOJIS, botAvatar, botCover, botProfileRoleIssues } from '../bots-data.js';
 import { PERSONALITIES, LANGUAGES, TOPICS } from '../bots-brain.js';
@@ -105,14 +105,9 @@ export async function render(body) {
       <div class="row gap wrap">${tog('active', 'Start this AI bot immediately')}</div>
       <div class="field"><label for="b-ideas">Post ideas, English (one per line; used by auto post)</label><textarea id="b-ideas" rows="3">${esc((v.ideas || []).join('\n'))}</textarea></div>
       <div class="field"><label for="b-ideasbn">Post ideas, Bengali (one per line)</label><textarea id="b-ideasbn" rows="3">${esc((v.ideasBn || []).join('\n'))}</textarea></div>
-      <div class="row gap wrap"><label class="btn">Avatar<input type="file" accept="image/*" hidden data-img="photo"></label><label class="btn">Cover<input type="file" accept="image/*" hidden data-img="cover"></label>
-        ${isNew ? '' : '<button class="btn" data-do2="regen">Regenerate avatar &amp; cover</button>'}<span class="muted small" data-imgnote>Leave empty to keep / generate one.</span></div>
+      <div class="row gap wrap"><span class="muted small">Avatar and cover use generated fictional character artwork. Real-person photos are not accepted.</span>
+        ${isNew ? '' : '<button class="btn" data-do2="regen">Regenerate avatar &amp; cover</button>'}</div>
       <div class="row between gap" style="margin-top:12px">${isNew ? '<span></span>' : '<button class="btn btn-danger" data-do2="delete">Delete bot</button>'}<div class="row gap"><button class="btn" data-close>Cancel</button><button class="btn btn-primary" data-do2="save">Save</button></div></div>`, { wide: true });
-    const imgs = {};
-    $$('[data-img]', m).forEach((inp) => inp.addEventListener('change', async () => {
-      const f = inp.files[0]; if (!f) return;
-      try { imgs[inp.dataset.img] = await resizeImage(f, inp.dataset.img === 'cover' ? 1000 : 256, 0.75); $('[data-imgnote]', m).textContent = 'Image ready, press Save.'; } catch (err) { toast(err.message, 'error'); }
-    }));
     m.addEventListener('click', async (e) => {
       const b = e.target.closest('[data-do2]');
       if (!b) return;
@@ -132,7 +127,7 @@ export async function render(body) {
         name, username: $('#b-user', m).value.trim().replace(/[^\w.]/g, '').slice(0, 30) || (bot ? bot.id : ''), bio: $('#b-bio', m).value.trim().slice(0, 300),
         roleEmoji: $('#b-emoji', m).value, personality: $('#b-pers', m).value, lang: $('#b-lang', m).value,
         interests: $$('[data-int]', m).filter((c) => c.checked).map((c) => c.dataset.int),
-        ideas: lines($('#b-ideas', m).value), ideasBn: lines($('#b-ideasbn', m).value), ...imgs
+        ideas: lines($('#b-ideas', m).value), ideasBn: lines($('#b-ideasbn', m).value)
       };
       $$('[data-k]', m).forEach((c) => { data[c.dataset.k] = c.checked; });
       if (isNew) Object.assign(data, { autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true });
