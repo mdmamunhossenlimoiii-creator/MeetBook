@@ -45,3 +45,10 @@ Owner-only gates remain:
 - Verify GitHub Pages/public URL behavior and investigate the historical Run #30 failure.
 
 No credentials or secrets are requested or added here. No Firebase or production settings were changed, no live bot workflow was dispatched, and no merge, publish, or deployment was performed. MySocial remains separate and untouched.
+
+
+## Built-in identity lock — 2026-11-25
+- Built-in bot IDs now require their canonical fictional name, username, bio, role emoji, personality and topic list. Missing legacy identity fields fall back to built-in defaults; explicit overrides are reported as role mismatches and the Runner skips that bot without rewriting its Firestore profile.
+- Creating the next missing bot slot now uses the pre-approved identity for that slot. Admin identity fields are read-only; only language, post ideas, activity controls and artwork may vary.
+- Manual post/comment helpers reject a bot profile whose identity audit fails. Regression coverage includes a substituted human-style name and a professional-credential bio; the mock Runner must skip that profile in dry-run.
+- This is a local code/test change only. It does not inspect or modify live Firebase bot profiles. The owner must still audit all 23 live bot documents before activation.
