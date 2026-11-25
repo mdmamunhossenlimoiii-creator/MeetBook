@@ -229,7 +229,11 @@ async function loadBots() {
     out.push({
       ...base,
       ...d,
-      // A profile may omit optional role fields; always use the built-in values at runtime.
+      // Keep the approved fictional identity and role canonical at runtime. The audit above
+      // skips explicit overrides; missing legacy values fall back to these built-in values.
+      name: base.name,
+      username: base.username,
+      bio: base.bio,
       roleEmoji: base.roleEmoji,
       personality: base.personality,
       interests: [...base.interests],
