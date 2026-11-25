@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BOTS, ROLE_EMOJIS, botProfileRoleIssues } from '../js/bots-data.js';
-import { PERSONALITIES, chatReply, makeComment, nextPostText, relevance, isDuplicatePostText, filterRelevantPostIdeas } from '../js/bots-brain.js';
+import { PERSONALITIES, TOPICS, chatReply, makeComment, nextPostText, relevance, isDuplicatePostText, filterRelevantPostIdeas } from '../js/bots-brain.js';
 
 const EXPECTED_ROLE_EMOJIS = [
   '💻', '📸', '👩‍🍳', '✨', '🔬', '✈️', '🏃', '📚', '🎵', '🎬', '👨‍💻', '🪴',
@@ -43,6 +43,15 @@ test('every built-in bot has a unique character marker and a known personality',
     assert.ok(ROLE_EMOJIS.includes(bot.roleEmoji), `${bot.id} has an allowed marker`);
     assert.ok(PERSONALITIES[bot.personality], `${bot.id} has a known personality`);
     assert.ok(Array.isArray(bot.posts) && bot.posts.length > 0, `${bot.id} has post ideas`);
+  }
+});
+
+test('every canonical bot interest belongs to the supported topic vocabulary', () => {
+  const supported = new Set(TOPICS);
+  for (const bot of BOTS) {
+    for (const topic of bot.interests) {
+      assert.ok(supported.has(topic), `${bot.id} references unsupported topic ${topic}`);
+    }
   }
 });
 

@@ -1,6 +1,6 @@
 name: Tests
 
-# Runs on pull requests and pushes to main. PR updates on the feature branch receive the same full suite.
+# Runs on pull requests and pushes to main plus the active bot-identity feature branch.
 # Uses NO secrets and cannot touch your Firebase project:
 #  * unit      - rules interpreter + permission matrix + mutation tests, script tests against an in-memory Firestore
 #  * browser   - headless Chromium smoke test of the Admin panel (role handling, fail-closed)
