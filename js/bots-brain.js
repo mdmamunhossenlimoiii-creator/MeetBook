@@ -259,6 +259,19 @@ export function relevance(bot, text) {
   return s;
 }
 
+// Keep owner-supplied post ideas within the bot's canonical topics and remove duplicates.
+export function filterRelevantPostIdeas(bot, ideas) {
+  if (!Array.isArray(ideas)) return [];
+  const seen = new Set();
+  return ideas.filter((value) => {
+    if (typeof value !== 'string' || !value.trim() || relevance(bot, value) <= 0) return false;
+    const key = normalize(value);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 // ---------------------------------------------------------------- comments
 // post = { text, image?, authorName? }. used = normalized comment texts this bot already wrote (any post)
 // plus those already on this post. Returns null when no safe, fresh comment exists (better silent than spam).
