@@ -13,7 +13,9 @@ export const MAX_BOTS = 23; // Must match the Firestore Rules bot_01 .. bot_23 a
 function publicProfileData(data, botId) {
   const base = BOTS.find((bot) => bot.id === botId);
   if (!base) throw new Error('No approved built-in bot identity exists for this profile.');
-  const profileVisibility = data.settings?.profileVisibility || 'everyone';
+  const settings = data.settings === undefined ? {} : data.settings;
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('Bot account settings are invalid.');
+  const profileVisibility = Object.prototype.hasOwnProperty.call(settings, 'profileVisibility') ? settings.profileVisibility : 'everyone';
   if (!['everyone', 'friends'].includes(profileVisibility)) {
     throw new Error('Bot profile visibility must match an allowed account setting.');
   }
@@ -74,7 +76,7 @@ export async function createBot(existing, data) {
   if (!base) throw new Error('No approved built-in bot role exists for this slot.');
 
   // The next available slot always receives its pre-approved fictional identity.
-  // Only language, post ideas, controls, and uploaded artwork may vary.
+  // Only language, post ideas and activity controls may vary; public artwork is generated.
   const profile = {
     ...BOT_DEFAULTS, ...data,
     name: base.name, nameLower: base.name.toLowerCase(), username: base.username, bio: base.bio,
