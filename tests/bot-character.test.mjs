@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { BOTS, ROLE_EMOJIS, botProfileRoleIssues } from '../js/bots-data.js';
-import { PERSONALITIES, chatReply, makeComment, nextPostText, relevance, isDuplicatePostText } from '../js/bots-brain.js';
+import { PERSONALITIES, chatReply, makeComment, nextPostText, relevance, isDuplicatePostText, filterRelevantPostIdeas } from '../js/bots-brain.js';
 
 const EXPECTED_ROLE_EMOJIS = [
   '💻', '📸', '👩‍🍳', '✨', '🔬', '✈️', '🏃', '📚', '🎵', '🎬', '👨‍💻', '🪴',
@@ -100,6 +100,19 @@ test('each built-in bot comments on a topic from its own interests', () => {
     assert.ok(relevance(bot, sample) > 0, `${bot.id} should match ${topic}`);
     const comment = makeComment({ bot, post: { text: sample }, rand: () => 0.99 });
     assert.equal(comment?.topic, topic, `${bot.id} should stay on its character topic`);
+  }
+});
+
+test('owner-supplied post ideas must match each bot role and duplicates are removed', () => {
+  for (const bot of BOTS) {
+    const ownTopic = samples[bot.interests[0]];
+    const unrelatedTopic = Object.entries(samples).find(([topic]) => !bot.interests.includes(topic))?.[1];
+    assert.ok(ownTopic && unrelatedTopic);
+    assert.deepEqual(
+      filterRelevantPostIdeas(bot, [ownTopic, ownTopic, unrelatedTopic, '']),
+      [ownTopic],
+      `${bot.id} accepts only unique ideas from its own topics`
+    );
   }
 });
 
