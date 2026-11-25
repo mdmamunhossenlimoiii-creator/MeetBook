@@ -41,3 +41,9 @@
 - Unit/static tests, permission matrix, browser smoke tests, and Firestore Emulator suite must pass on the updated pull request.
 - Run a dedicated integration test with a real isolated MeetBook staging project before any production enablement. Main-branch Bot Chat Run #30's visible summary showed exit code 1, but the actual dispatch input and step-level error log were not available; its mode and root cause remain unverified. The feature branch handles optional `botMemories` permission failures non-fatally and includes a regression test, but this has not been confirmed as Run #30's cause. No live reply is verified.
 - Firestore transaction-backed rolling-window quotas and cooldowns are implemented and CI/emulator-tested. Isolated live staging verification and concurrency review remain required before exposing automated activity to users.
+
+
+## Identity override protection — 2026-11-25
+- Built-in bot IDs have fixed fictional name, username and bio in addition to canonical role emoji, personality and interests. Explicit stored overrides are treated as mismatches; missing legacy fields fall back to built-in values.
+- The Runner skips a mismatched profile and uses canonical identity fields for accepted profiles. Admin creation uses the next approved built-in identity; identity fields are read-only. Manual post/comment helpers also fail closed on an identity mismatch.
+- Regression tests cover substituted human-style names and professional-credential bios. This does not replace the owner audit of live bot profiles or isolated staging verification.
