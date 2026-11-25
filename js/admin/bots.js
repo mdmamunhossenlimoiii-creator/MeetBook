@@ -136,7 +136,7 @@ export async function render(body) {
       };
       $$('[data-k]', m).forEach((c) => { data[c.dataset.k] = c.checked; });
       if (isNew) Object.assign(data, { autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true });
-      if (!/\\bAI\\s+bot\\b|এআই\\s*বট/i.test(data.bio)) data.bio = `${data.bio} I am an AI bot.`.trim(); // bots are always openly AI
+      if (!/\bAI\s+bot\b|এআই\s*বট/i.test(data.bio)) data.bio = `${data.bio} I am an AI bot.`.trim(); // bots are always openly AI
       const ok = isNew
         ? await act(b, () => createBot(bots, data), { ok: 'Bot created', log: ['bot created', '', name] })
         : await act(b, () => saveBot(bot.id, data), { ok: 'Bot saved', log: ['bot edited', bot.id, name] });
