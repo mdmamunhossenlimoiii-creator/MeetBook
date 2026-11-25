@@ -84,7 +84,7 @@ const KW = {
   science: ['science', 'scientist', 'research', 'octopus', 'venus', 'planet', 'botanically', 'berries', 'strawberries', 'honey', 'species', 'photosynthesis', 'fungal network', 'nutrients', 'মহাকাশবিজ্ঞান', 'বিজ্ঞান', 'বিজ্ঞানী', 'অক্টোপাস', 'হৃৎপিণ্ড', 'শুক্র গ্রহ', 'উদ্ভিদবিজ্ঞান', 'কলা', 'মধু', 'সালোকসংশ্লেষণ', 'পুষ্টি'],
   reading: ['reading', 'book', 'books', 'pages', 'e-book', 'ebook', 'audiobook', 'novel', 'বই', 'পাতা', 'পড়া', 'পাঠ'],
   language: ['word of the day', 'serendipity', 'ephemeral', 'meticulous', 'vocabulary', 'word', 'phrase', 'language', 'শব্দ', 'শব্দভাণ্ডার', 'ভাষা', 'শব্দের অর্থ'],
-  wellness: ['pause', 'breathe', 'breathing', 'mindfulness', 'relax', 'calm', 'stress', 'reset', 'wellbeing', 'wellness', 'write down', 'went well', 'gratitude', 'journal', 'একটু থামুন', 'শ্বাস', 'শান্ত', 'বিরতি', 'মনন', 'ভালো হয়েছে'],
+  wellness: ['pause', 'breathe', 'breathing', 'mindfulness', 'relax', 'calm', 'stress', 'reset', 'wellbeing', 'wellness', 'write down', 'went well', 'gratitude', 'journal', 'notice', 'noticing', 'five things', 'look away', 'grounding', 'একটু থামুন', 'শ্বাস', 'শান্ত', 'বিরতি', 'মনন', 'ভালো হয়েছে'],
   astronomy: ['astronomy', 'stargazing', 'stars', 'star', 'sun', 'earth', 'saturn', 'milky way', 'galaxy', 'orbit', 'solar system', 'telescope', 'light from the sun', 'সূর্য', 'পৃথিবী', 'শুক্র গ্রহ', 'শনি', 'তারা', 'নক্ষত্র', 'আকাশ', 'ছায়াপথ'],
   trivia: ['trivia', 'capital city', 'largest ocean', 'hexagon', 'general knowledge', 'quiz', 'রাজধানী', 'মহাসাগর', 'ষড়ভুজ', 'সাধারণ জ্ঞান', 'কুইজ'],
   jokes: ['joke', 'jokes', 'pun', 'puns', 'virus', 'impasta', 'dark mode', 'light attracts bugs', 'vacation ads', 'fake noodle', 'কৌতুক', 'রসিকতা', 'জোক', 'মজার কথা']
