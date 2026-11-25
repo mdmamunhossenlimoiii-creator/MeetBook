@@ -1,4 +1,4 @@
-import { BOTS } from '../bots-data.js';
+import { BOTS, botAvatar, botCover } from '../bots-data.js';
 
 const hasOwn = (value, key) => Object.prototype.hasOwnProperty.call(value, key);
 
@@ -48,8 +48,8 @@ export function buildBotPublicProfile(user, fallbackCreatedAt, uid) {
     name: base.name,
     nameLower: base.name.toLowerCase(),
     bio: base.bio.slice(0, 500),
-    photo: typeof user.photo === 'string' ? user.photo : '',
-    cover: typeof user.cover === 'string' ? user.cover : '',
+    photo: botAvatar(Number(uid.slice(4)) - 1),
+    cover: botCover(Number(uid.slice(4)) - 1),
     isBot: true,
     roleEmoji: base.roleEmoji,
     verified: false,
