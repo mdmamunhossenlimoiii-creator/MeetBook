@@ -20,7 +20,8 @@ export const PERSONALITIES = {
 };
 export const LANGUAGES = { en: 'English', bn: 'Bengali', both: 'Both (matches the other person)' };
 export const TOPICS = ['tech', 'photo', 'travel', 'food', 'sports', 'gaming', 'news', 'music', 'movies', 'books',
-  'health', 'nature', 'study', 'humor', 'celebration'];
+  'health', 'nature', 'study', 'humor', 'celebration', 'quotes', 'science', 'reading', 'language', 'wellness',
+  'astronomy', 'trivia', 'jokes'];
 
 // ---------------------------------------------------------------- text helpers
 export const normalize = (s) => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').replace(/\s+/g, ' ').trim();
@@ -66,7 +67,7 @@ export function detectLang(text) {
 const KW = {
   tech: ['tech', 'phone', 'laptop', 'app', 'code', 'coding', 'software', 'computer', 'wifi', 'internet', 'android', 'iphone', 'gadget', 'program', 'website', 'robot', 'প্রযুক্তি', 'ফোন', 'ল্যাপটপ', 'কম্পিউটার', 'অ্যাপ', 'কোড', 'সফটওয়্যার', 'ইন্টারনেট', 'মোবাইল', 'প্রোগ্রামিং'],
   photo: ['photo', 'camera', 'picture', 'shot', 'lens', 'selfie', 'portrait', 'capture', 'ছবি', 'ফটো', 'ক্যামেরা', 'সেলফি', 'তুললাম'],
-  travel: ['trip', 'travel', 'tour', 'beach', 'mountain', 'hike', 'flight', 'hotel', 'journey', 'vacation', 'sea', 'island', 'village', 'bazar', 'ভ্রমণ', 'ঘুরতে', 'ট্যুর', 'সমুদ্র', 'পাহাড়', 'বেড়াতে', 'কক্সবাজার', 'সুন্দরবন', 'সিলেট', 'ঘুরলাম'],
+  travel: ['trip', 'travel', 'tour', 'beach', 'mountain', 'hike', 'flight', 'hotel', 'journey', 'vacation', 'sea', 'island', 'village', 'bazar', 'train', 'railway', 'shinkansen', 'bullet train', 'ভ্রমণ', 'ঘুরতে', 'ট্যুর', 'সমুদ্র', 'পাহাড়', 'বেড়াতে', 'কক্সবাজার', 'সুন্দরবন', 'সিলেট', 'ঘুরলাম', 'ট্রেন', 'রেল'],
   food: ['food', 'cook', 'recipe', 'dinner', 'lunch', 'breakfast', 'biryani', 'coffee', 'cake', 'pizza', 'snack', 'খাবার', 'রান্না', 'ডিনার', 'লাঞ্চ', 'নাস্তা', 'বিরিয়ানি', 'কফি', 'কেক', 'ভাত', 'মাছ', 'চা '],
   sports: ['football', 'cricket', 'match', 'goal', 'tournament', 'player', 'world cup', 'tennis', 'badminton', 'ফুটবল', 'ক্রিকেট', 'ম্যাচ', 'খেলা', 'গোল', 'টুর্নামেন্ট'],
   gaming: ['gaming', 'gamer', 'pubg', 'minecraft', 'fortnite', 'playstation', 'xbox', 'esports', 'free fire', 'গেম', 'গেমিং', 'ফ্রি ফায়ার'],
@@ -74,11 +75,19 @@ const KW = {
   music: ['song', 'music', 'playlist', 'guitar', 'concert', 'singer', 'গান', 'সংগীত', 'গিটার', 'কনসার্ট'],
   movies: ['movie', 'film', 'series', 'netflix', 'cinema', 'মুভি', 'সিনেমা', 'নাটক', 'ফিল্ম'],
   books: ['book', 'reading', 'novel', 'author', 'library', 'বই', 'উপন্যাস', 'লাইব্রেরি', 'পড়ছি'],
-  health: ['gym', 'workout', 'jog', 'yoga', 'health', 'walk', 'exercise', 'ব্যায়াম', 'হাঁটা', 'স্বাস্থ্য', 'যোগব্যায়াম'],
-  nature: ['tree', 'flower', 'garden', 'plant', 'rain', 'sky', 'river', 'sunset', 'sunrise', 'forest', 'গাছ', 'ফুল', 'বৃষ্টি', 'আকাশ', 'নদী', 'সূর্যাস্ত', 'সূর্যোদয়', 'বাগান'],
+  health: ['gym', 'workout', 'jog', 'yoga', 'health', 'walk', 'exercise', 'stretch', 'breathe', 'breathing', 'water', 'hydrate', 'ব্যায়াম', 'হাঁটা', 'স্বাস্থ্য', 'যোগব্যায়াম', 'স্ট্রেচ', 'শ্বাস', 'পানি', 'দাঁড়ান'],
+  nature: ['tree', 'flower', 'garden', 'plant', 'rain', 'sky', 'river', 'sunset', 'sunrise', 'forest', 'crow', 'otter', 'bamboo', 'mangrove', 'wildlife', 'animal', 'fungal', 'গাছ', 'ফুল', 'বৃষ্টি', 'আকাশ', 'নদী', 'সূর্যাস্ত', 'সূর্যোদয়', 'বাগান', 'পাখি', 'বাঁশ', 'ছত্রাক', 'প্রাণী', 'বন্যপ্রাণী'],
   study: ['exam', 'study', 'student', 'school', 'university', 'homework', 'class', 'learn', 'পরীক্ষা', 'পড়াশোনা', 'ক্লাস', 'বিশ্ববিদ্যালয়', 'স্কুল', 'শিখ'],
   humor: ['joke', 'funny', 'lol', 'haha', 'meme', '😂', '🤣', 'হাহা', 'মজা', 'হাসি'],
-  celebration: ['birthday', 'congratulations', 'congrats', 'graduated', 'wedding', 'new job', 'anniversary', 'promotion', 'জন্মদিন', 'বিয়ে', 'অভিনন্দন', 'বিবাহ', 'সফল']
+  celebration: ['birthday', 'congratulations', 'congrats', 'graduated', 'wedding', 'new job', 'anniversary', 'promotion', 'জন্মদিন', 'বিয়ে', 'অভিনন্দন', 'বিবাহ', 'সফল'],
+  quotes: ['quote', 'quotes', 'small steps', 'good habit', 'rest is', 'progress', 'inspiration', 'thought of the day', 'পদক্ষেপ', 'অগ্রগতি', 'বিশ্রাম', 'অভ্যাস', 'অনুপ্রেরণা'],
+  science: ['science', 'scientist', 'research', 'octopus', 'venus', 'planet', 'botanically', 'berries', 'strawberries', 'honey', 'species', 'photosynthesis', 'fungal network', 'nutrients', 'মহাকাশবিজ্ঞান', 'বিজ্ঞান', 'বিজ্ঞানী', 'অক্টোপাস', 'হৃৎপিণ্ড', 'শুক্র গ্রহ', 'উদ্ভিদবিজ্ঞান', 'কলা', 'মধু', 'সালোকসংশ্লেষণ', 'পুষ্টি'],
+  reading: ['reading', 'book', 'books', 'pages', 'e-book', 'ebook', 'audiobook', 'novel', 'বই', 'পাতা', 'পড়া', 'পাঠ'],
+  language: ['word of the day', 'serendipity', 'ephemeral', 'meticulous', 'vocabulary', 'word', 'phrase', 'language', 'শব্দ', 'শব্দভাণ্ডার', 'ভাষা', 'শব্দের অর্থ'],
+  wellness: ['pause', 'breathe', 'breathing', 'mindfulness', 'relax', 'calm', 'stress', 'reset', 'wellbeing', 'wellness', 'একটু থামুন', 'শ্বাস', 'শান্ত', 'বিরতি', 'মনন', 'ভালো হয়েছে'],
+  astronomy: ['astronomy', 'stargazing', 'stars', 'star', 'sun', 'earth', 'saturn', 'milky way', 'galaxy', 'orbit', 'solar system', 'telescope', 'light from the sun', 'সূর্য', 'পৃথিবী', 'শুক্র গ্রহ', 'শনি', 'তারা', 'নক্ষত্র', 'আকাশ', 'ছায়াপথ'],
+  trivia: ['trivia', 'capital city', 'largest ocean', 'hexagon', 'general knowledge', 'quiz', 'রাজধানী', 'মহাসাগর', 'ষড়ভুজ', 'সাধারণ জ্ঞান', 'কুইজ'],
+  jokes: ['joke', 'jokes', 'pun', 'puns', 'virus', 'impasta', 'dark mode', 'light attracts bugs', 'vacation ads', 'fake noodle', 'কৌতুক', 'রসিকতা', 'জোক', 'মজার কথা']
 };
 // Posts we never answer with a canned line (grief, illness, accidents, distress).
 const SENSITIVE = ['died', 'death', 'passed away', 'funeral', 'accident', 'hospital', 'cancer', 'depress', 'lonely', 'miss him', 'miss her', 'rip',
@@ -165,6 +174,38 @@ const LINES = {
   celebration: {
     en: ['Congratulations, that is wonderful news!', 'Wishing you lots of happiness!', 'Great to see a reason to celebrate.'],
     bn: ['অভিনন্দন, দারুণ খবর!', 'অনেক অনেক সুখী হোন, শুভকামনা রইল!', 'উদযাপনের কারণ দেখে ভালো লাগল।']
+  },
+  quotes: {
+    en: ['That is a thoughtful line to keep in mind.', 'Small ideas can make a meaningful difference.', 'A good reminder can stay with someone all day.'],
+    bn: ['মনে রাখার মতো সুন্দর একটি কথা।', 'ছোট ভাবনাও অর্থপূর্ণ পরিবর্তন আনতে পারে।', 'একটি ভালো কথা সারাদিন মনে থাকতে পারে।']
+  },
+  science: {
+    en: ['Curiosity is a great reason to look a little closer.', 'Interesting science is best checked against reliable sources.', 'There is always something new to learn about the natural world.'],
+    bn: ['কৌতূহল থেকেই নতুন কিছু জানার শুরু।', 'বিজ্ঞানের তথ্য নির্ভরযোগ্য সূত্রে মিলিয়ে দেখা ভালো।', 'প্রকৃতি সম্পর্কে শেখার মতো নতুন বিষয় সবসময় আছে।']
+  },
+  reading: {
+    en: ['A good book can make a quiet moment worthwhile.', 'Every page is a small step through a bigger story.', 'There is room for many different reading habits.'],
+    bn: ['একটি ভালো বই নিরিবিলি সময়কে সুন্দর করে তোলে।', 'প্রতিটি পাতা বড় গল্পের দিকে ছোট্ট একটি পদক্ষেপ।', 'পড়ার অভ্যাস সবার আলাদা হতে পারে।']
+  },
+  language: {
+    en: ['Words can make a precise idea easier to share.', 'Learning a new word is a small daily win.', 'Context is often the best clue to a word meaning.'],
+    bn: ['শব্দের সঠিক ব্যবহার ভাবনা স্পষ্ট করে।', 'নতুন একটি শব্দ শেখাও প্রতিদিনের ছোট অর্জন।', 'শব্দের অর্থ বুঝতে প্রসঙ্গ অনেক সাহায্য করে।']
+  },
+  wellness: {
+    en: ['A gentle pause can make a busy moment feel more manageable.', 'Small, comfortable routines are easier to keep.', 'It is okay to take a quiet moment when you need one.'],
+    bn: ['একটু বিরতি ব্যস্ত মুহূর্তকে সামলাতে সাহায্য করতে পারে।', 'সহজ ও স্বস্তিদায়ক অভ্যাস ধরে রাখা সহজ।', 'প্রয়োজন হলে একটু শান্ত সময় নেওয়া ঠিক আছে।']
+  },
+  astronomy: {
+    en: ['The night sky offers plenty to wonder about.', 'A clear sky can turn a simple evening into a discovery.', 'Astronomy is full of fascinating questions.'],
+    bn: ['রাতের আকাশে বিস্ময়ের অনেক কিছু আছে।', 'পরিষ্কার আকাশ সাধারণ সন্ধ্যাকেও আবিষ্কারে ভরিয়ে দিতে পারে।', 'জ্যোতির্বিজ্ঞানে কৌতূহলের মতো প্রশ্নের অভাব নেই।']
+  },
+  trivia: {
+    en: ['That is a fun question to explore.', 'A quick fact-check makes trivia even better.', 'Good questions are a great way to learn.'],
+    bn: ['এটি খুঁজে দেখার মতো মজার একটি প্রশ্ন।', 'তথ্য যাচাই করলে কুইজ আরও ভালো হয়।', 'ভালো প্রশ্ন শেখার দারুণ উপায়।']
+  },
+  jokes: {
+    en: ['A clean pun can brighten a conversation.', 'That one deserves a friendly groan.', 'Wordplay is a fun little puzzle.'],
+    bn: ['পরিষ্কার মজার কথা আলাপকে প্রাণবন্ত করে।', 'এটার জন্য বন্ধুসুলভ একটা আহা-হা প্রাপ্য।', 'শব্দের খেলা ছোট্ট মজার ধাঁধার মতো।']
   },
   general: {
     en: ['Thanks for sharing this.', 'Nice post.', 'Good to see this on my feed.', 'Interesting, thank you for posting.', 'A good one to think about.'],
@@ -255,7 +296,7 @@ export function relevance(bot, text) {
   if (!t.length) return 0;
   const mine = interestsOf(bot);
   let s = 0;
-  t.slice(0, 3).forEach((topic, i) => { if (mine.includes(topic)) s += 3 - i; });
+  t.forEach((topic, i) => { if (mine.includes(topic)) s += Math.max(1, 3 - i); });
   return s;
 }
 
