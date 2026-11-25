@@ -53,3 +53,6 @@
 - Bot publicProfiles use canonical BOTS name, name key, bio and role emoji; verified is always false. profileVisibility continues to match the source settings required by the existing Firestore Rules.
 - The admin migration repairs stale or malformed built-in bot public profiles only. Human detailed profiles are never deleted or rewritten.
 - This does not change users/{botId}. A mismatched source identity still causes the Runner to skip the bot and the Admin UI to warn the owner. Live account audit remains required.
+## Bot avatar/cover safeguard — 2026-11-25
+- Public bot profile artwork is generated from the canonical built-in character slot. The Admin form no longer accepts uploaded bot photos or covers, reducing real-person impersonation risk.
+- Only built-in bot publicProfiles are rebuilt by the migration; source user documents and human profiles remain untouched until an owner-approved audit.
