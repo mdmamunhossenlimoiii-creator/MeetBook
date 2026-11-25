@@ -197,6 +197,15 @@ export function botProfileRoleIssues(botId, profile) {
   if (!base || !profile || typeof profile !== 'object' || Array.isArray(profile)) return ['unknown_bot'];
 
   const issues = [];
+  // Built-in IDs have fixed fictional names/usernames/bios. Missing legacy fields fall back
+  // to these defaults, but explicit overrides are not allowed to impersonate a person or role.
+  for (const field of ['name', 'username', 'bio']) {
+    const value = profile[field];
+    if (value !== undefined && value !== null && value !== '') {
+      if (typeof value !== 'string' || value.trim() !== base[field]) issues.push(field);
+    }
+  }
+
   if (profile.roleEmoji !== undefined && profile.roleEmoji !== base.roleEmoji) issues.push('roleEmoji');
 
   if (profile.personality !== undefined && profile.personality !== null && profile.personality !== ''
