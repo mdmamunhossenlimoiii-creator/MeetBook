@@ -12,20 +12,9 @@ export function buildDirectoryProjection(user, uid) {
   const isBot = hasOwn(user, 'isBot') ? user.isBot : false;
   if (typeof isBot !== 'boolean') return null;
 
-  if (isBot === true) {
-    const base = BOTS.find((bot) => bot.id === uid);
-    if (!base) return null;
-    return {
-      name: base.name,
-      nameLower: base.name.toLowerCase(),
-      isBot: true,
-      roleEmoji: base.roleEmoji,
-      verified: false
-    };
-  }
-
-  // The reserved built-in IDs must never be projected as ordinary human accounts.
-  if (BOTS.some((bot) => bot.id === uid)) return null;
+  // Bot profiles are intentionally absent from publicDirectory. getUser() falls back
+  // to the canonical publicProfiles document for bot IDs; no mutable bot name is indexed.
+  if (isBot === true || BOTS.some((bot) => bot.id === uid)) return null;
   if (typeof user.name !== 'string' || user.name.length < 2) return null;
 
   const nameLower = hasOwn(user, 'nameLower') ? user.nameLower : user.name.toLowerCase();
@@ -45,6 +34,11 @@ export function buildBotPublicProfile(user, fallbackCreatedAt, uid) {
   const base = BOTS.find((bot) => bot.id === uid);
   if (!base) return null;
 
+  const settings = hasOwn(user, 'settings') ? user.settings : {};
+  if (!settings || typeof settings !== 'object' || Array.isArray(settings)) return null;
+  const profileVisibility = hasOwn(settings, 'profileVisibility') ? settings.profileVisibility : 'everyone';
+  if (!['everyone', 'friends'].includes(profileVisibility)) return null;
+
   const createdAt = user.createdAt && typeof user.createdAt.toDate === 'function'
     ? user.createdAt
     : fallbackCreatedAt;
@@ -59,7 +53,7 @@ export function buildBotPublicProfile(user, fallbackCreatedAt, uid) {
     isBot: true,
     roleEmoji: base.roleEmoji,
     verified: false,
-    profileVisibility: 'everyone',
+    profileVisibility,
     createdAt
   };
 }
