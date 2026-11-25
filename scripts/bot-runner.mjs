@@ -22,7 +22,7 @@ import { createHash } from 'node:crypto';
 // Env: BOT_RUNNER_EMAIL, BOT_RUNNER_PASSWORD (secrets), BOT_POSTS, BOT_COMMENTS (optional),
 //      DRY_RUN=1 (print only), AUTH_URL / FS_URL (override endpoints, used by tests).
 import { BOTS, isBotId, botProfileRoleIssues } from '../js/bots-data.js';
-import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize, isDuplicatePostText } from '../js/bots-brain.js';
+import { makeComment, pickReaction, chatReply, nextPostText, relevance, normalize, isDuplicatePostText, filterRelevantPostIdeas } from '../js/bots-brain.js';
 import { firebaseConfig } from '../js/firebase-config.js';
 import { createClient, eq, and, toFields } from './lib/firestore-rest.mjs';
 import { generateSmartBotText, SMART_BOT_IDS, updateSmartBotMemory } from './lib/gemini.mjs';
@@ -226,6 +226,8 @@ async function loadBots() {
       console.warn(`Skipping ${d.id}: stored role metadata mismatch (${roleIssues.join(', ')}). Owner review is required; the profile was not changed.`);
       continue;
     }
+    const customPosts = filterRelevantPostIdeas(base, d.ideas);
+    const customPostsBn = filterRelevantPostIdeas(base, d.ideasBn);
     out.push({
       ...base,
       ...d,
@@ -238,8 +240,8 @@ async function loadBots() {
       personality: base.personality,
       interests: [...base.interests],
       // owner-authored post ideas may vary while staying within the built-in role
-      posts: Array.isArray(d.ideas) && d.ideas.length ? d.ideas : base.posts,
-      postsBn: Array.isArray(d.ideasBn) && d.ideasBn.length ? d.ideasBn : base.postsBn,
+      posts: customPosts.length ? customPosts : base.posts,
+      postsBn: customPostsBn.length ? customPostsBn : base.postsBn,
       lang: d.lang || base.lang
     });
   }
@@ -330,6 +332,10 @@ async function main() {
     if (!pick) continue;
     if (!(await reserveBotAction(bot))) continue;
     let postText = DRY ? pick.text : await generateText({ bot, kind: 'post', source: pick.text, fallback: pick.text });
+    if (!DRY && relevance(bot, postText) <= 0) {
+      console.log(`Off-topic generated content replaced with the approved role template for ${bot.name}.`);
+      postText = pick.text;
+    }
     let fingerprint = postTextHash(postText);
     if (st.postHashes.includes(fingerprint) || isDuplicatePostText(postText, st.postedTexts)) {
       // A generated response can repeat an earlier idea. Prefer a fresh role template;
