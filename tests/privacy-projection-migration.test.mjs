@@ -46,23 +46,16 @@ test('admin profile builder never creates a detailed projection for a human acco
   }, fallbackStamp), null);
 });
 
-test('bot directory projection ignores stored identity overrides and never shows a verified badge', () => {
-  const projection = buildDirectoryProjection({
+test('bot accounts are excluded from publicDirectory so mutable names cannot impersonate people', () => {
+  assert.equal(buildDirectoryProjection({
     name: 'Dr. Real Person',
     nameLower: 'dr real person',
     isBot: true,
     roleEmoji: '🤖',
     verified: true
-  }, 'bot_01');
-
-  assert.deepEqual(projection, {
-    name: BOTS[0].name,
-    nameLower: BOTS[0].name.toLowerCase(),
-    isBot: true,
-    roleEmoji: BOTS[0].roleEmoji,
-    verified: false
-  });
+  }, 'bot_01'), null);
   assert.equal(buildDirectoryProjection({ name: 'Unknown Bot', isBot: true }, 'bot_99'), null);
+  assert.equal(buildDirectoryProjection({ name: 'Pretend Human', isBot: false }, 'bot_01'), null);
 });
 
 test('bot public profile projection uses the canonical fictional name, bio and role marker', () => {
@@ -86,7 +79,7 @@ test('bot public profile projection uses the canonical fictional name, bio and r
   assert.equal(projection.isBot, true);
   assert.equal(projection.roleEmoji, BOTS[0].roleEmoji);
   assert.equal(projection.verified, false);
-  assert.equal(projection.profileVisibility, 'everyone');
+  assert.equal(projection.profileVisibility, 'friends', 'bot projection visibility must match the source setting for Firestore Rules');
   assert.equal(projection.photo, bot.photo);
   assert.equal(projection.createdAt, stamp);
   assert.deepEqual(Object.keys(projection).sort(), [
