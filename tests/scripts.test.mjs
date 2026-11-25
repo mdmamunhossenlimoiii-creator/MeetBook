@@ -95,6 +95,30 @@ test('bot runner: consent, safety, limits, chat, logs', { skip: !botRunnerConfig
 });
 
 
+test('bot runner skips a built-in profile that substitutes a human name or professional bio', { skip: !botRunnerConfigured }, async () => {
+  const seed = {
+    ...seedBots(),
+    'settings/overall': { botsEnabled: true, botToBotComments: false }
+  };
+  seed['users/bot_01'] = {
+    ...seed['users/bot_01'],
+    name: 'Dr. Real Person',
+    bio: 'I am a licensed doctor and an AI bot.'
+  };
+  const m = await startMock({ seed });
+  const env = {
+    BOT_RUNNER_EMAIL: 'r@x.com', BOT_RUNNER_PASSWORD: 'secret',
+    BOT_RUNNER_EXPECTED_PROJECT_ID: firebaseConfig.projectId,
+    AUTH_URL: m.url, FS_URL: m.url, BOT_POSTS: '0', BOT_COMMENTS: '0', DRY_RUN: '1'
+  };
+  try {
+    const result = await run('scripts/bot-runner.mjs', env);
+    assert.equal(result.status, 0, result.stderr + result.stdout);
+    assert.match(result.stderr, /Skipping bot_01: stored role metadata mismatch \(name, bio\)/);
+    assert.deepEqual(m.ids('posts'), [], 'dry-run writes no posts while rejecting the substituted identity');
+  } finally { await m.close(); }
+});
+
 test('dry-run does not read persisted bot memory even when the user opted in', { skip: !botRunnerConfigured }, async () => {
   const memoryId = 'bot_01_u1';
   const m = await startMock({ seed: {
