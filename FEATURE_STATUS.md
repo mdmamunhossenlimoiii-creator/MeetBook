@@ -62,3 +62,6 @@ No credentials or secrets are requested or added here. No Firebase or production
 ## Bot artwork identity safeguard — 2026-11-25
 - Public bot avatars and covers are generated from the canonical fictional bot slot. The Admin creation form no longer accepts uploaded photos for bot identities; this avoids presenting a real person's photo as an automated character.
 - Existing source user documents are not rewritten. The public-profile migration will replace only built-in bot publicProfiles with generated character artwork; the owner still needs to run and verify that migration in staging.
+## Role-relevant post idea enforcement — 2026-11-25
+- Owner-supplied English/Bengali post ideas are filtered through the bot's canonical topic interests; unrelated and duplicate ideas are ignored and the built-in role templates are used when no custom idea passes.
+- Generated post text is checked against the bot's interests before publication; off-topic generations fall back to the approved role template. Comments already require a positive topic relevance score.
