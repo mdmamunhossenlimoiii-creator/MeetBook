@@ -207,6 +207,7 @@ export function botProfileRoleIssues(botId, profile) {
   }
 
   if (profile.roleEmoji !== undefined && profile.roleEmoji !== base.roleEmoji) issues.push('roleEmoji');
+  if (profile.verified !== undefined && profile.verified !== false) issues.push('verified');
 
   if (profile.personality !== undefined && profile.personality !== null && profile.personality !== ''
       && profile.personality !== base.personality) {
