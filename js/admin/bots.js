@@ -92,7 +92,7 @@ export async function render(body) {
     const v = bot || { ...builtIn, dailyLimit: 6, active: true, autoPost: true, autoComment: true, autoReaction: true, chatEnabled: true, ideas: [], ideasBn: [] };
     const tog = (k, label) => `<label class="row gap small"><input type="checkbox" data-k="${k}" ${v[k] === true ? 'checked' : ''}> ${label}</label>`;
     const m = modal(`<h3>${isNew ? 'New AI bot · ' + esc(v.roleEmoji) + ' ' + esc(v.name) : `Edit ${esc(v.name)}`}</h3>
-      <p class="muted small">Built-in bot identity fields are locked to the approved fictional role. Only language, post ideas, activity controls and artwork can vary.</p>
+      <p class="muted small">Built-in bot identity fields are locked to the approved fictional role. Only language, post ideas and activity controls can vary; public artwork is generated.</p>
       <div class="field"><label for="b-name">Name</label><input id="b-name" maxlength="60" value="${esc(v.name)}" disabled></div>
       <div class="field"><label for="b-user">Username</label><input id="b-user" maxlength="30" value="${esc(v.username || '')}" placeholder="e.g. travel_buddy" disabled></div>
       <div class="field"><label for="b-emoji">Character symbol</label><select id="b-emoji" disabled>${ROLE_EMOJIS.map((emoji) => `<option value="${emoji}" ${v.roleEmoji === emoji ? 'selected' : ''}>${emoji}</option>`).join('')}</select><small class="muted">The symbol is fixed for this fictional role.</small></div>
@@ -112,7 +112,7 @@ export async function render(body) {
       const b = e.target.closest('[data-do2]');
       if (!b) return;
       if (b.dataset.do2 === 'regen') {
-        const n = Number(bot.id.slice(4));
+        const n = Number(bot.id.slice(4)) - 1;
         if (await act(b, () => saveBot(bot.id, { photo: botAvatar(n), cover: botCover(n) }), { ok: 'Regenerated', log: ['bot images regenerated', bot.id, bot.name] })) { closeModal(); draw(); }
         return;
       }
